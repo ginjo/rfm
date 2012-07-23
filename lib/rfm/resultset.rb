@@ -103,9 +103,11 @@ module Rfm
       @foundset_count   = doc.foundset_count
       @total_count      = doc.total_count
       @table            = doc.table
-            
-      (layout.table = @table) if layout and layout.table_no_load.blank?
       
+      @converter_fields = desensitize_converter_fields      
+      
+      (layout.table = @table) if layout and layout.table_no_load.blank?
+
       parse_fields(doc)
       
       # This will always load portal meta, even if :include_portals was not specified.
@@ -155,7 +157,7 @@ module Rfm
       	return if doc.fields.blank?
 
         doc.fields.each do |field|
-          @field_meta[field.name] = Rfm::Metadata::Field.new(field)
+          @field_meta[field.name] = Rfm::Metadata::Field.new(field, @converter_fields[field.name])
         end
         (layout.field_names = field_names) if layout and layout.field_names_no_load.blank?
       end
@@ -175,7 +177,13 @@ module Rfm
         end
         (layout.portal_meta = @portal_meta) if layout and layout.portal_meta_no_load.blank?
       end
-    
+
+      def desensitize_converter_fields
+        rfm_hash = Rfm::CaseInsensitiveHash.new
+        (state[:converters] || {} ).each_pair { |k,v| rfm_hash[k] = v }
+        rfm_hash
+      end
+      
 			#   def convert_date_time_format(fm_format)
 			#     fm_format.gsub!('MM', '%m')
 			#     fm_format.gsub!('dd', '%d')
