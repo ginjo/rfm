@@ -11,6 +11,7 @@ module Rfm
 			password
 			database
 			layout
+			converters
 			ignore_bad_data
 			ssl
 			root_cert

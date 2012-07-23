@@ -63,12 +63,13 @@ module Rfm
       
       # Initializes a field object. You'll never need to do this. Instead, get your Field objects from
       # ResultSet::fields
-      def initialize(field)
+      def initialize(field, converter = nil)
         @name        = field.name #['name']
         @result      = field.result #['result']
         @type        = field.type #['type']
         @max_repeats = field.max_repeats #['max-repeats']
         @global      = field.global #['global']
+        @converter   = converter
       end
     
       # Coerces the text value from an +fmresultset+ document into proper Ruby types based on the 
@@ -76,7 +77,7 @@ module Rfm
       # access field data through the Record object.
       def coerce(value, resultset)
         return nil if (value.nil? or value.empty?)
-        case self.result.downcase
+        value = case self.result.downcase
         when "text"      then value
         when "number"    then BigDecimal.new(value)
         when "date"      then Date.strptime(value, resultset.date_format)
@@ -85,7 +86,7 @@ module Rfm
         when "container" then URI.parse("#{resultset.server.scheme}://#{resultset.server.host_name}:#{resultset.server.port}#{value}")
         else nil
         end
-        
+        @converter.nil? ? value : @converter.call(value)
       end
       
     end # Field
