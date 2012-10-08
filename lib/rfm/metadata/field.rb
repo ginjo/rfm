@@ -78,7 +78,12 @@ module Rfm
         return nil if (value.nil? or value.empty?)
         case self.result.downcase
         when "text"      then value
-        when "number"    then BigDecimal.new(value)
+        when "number" 
+          if value.include?("\n")
+            value.split("\n").collect { |val| BigDecimal.new(val)}
+          else
+            BigDecimal.new(value)
+          end
         when "date"      then Date.strptime(value, resultset.date_format)
         when "time"      then DateTime.strptime("1/1/-4712 #{value}", "%m/%d/%Y #{resultset.time_format}")
         when "timestamp" then DateTime.strptime(value, resultset.timestamp_format)
