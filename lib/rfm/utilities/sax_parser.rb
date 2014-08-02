@@ -422,7 +422,11 @@ module Rfm
 						if val && val.empty?
 							nil
 						elsif val && val.respond_to?(:values) && val.size == 1
-							val.values[0]
+							if val.respond_to?(:keys) && val.keys[0] == 'name'
+							  val
+							else
+							  val.values[0]
+							end
 						else
 							val
 						end
