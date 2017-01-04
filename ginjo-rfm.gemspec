@@ -33,7 +33,7 @@ Gem::Specification.new do |s|
 
   # s.add_runtime_dependency('activesupport', '>= 2.3.5')
   s.add_development_dependency(%q<activemodel>, [">= 0"])
-  s.add_development_dependency(%q<rake>, [">= 0"])
+  s.add_development_dependency(%q<rake>, ["~> 11"])
   s.add_development_dependency(%q<rdoc>, [">= 0"])
   s.add_development_dependency(%q<rspec>, ["~> 2"])
   s.add_development_dependency(%q<minitest>, [">= 0"])
