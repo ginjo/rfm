@@ -225,7 +225,9 @@ See `Rfm::Config::CONFIG_KEYS` for a list of currently allowed configuration opt
 	                                                      # parsing gems loaded and want to use a specfic one. 
 	                                                      # Otherwise, Rfm will use the best parser it can find amongst your currently loaded parsing gems.
 	   :ignore_bad_data  => nil                           # Instruct Rfm to ignore data mismatch errors when loading a resultset.
-	
+	   :decimal_separator => '.'                          # FileMaker uses local number format of the server. It stores input as text.
+                                                          # So on european servers a number value of '1.200,50' is considered valid and interpreted as 1200.5
+                                                          # To support this, :decimal_separator can be configured and any other characters than digits and the separator are ignored
 
 ### Using Models
 

@@ -88,7 +88,12 @@ module Rfm
 
         case result
         when "text"      then value
-        when "number"    then BigDecimal.new(value.to_s)
+        when "number"    then
+          # FileMaker uses local number format of the server. It stores input as text.
+          # So on european servers a number value of '1.200,50' is considered valid and interpreted as 1200.5
+          # To support this, :decimal_separator can be configured and any other characters than digits and the separator are ignored
+          sep = layout_object.state[:decimal_separator] || '.'
+          BigDecimal.new(value.to_s.gsub(/[^\d#{Regexp.quote(sep)}]/,'').tr(sep,'.'))
         when "date"      then Date.strptime(value, resultset_meta.date_format)
         when "time"      then DateTime.strptime("1/1/-4712 #{value}", "%m/%d/%Y #{resultset_meta.time_format}")
         when "timestamp" then DateTime.strptime(value, resultset_meta.timestamp_format)
