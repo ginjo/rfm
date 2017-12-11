@@ -1,3 +1,4 @@
+require 'spec_helper'
 describe Rfm::Factory::ServerFactory do  
   subject {Rfm::Factory::ServerFactory.new}
   describe '#[]' do

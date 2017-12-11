@@ -1,3 +1,4 @@
+require 'spec_helper'
 describe Rfm::Resultset do
   # These mocks were breaking the #initialize spec, but only when I added the Layout#modelize spec !?!?
   #   let(:server) {mock(Rfm::Server)}

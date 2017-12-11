@@ -1,3 +1,4 @@
+require 'spec_helper'
 describe Rfm::Record do
   let(:resultset) {Rfm::Resultset.allocate}
   let(:record) {Rfm::Record.allocate}

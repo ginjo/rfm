@@ -1,5 +1,6 @@
 # encoding: UTF-8
 # See: http://stackoverflow.com/questions/11331060/international-chars-using-rspec-with-ruby-on-rails
+require 'spec_helper'
 
 describe Rfm::SaxParser::Handler do
   #subject {Rfm::SaxParser::Handler}
