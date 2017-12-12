@@ -15,6 +15,7 @@ require 'rspec/core/rake_task'
 # end
 
 RSpec::Core::RakeTask.new(:spec) do |task|
+  # Optionally pass env var SPEC_OPTS='--whatever' to pass opts to rspec thru rake.
   task.rspec_opts = '-O spec/spec.opts'
 end
 
