@@ -19,8 +19,6 @@
 
 Rfm is a Ruby-Filemaker adapter, a gem that provides an interface between Filemaker Server and Ruby. Query your Filemaker database, browse result records as persistent objects, and create/update/delete records with a syntax similar to ActiveRecord. Ginjo-rfm picks up from the lardawge-rfm gem and continues to refine code and fix bugs. Version 3 removes the dependency on ActiveSupport and is now a completely independent Gem, able to run most of its core features without requiring any other supporting Gems. ActiveModel features can be activated by adding activemodel to your Gemfile (or requiring activemodel manually).
 
-Ginjo-rfm version 3 has been tested successfully on Ruby 1.8.7 thru 2.1.3.
-
 
 ## Documentation & Links
 
