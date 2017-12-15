@@ -14,9 +14,3 @@ gemspec
 #gem 'activesupport', "< 4"
 #gem 'rdoc', "< 6"
 
-# For ruby 1.8.7
-# gem "activemodel", "~>3"
-# gem 'i18n', '0.6.11'
-# gem 'nokogiri' , '~>1.5.0'
-# gem 'redcarpet', '~>2.3.0'
-# gem 'ruby-prof', '~>0.13.0'
