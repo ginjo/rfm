@@ -1,3 +1,4 @@
+require 'spec_helper'
 describe Rfm::Base do
 
   # Only run these if ActiveModel present.

@@ -1,3 +1,4 @@
+require 'spec_helper'
 describe 'Rfm::CompoundQuery' do
 
   it "handles nil values for query parameters" do

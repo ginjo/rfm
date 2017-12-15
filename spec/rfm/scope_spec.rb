@@ -1,3 +1,5 @@
+require 'spec_helper'
+
 describe 'Rfm::Scope' do
 
   before(:all) do

@@ -1,3 +1,4 @@
+require 'spec_helper'
 describe Rfm::Layout do
   let(:server)   {(Rfm::Server).allocate}
   let(:database) {(Rfm::Database).allocate}

@@ -1,5 +1,6 @@
 # encoding: UTF-8
 # See: http://stackoverflow.com/questions/11331060/international-chars-using-rspec-with-ruby-on-rails
+require 'spec_helper'
 
 describe Rfm::SaxParser::Handler do
   #subject {Rfm::SaxParser::Handler}
@@ -56,7 +57,7 @@ describe Rfm::SaxParser::Handler do
 
     it "collects multiple text chunks into single string" do
       rr = HANDLER.build('spec/data/split_text.xml', 'spec/data/split_text.yml').result
-      expect(rr['root']['text'].strip).to eq("some text\n\nmore text\n\nfinal text")
+      expect(rr['root']['text'].strip).to match(/some text\s+more text\s+final text/)
       expect(rr['root']['element_one'].instance_variable_get(:@text).strip).to eq("elmt one inner téxt with special chars")
     end
 

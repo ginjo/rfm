@@ -1,11 +1,21 @@
 # Changelog
 
+## Ginjo-Rfm 3.0.12
+
+* Make decimal separator configurable, as FM-Server uses local number settings in result set.
+  Use configuration option `:decimal_separator`.
+
+* Fix broken spec for Ox sax parser.
+
+* Change dependency constraint for rspec to >= v2.
+
+
 ## Ginjo-Rfm 3.0.11
 
 * Scoping fixes, changes, additions:
 
   Now takes proc or array of hashes or hash.
-  
+
   Scope_args for scope proc now defaults to model instance.
 
   Now handles omits - puts them at end of request array.
@@ -13,13 +23,14 @@
 * Support for rom-fmp 0.0.4 - query chaining with compound fm queries.
 
 * Basic support for portal field writes.
-    
+
         record['my_relationship::my_field.0'] = 'Adds a new portal record with data for my_field, if auto-create enabled'
         record.update_attributes! 'my_relationship::my_field.3' => 'Updates my_field in 3rd portal record, if exists'
 
 * Fix Base#save! to store raised exceptions in errors, if possible.
 
 * Fix CompoundQuery to handle nil values in query params.
+
 
 ## Ginjo-Rfm 3.0.10
 
@@ -29,7 +40,7 @@
 
         scope = {:person_id => current_user.person_id}
         Order.find([{:status => ['open', 'processing']}, {:omit => true, :item_count => "<1"}], :scope => scope)
-
+    
         class Orders < Rfm::Base
           SCOPE = Proc.new { {:expired => "=" } }
         end
@@ -56,20 +67,20 @@
 
 * Implemented proxy option for database connections thru a proxy server.
 
-    config :proxy=>['my.proxy.com', 8888]
-  
+        config :proxy=>['my.proxy.com', 8888]
+
 * Implemented erb parsing of config.yml
-  
+
 * Disabled ```:grammar => :auto``` option. The current xml parser cannot yet use the FMPXMLRESULT grammar for general queries.
 
 
 ## Ginjo-Rfm 3.0.7
 
 * Changed record creation so that generic records created from non-modelized layouts will be instances of Rfm::Record, instead of instances of a transient model class based on the layout. Transient model classes will foul up serialization and any number of other things. Records created from a user-defined model class will continue to be instances of the model class.
-    
+
         my_layout.find(12345).class  ==  Rfm::Record
         MyModel.find(12345).class    ==  MyModel
-    
+
 
 ## Ginjo-Rfm 3.0.6
 
@@ -181,9 +192,9 @@
 
 * Added grammar translation layer between xml parser and Rfm, allowing all supported xml grammars to be used with Rfm.
   This will also streamline changes/additions to Filemaker's xml grammar(s).
-  
+
 * Fixed case statement for ruby 1.9
- 
+
 * Configuration ```:use``` option now works for all Rfm objects that respond to ```config```.
 
 ## Ginjo-Rfm 2.0.2
@@ -233,11 +244,11 @@
 ## Ginjo-Rfm 1.4.2
 
 * Re-implemented:  
-  
+
   Layout#field\_controls
 
   Layout#value\_lists  
-  
+
 * Enhanced:  
 
   ValueListItem handles both display & data items now.
@@ -245,7 +256,7 @@
   Timeout feature from timting (github/timting/rfm).
 
   Added specs for Record#save.  
-  
+
 * Fixed:  
 
   [Bug] Getting & setting fields with symbol-based keys was producing error.
@@ -259,23 +270,23 @@
   server.db.all
   db.layout.all
   db.script.all  
-  
+
   Note: the "#all" method returns object names (as keys) only. The receiver of the method maintains the full object collection.  
 
   Example:  
-  
-        server.db.all #=> ['dbname1', 'dbname2', ...]
-        server.db     #=> a DbFactory object (descendant of Hash), containing 0 or more Database objects
+
+    server.db.all #=> ['dbname1', 'dbname2', ...]
+    server.db     #=> a DbFactory object (descendant of Hash), containing 0 or more Database objects
 
 ## Lardawge-Rfm 1.4.2 (unreleased)
-  
+
 * Made nil default on fields with no value.  
-  
+
   Example:
  
         Old: record.john #=> "" 
         New: record.john #=> nil
-   
+
 ## Lardawge-Rfm 1.4.1.2
 
 * [Bug] Pointing out why testing is soooooo important when refactoring... Found a bug in getter/setter method in Rfm::Record (yes, added spec for it).
@@ -295,13 +306,13 @@
 * Added an option to load portal records which defaults to false. This significantly speeds up load time when portals are present on the layout.
 
   Example:  
-  
+
         result = fm_server('layout').find({:username => "==#{username}"}, {:include_portals => true})
         # => This will fetch all records with portal records attached.
-
+    
         result.first.portals
         # => would return an empty hash by default.
-    
+
 * Internal file restructuring. Some classes have changed but it should be nothing a developer would use API wise. Please let me know if it is.
 
 * Removed Layout#value\_lists && Layout#field\_controls. Will put back in if the demand is high. Needs a major refactor and different placement if it goes back in. Was broken so it didn't seem to be used by many devs.

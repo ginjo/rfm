@@ -1,3 +1,4 @@
+require 'spec_helper'
 describe err_module = Rfm::Error do
   describe ".lookup" do
 

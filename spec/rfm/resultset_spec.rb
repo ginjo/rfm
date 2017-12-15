@@ -1,3 +1,4 @@
+require 'spec_helper'
 describe Rfm::Resultset do
   # These mocks were breaking the #initialize spec, but only when I added the Layout#modelize spec !?!?
   #   let(:server) {mock(Rfm::Server)}
@@ -19,6 +20,18 @@ describe Rfm::Resultset do
       expect(result.portal_meta["projectlineitemssubitems_pli"]["proofwidth"].result).to eq("number")
       expect(result.portal_meta["projectlineitemssubitems_pli"]["finishheight"].result).to eq("number")
       expect(result.portal_meta["projectlineitemssubitems_pli"]["border"].result).to eq("text")
+    end
+    
+    # TODO: This spec should probably be in a field_spec.rb file.
+    it "loads fmresultset.xml accounting for decimal separator in confg" do
+      resultset_class = Class.new(Rfm::Resultset){ include Rfm::Config }
+      resultset = resultset_class.new(:decimal_separator => ',')
+      handler = resultset_class.load_data "spec/data/resultset_with_decimals.xml", resultset
+      result = handler.result
+      expect(result[0][:total_value]).to eq(25500.4)
+      expect(result[0][:half_value]).to eq(12750.2)
+      expect(result[2][:total_value]).to eq(11.2345)
+      expect(result[2][:half_value]).to eq(5.61725)
     end
   end
 

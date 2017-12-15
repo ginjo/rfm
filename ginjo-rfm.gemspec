@@ -35,7 +35,7 @@ Gem::Specification.new do |s|
   s.add_development_dependency(%q<activemodel>, [">= 0"])
   s.add_development_dependency(%q<rake>, [">= 0"])
   s.add_development_dependency(%q<rdoc>, [">= 0"])
-  s.add_development_dependency(%q<rspec>, ["~> 2"])
+  s.add_development_dependency(%q<rspec>, [">= 2"])
   s.add_development_dependency(%q<minitest>, [">= 0"])
   s.add_development_dependency(%q<diff-lcs>, [">= 0"])
   s.add_development_dependency(%q<yard>, [">= 0"])

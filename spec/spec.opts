@@ -1,5 +1,7 @@
+# Optionally pass env var SPEC_OPTS='--whatever' to pass opts to rspec thru rake.
+
 --colour
---format doc
+#--format doc
 --backtrace
 #--timeout 20
 #--diff unified
