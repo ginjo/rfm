@@ -1,0 +1,62 @@
+<?xml version ="1.0" encoding="UTF-8" standalone="no" ?><!DOCTYPE fmresultset PUBLIC "-//FMI//DTD fmresultset//EN"
+        "http://host234.kon5.net/fmi/xml/fmresultset.dtd">
+<fmresultset xmlns="http://www.filemaker.com/xml/fmresultset" version="1.0">
+  <error code="0"/>
+  <product build="11/02/2015" name="FileMaker Web Publishing Engine" version="14.0.4.412"/>
+  <datasource database="rfm" date-format="MM/dd/yyyy" layout="rfm" table="rfm" time-format="HH:mm:ss"
+              timestamp-format="MM/dd/yyyy HH:mm:ss" total-count="3"/>
+  <metadata>
+    <field-definition auto-enter="no" four-digit-year="no" global="no" max-repeat="1" name="last_name" not-empty="no"
+                      numeric-only="no" result="text" time-of-day="no" type="normal"/>
+    <field-definition auto-enter="no" four-digit-year="no" global="no" max-repeat="1" name="birthday" not-empty="no"
+                      numeric-only="no" result="date" time-of-day="no" type="normal"/>
+    <field-definition auto-enter="no" four-digit-year="no" global="no" max-repeat="1" name="total_value" not-empty="no"
+                      numeric-only="no" result="number" time-of-day="no" type="normal"/>
+    <field-definition auto-enter="no" four-digit-year="no" global="no" max-repeat="1" name="half_value" not-empty="no"
+                      numeric-only="no" result="number" time-of-day="no" type="calculation"/>
+  </metadata>
+  <resultset count="3" fetch-size="3">
+    <record mod-id="2" record-id="1">
+      <field name="last_name">
+        <data>Meier</data>
+      </field>
+      <field name="birthday">
+        <data>11/03/1961</data>
+      </field>
+      <field name="total_value">
+        <data>25.500,40</data>
+      </field>
+      <field name="half_value">
+        <data>12750,2</data>
+      </field>
+    </record>
+    <record mod-id="0" record-id="2">
+      <field name="last_name">
+        <data>high decimals</data>
+      </field>
+      <field name="birthday">
+        <data>01/01/2017</data>
+      </field>
+      <field name="total_value">
+        <data>11.57834</data>
+      </field>
+      <field name="half_value">
+        <data>578917</data>
+      </field>
+    </record>
+    <record mod-id="0" record-id="3">
+      <field name="last_name">
+        <data>high european decimals</data>
+      </field>
+      <field name="birthday">
+        <data>11/12/2016</data>
+      </field>
+      <field name="total_value">
+        <data>11,2345</data>
+      </field>
+      <field name="half_value">
+        <data>5,61725</data>
+      </field>
+    </record>
+  </resultset>
+</fmresultset>

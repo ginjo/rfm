@@ -38,6 +38,7 @@ module Rfm
       field_mapping
       capture_strings_with
       logger
+      decimal_separator
     )
 
     CONFIG_DONT_STORE = %w(strings using parents symbols objects)  #capture_strings_with)
