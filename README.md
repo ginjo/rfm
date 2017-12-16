@@ -1,4 +1,5 @@
-<!--
+<!---
+
   See YARD documentation - https://github.com/lsegal/yard/wiki/GettingStarted
   
   Yard is not the same as markdown - Yard is for ruby and can use any markup language,
@@ -13,11 +14,14 @@
   Github uses markdown or rdoc (maybe others?).
   To preview this file in plain markdown, edit in TextMate and
   choose Bundles/Markdown/Preview menu option.
+  
 -->
 
 # ginjo-rfm
 
-Rfm is a Ruby-Filemaker adapter, a gem that provides an interface between Filemaker Server and Ruby. Query your Filemaker database, browse result records as persistent objects, and create/update/delete records with a syntax similar to ActiveRecord. Ginjo-rfm picks up from the lardawge-rfm gem and continues to refine code and fix bugs. Version 3 removes the dependency on ActiveSupport and is now a completely independent Gem, able to run most of its core features without requiring any other supporting Gems. ActiveModel features can be activated by adding activemodel to your Gemfile (or requiring activemodel manually).
+Rfm provides an interface between Filemaker Server and Ruby. Query your Filemaker database, browse result records as persistent objects, and create/update/delete database records. Obtain database schema, layout metadata, scripts, and value lists. Gain ActiveModel features on entities by adding activemodel to your Gemfile (or requiring activemodel manually).
+
+Ginjo-rfm 3.1 is compatible with Ruby >= 2.2. Ruby versions < 2.2 are EOL and will no longer be supported.
 
 
 ## Documentation & Links
@@ -39,8 +43,8 @@ Ginjo-rfm will work with any Filemaker server that supports the fmresultset.xml 
 Since Filemaker Pro client does not support this, Filemaker server is required. Follow Filemaker Server's instructions
 for setting up "Custom Web Publishing".
 
-Ginjo-rfm works great with Rails, but it does not require Rails.
-You can write simple and powerful stand-alone ruby scripts that use ginjo-rfm to talk to a Filemaker server.
+Ginjo-rfm works well with Rails, but it does not require Rails.
+You can write simple and powerful stand-alone ruby scripts that use ginjo-rfm with Filemaker server.
 
 ## Download & Installation
 
