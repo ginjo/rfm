@@ -1,5 +1,11 @@
 module Rfm
 
+  # These errors added by WBR.
+  # TODO: move these into Error module.
+  class CommunicationError  < StandardError; end
+  class ParameterError      < StandardError; end
+  class AuthenticationError < StandardError; end
+
   # Error is the base for the error hierarchy representing errors returned by Filemaker.
   #
   # One could raise a FileMakerError by doing:

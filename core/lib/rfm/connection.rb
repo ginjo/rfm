@@ -11,6 +11,7 @@ require 'logger'
 module Rfm
   class Connection
     #include Config
+    using Refinements
 
     def initialize(host, **opts)     #(action, params, request_options={},  *args)
       #config(**opts)
@@ -68,12 +69,217 @@ module Rfm
     def layout
       state[:layout]
     end
+    
+    def grammar
+      state[:grammar]
+    end
 
-    def connect(action, params={}, request_options={})
+    ###  COMMANDS  ###
+    #
+    #    :options parameter refers (usually) to request options other than query parameters, including but not limited to: result size limit, filemaker xml grammar, xml parser template (usually a name, spec, or object), query scope (I think? ... maybe not), etc.
+    #
+    #    Check 'gen_params' method before changing any param name or options name in these methods,
+    #    with specific reference to '_database' and '_layout', but not limited to those params.
+    #
+    # Returns a ResultSet object containing _every record_ in the table associated with this layout.
+    def findall(**options)
+      return unless const_defined(:ENABLE_FINDALL) && ENABLE_FINDALL
+      options[:database] ||= database
+      options[:layout] ||= layout
+      get_records('-findall', {}, options)
+    end
+
+    # Returns a ResultSet containing a single random record from the table associated with this layout.
+    def findany(**options)
+      options[:database] ||= database
+      options[:layout] ||= layout
+      get_records('-findany', {}, options)
+    end
+
+    # Finds a record. Typically you will pass in a hash of field names and values. For example:
+    def find(find_criteria, **options )
+      options[:database] ||= database
+      options[:layout] ||= layout
+      # Original (and better!) code for making this 'find' command compound-capable:
+      #get_records(*Rfm::CompoundQuery.new(find_criteria, options))
+      # But then inserted this to stub 'find' to get it working for rfm v4 dev changes.
+      get_records('-find', find_criteria, options)
+    end
+
+    # Access to raw -findquery command.
+    def query(query_hash, **options)
+      options[:database] ||= database
+      options[:layout] ||= layout
+      get_records('-findquery', query_hash, options)
+    end
+
+    # Updates the contents of the record whose internal +recid+ is specified.
+    def edit(recid, values, **options)
+      options[:database] ||= database
+      options[:layout] ||= layout
+      get_records('-edit', {'-recid' => recid}.merge(values), options)
+      #get_records('-edit', {'-recid' => recid}.merge(expand_repeats(values)), options) # attempt to set repeating fields.
+    end
+
+    # Creates a new record in the table associated with this layout.
+    def create(values, **options)
+      options[:database] ||= database
+      options[:layout] ||= layout
+      get_records('-new', values, options)
+    end
+
+    # Deletes the record with the specified internal recid.
+    def delete(recid, **options)
+      options[:database] ||= database
+      options[:layout] ||= layout
+      get_records('-delete', {'-recid' => recid}, options)
+      
+      # Do we really want to return nil? FMP XML API returns the original record.
+      return nil
+    end
+
+    # Retrieves metadata only, with an empty resultset.
+    def view(**options)
+      options[:database] ||= database
+      options[:layout] ||= layout
+      get_records('-view', {}, options)
+    end
+
+    # Get the foundset_count only given criteria & options.
+    def count(find_criteria, **options)
+      # foundset_count won't work until xml is parsed (still need to dev the xml parser interface to rfm v4).
+      options[:database] ||= database
+      options[:layout] ||= layout
+      options[:max_records] = 0
+      find(find_criteria, **options)  #.foundset_count
+    end
+    
+    def databases(**options)
+      # This from factory.
+      #c = Connection.new('-dbnames', {}, {:grammar=>'FMPXMLRESULT'}, @server)
+      #c.parse('fmpxml_minimal.yml', {})['data'].each{|k,v| (self[k] = Rfm::Database.new(v['text'], @server)) if k.to_s != '' && v['text']}
+      # We only need a basic array of strings, so the simplest way...
+      #connect('-dbnames', {}, {:grammar=>'FMPXMLRESULT'}.merge(options)).body
+      # But we want controll over grammer & parsing, so use get_records...
+      options[:grammar] ||= 'FMPXMLRESULT'
+      get_records('-dbnames', {}, options)
+    end
+
+    def layouts(**options)
+      #connect('-layoutnames', {"-db" => database}, {:grammar=>'FMPXMLRESULT'}.merge(options)).body
+      options[:database] ||= database
+      options[:grammar] ||= 'FMPXMLRESULT'
+      get_records('-layoutnames', {}, options)
+    end
+    
+    def layout_meta(**options)
+      #get_records('-view', gen_params(binding, {}), options)
+      #connect('-view', gen_params(binding, {}), {:grammar=>'FMPXMLLAYOUT'}.merge(options)).body
+      options[:database] ||= database
+      options[:layout] ||= layout
+      options[:grammar] ||= 'FMPXMLLAYOUT'
+      get_records('-view', {}, options)
+    end
+    
+    def scripts(**options)
+      #connect('-scriptnames', {"-db" => database}, {:grammar=>'FMPXMLRESULT'}.merge(options)).body
+      options[:database] ||= database
+      options[:grammar] ||= 'FMPXMLRESULT'
+      get_records('-scriptnames', {}, options)
+    end
+    
+    ###  END COMMANDS  ###
+    
+
+    # def params(_database=nil, _layout=nil)
+    #   {"-db" => (_database || database), "-lay" => (_layout || layout)}
+    # end
+    # 
+    # # This is a new version of 'params' for rfm v4
+    # def gen_params(_binding, **opts)
+    #   _database = _binding.local_variable_get(:_database)
+    #   _layout = _binding.local_variable_get(:_layout)
+    #   {"-db" => (_database || database), "-lay" => (_layout || layout), **opts}
+    # end
+
+    def check_for_errors(code=@meta['error'].to_i, raise_401=state[:raise_401])
+      #puts ["\nRESULTSET#check_for_errors", code, raise_401]
+      raise Rfm::Error.getError(code) if code != 0 && (code != 401 || raise_401)
+    end
+
+    # Field mapping is really a layout concern. Where should it go?
+    def field_mapping
+      @field_mapping ||= load_field_mapping(state[:field_mapping])
+    end
+
+    def load_field_mapping(mapping={})
+      mapping = (mapping || {}) #.to_cih
+      def mapping.invert
+        super #.to_cih
+      end
+      mapping
+    end
+    
+    def prepare_params!(keyvalues={}, options={})
+      _database = options.delete(:database)
+      _layout   = options.delete(:layout)
+      keyvalues['-db'] = _database if _database
+      keyvalues['-lay'] = _layout if _layout
+      
+      #options[:field_mapping] = field_mapping.invert if field_mapping && !options[:field_mapping]
+      mapping = options.extract(:field_mapping) || field_mapping
+      apply_field_mapping!(keyvalues, mapping.invert) if mapping.is_a?(Hash)
+      
+      options[:grammar] ||= grammar
+    end
+    
+    def apply_field_mapping!(params, mapping)
+      params.dup.each_key do |k|
+        new_key = mapping[k.to_s] || k
+        if params[new_key].is_a? Array
+          params[new_key].each_with_index do |v, i|
+            params["#{new_key}(#{i+1})"]=v
+          end
+          params.delete new_key
+        else
+          params[new_key]=params.delete(k) if new_key != k
+        end
+        #puts "PRMS: #{new_key} #{params[new_key].class} #{params[new_key]}"
+      end
+    end
+    
+    def get_records(action, params = {}, options = {})
+      template = options.delete :template || {}
+      result_object = options.delete :result_object || []
+      prepare_params!(params, options)
+
+      #puts params.to_yaml
+      #puts options.to_yaml
+      
+      
+      # How streaming could work: 
+      # parse(response.body, template, result_object) do |parser_stream_input|
+      #   # some stuff here...
+      #   parser_stream_input << 'chunk'
+      #   # some stuff here...
+      # end
+      #
+      # This is placeholder for export to streaming parser above.
+      # Loads response into local response_body.
+      response_body=''
+      response = connect(action, params, options){|chunk| response_body << chunk }
+      response.body = response_body
+      # Usage: parse(xml_string_or_stream, template=nil, initial_object=nil, parser=nil, options={})
+      rslt = parse(response.body, template, result_object)  # old rfm code: , Rfm::Resultset.new(self, self))
+      #capture_resultset_meta(rslt) unless resultset_meta_valid? #(@resultset_meta && @resultset_meta.error != '401')
+      rslt
+    end # get_records
+
+    def connect(action, params={}, request_options={}, &block)
       grammar_option = request_options.delete(:grammar)
       post = params.merge(expand_options(request_options)).merge({action => ''})
       grammar = select_grammar(post, :grammar=>grammar_option)
-      http_fetch(host_name, port, "/fmi/xml/#{grammar}.xml", state[:account_name], state[:password], post)
+      http_fetch(host_name, port, "/fmi/xml/#{grammar}.xml", state[:account_name], state[:password], post, &block)
     end
 
     def select_grammar(post, options={})
@@ -86,180 +292,21 @@ module Rfm
         grammar
       end
     end
+    
+    # TODO: Make this take a block and yield an open parser-input stream to the block (in? out? both?).
+    def parse(xml_string_or_stream, template=nil, initial_object=nil, parser=nil, options={})
+      template ||= state[:template]
+      #(template =  'fmresultset.yml') unless template
+      #(template = File.join(File.dirname(__FILE__), '../sax/', template)) if template.is_a? String
+      Rfm::SaxParser.parse(xml_string_or_stream, template, initial_object, parser, state(*options)).result
+    end
 
-    def parse(template=nil, initial_object=nil, parser=nil, options={})
+    def parse_old(template=nil, initial_object=nil, parser=nil, options={})
       template ||= state[:template]
       #(template =  'fmresultset.yml') unless template
       #(template = File.join(File.dirname(__FILE__), '../sax/', template)) if template.is_a? String
       Rfm::SaxParser.parse(connect.body, template, initial_object, parser, state(*options)).result
     end
-
-
-    ###  COMMANDS  ###
-    #
-    #    :options parameter refers (usually) to request options other than query parameters, including but not limited to: result size limit, filemaker xml grammar, xml parser template (usually a name, spec, or object), query scope (I think? ... maybe not), etc.
-    #
-    #    Check 'gen_params' method before changing any param name or options name in these methods,
-    #    with specific reference to '_database' and '_layout', but not limited to those params.
-    #
-    # Returns a ResultSet object containing _every record_ in the table associated with this layout.
-    def findall(options = {})
-      return unless const_defined(:ENABLE_FINDALL) && ENABLE_FINDALL
-      get_records('-findall', {}, options)
-    end
-
-    # Returns a ResultSet containing a single random record from the table associated with this layout.
-    def findany(_layout=nil, _database=nil, **options)
-      get_records('-findany', gen_params(binding), options)
-    end
-
-    # Finds a record. Typically you will pass in a hash of field names and values. For example:
-    def find(_layout=nil, _database=nil, find_criteria, **options )
-      #puts "layout.find-#{self.object_id}"
-      options.merge!({:field_mapping => field_mapping.invert}) if field_mapping
-      # Original (and better!) code for making this 'find' command compound-capable:
-      #get_records(*Rfm::CompoundQuery.new(find_criteria, options))
-      # But then inserted this to stub 'find' to get it working for rfm v4 dev changes.
-      get_records('-find', gen_params(binding, find_criteria), options)
-    end
-
-    # Access to raw -findquery command.
-    def query(query_hash, options = {})
-      get_records('-findquery', query_hash, options)
-    end
-
-    # Updates the contents of the record whose internal +recid+ is specified.
-    def edit(recid, values, options = {})
-      get_records('-edit', {'-recid' => recid}.merge(values), options)
-      #get_records('-edit', {'-recid' => recid}.merge(expand_repeats(values)), options) # attempt to set repeating fields.
-    end
-
-    # Creates a new record in the table associated with this layout.
-    def create(values, options = {})
-      get_records('-new', values, options)
-    end
-
-    # Deletes the record with the specified internal recid.
-    def delete(recid, options = {})
-      get_records('-delete', {'-recid' => recid}, options)
-      return nil
-    end
-
-    # Retrieves metadata only, with an empty resultset.
-    def view(_layout=nil, _database=nil, **options)
-      get_records('-view', gen_params(binding, {}), options)
-    end
-
-    # Get the foundset_count only given criteria & options.
-    def count(_layout=nil, _database=nil, find_criteria, **options)
-      # This won't work until xml is parsed (still need to dev the xml parser interface to rfm v4).
-      find( gen_params(binding, find_criteria), options.merge({:max_records => 0}) ).foundset_count
-    end
-
-    def get_records(action, extra_params = {}, options = {})
-      # TODO: See auto-grammar bypbass in connection.rb.
-      grammar_option = state(options)[:grammar]
-      options.merge!(:grammar=>grammar_option) if grammar_option
-      template = options.delete :template
-
-      # # TODO: Remove this code it is no longer used.
-      # #include_portals = options[:include_portals] ? options.delete(:include_portals) : nil
-      # include_portals = !options[:ignore_portals]
-
-      # Apply mapping from :field_mapping, to send correct params in URL.
-      prms = params.merge(extra_params)
-      map = field_mapping.invert
-      options.merge!({:field_mapping => map}) if map && !map.empty?
-      # TODO: Make this part handle string AND symbol keys. (isn't this already done?)
-      #map.each{|k,v| prms[k]=prms.delete(v) if prms[v]}
-
-      #prms.dup.each_key{|k| prms[map[k.to_s]]=prms.delete(k) if map[k.to_s]}
-      prms.dup.each_key do |k|
-        new_key = map[k.to_s] || k
-        if prms[new_key].is_a? Array
-          prms[new_key].each_with_index do |v, i|
-            prms["#{new_key}(#{i+1})"]=v
-          end
-          prms.delete new_key
-        else
-          prms[new_key]=prms.delete(k) if new_key != k
-        end
-        #puts "PRMS: #{new_key} #{prms[new_key].class} #{prms[new_key]}"
-      end
-
-      #c = Connection.new(action, prms, options, self)
-      c = connect(action, prms, options)
-      #rslt = c.parse(template, Rfm::Resultset.new(self, self))
-      rslt = c.body
-      #capture_resultset_meta(rslt) unless resultset_meta_valid? #(@resultset_meta && @resultset_meta.error != '401')
-      rslt
-    end
-
-    def params(_database=nil, _layout=nil)
-      {"-db" => (_database || database), "-lay" => (_layout || layout)}
-    end
-    
-    # This is a new version of 'params' for rfm v4
-    def gen_params(_binding, **opts)
-      _database = _binding.local_variable_get(:_database)
-      _layout = _binding.local_variable_get(:_layout)
-      {"-db" => (_database || database), "-lay" => (_layout || layout), **opts}
-    end
-        
-    # def load_layout
-    #   #@loaded = true # This is first so parsing call to 'meta' wont cause infinite loop,
-    #   # but I changed parsing template to refer directly to inst var instead of accessor method.
-    #   connection = Connection.new('-view', {'-db' => state[:database], '-lay' => name}, {:grammar=>'FMPXMLLAYOUT'}, self)
-    #   begin
-    #     connection.parse(:fmpxmllayout, self)
-    #     @loaded = true
-    #   rescue
-    #     @meta.clear
-    #     raise $!
-    #   end
-    #   @meta
-    # end
-
-    def check_for_errors(code=@meta['error'].to_i, raise_401=state[:raise_401])
-      #puts ["\nRESULTSET#check_for_errors", code, raise_401]
-      raise Rfm::Error.getError(code) if code != 0 && (code != 401 || raise_401)
-    end
-
-    def field_mapping
-      @field_mapping ||= load_field_mapping(state[:field_mapping])
-    end
-    
-    def load_field_mapping(mapping={})
-      mapping = (mapping || {}) #.to_cih
-      def mapping.invert
-        super #.to_cih
-      end
-      mapping
-    end
-
-    def databases(options={})
-      # This from factory.
-      #c = Connection.new('-dbnames', {}, {:grammar=>'FMPXMLRESULT'}, @server)
-      #c.parse('fmpxml_minimal.yml', {})['data'].each{|k,v| (self[k] = Rfm::Database.new(v['text'], @server)) if k.to_s != '' && v['text']}
-      # We only need a basic array of strings, so the simplest way...
-      connect('-dbnames', {}, {:grammar=>'FMPXMLRESULT'}.merge(options)).body
-    end
-
-    def layouts(_database=nil, **options)
-      connect('-layoutnames', {"-db" => database}, {:grammar=>'FMPXMLRESULT'}.merge(options)).body
-    end
-    
-    def layout_meta(_layout=nil, _database=nil, **options)
-      #get_records('-view', gen_params(binding, {}), options)
-      connect('-view', gen_params(binding, {}), {:grammar=>'FMPXMLLAYOUT'}.merge(options)).body
-    end
-    
-    def scripts(_database=nil, **options)
-      connect('-scriptnames', {"-db" => database}, {:grammar=>'FMPXMLRESULT'}.merge(options)).body
-    end
-    
-    
-    ###  END COMMANDS  ###
 
 
 
@@ -296,12 +343,34 @@ module Rfm
         end
       end
 
-      response = connection.start { |http| http.request(request) }
+
+      if block_given?
+        # New streaming process.
+        puts "http_fetch with block"
+        connection.request request do |response|
+          check_for_http_errors response
+          response.read_body do |chunk|
+            yield(chunk)
+          end
+          response
+        end
+      else
+        # Original non-streaming process.
+        puts "http_fetch without block"
+        response = connection.start { |http| http.request(request) }
+        check_for_http_errors(response)
+        response
+      end
+    end # http_fetch
+    
+    def check_for_http_errors(response)
+    
       if state[:log_responses] == true
         response.to_hash.each { |key, value| log.info "#{key}: #{value}" }
-        log.info response.body
+        # TODO: Move this to http connection block.
+        #log.info response.body
       end
-
+    
       case response
       when Net::HTTPSuccess
         response
