@@ -135,7 +135,12 @@ module Rfm
     }    
 
     def self.parse(*args)
-      Handler.build(*args)
+      if block_given?
+        puts "SaxParser.parse block given!"
+        Handler.build(*args, &Proc.new)
+      else
+        Handler.build(*args)
+      end
     end
 
     # A Cursor instance is created for each element encountered in the parsing run
@@ -629,20 +634,34 @@ module Rfm
       ###  Class Methods  ###
 
       # Main parsing interface (also aliased at SaxParser.parse)
-      def self.build(io, template=nil, initial_object=nil, parser=nil, options={})
+      # TODO: Use a different variable name for 'parser'... maybe 'handler'?
+      def self.build(io='', template=nil, initial_object=nil, parser=nil, options={})
         parser = parser || options[:parser] || BACKEND
         parser = get_backend(parser)
         (Rfm.log.info "Using backend parser: #{parser}, with template: #{template}") if options[:log_parser]
-        parser.build(io, template, initial_object)
+        if block_given?
+          puts "Handler.build block_given!"
+          parser.build(io, template, initial_object, &Proc.new)
+        else
+          parser.build(io, template, initial_object)
+        end
       end
 
       def self.included(base)
+      
         # Add a .build method to the custom handler instance, when the generic Handler module is included.
-        def base.build(io, template=nil, initial_object=nil)
+        def base.build(io='', template=nil, initial_object=nil)
           handler = new(template, initial_object)
-          handler.run_parser(io)
+          if block_given?
+            puts "#{self.name}.build block_given!"
+            #handler.run_parser(io, &Proc.new)
+            yield(handler)
+          else
+            handler.run_parser(io)
+          end
+          
           handler
-        end
+        end # base.build
       end # self.included
 
       # Takes backend symbol and returns custom Handler class for specified backend.
@@ -880,6 +899,7 @@ module Rfm
     PARSERS[:rexml] = {:file=>'rexml/document', :proc => proc do
       require 'rexml/document'
       require 'rexml/streamlistener'
+      require 'rexml/parsers/sax2parser'
       class RexmlHandler
         # Both of these are needed to use rexml streaming parser,
         # but don't put them here... put them at the _top.
@@ -890,11 +910,8 @@ module Rfm
 
         def run_parser(io)
           parser = REXML::Document
-          case
-          when (io.is_a?(File) or io.is_a?(StringIO)); parser.parse_stream(io, self)
-          when io.to_s[/^</]; StringIO.open(io){|f| parser.parse_stream(f, self)}
-          else File.open(io){|f| parser.parse_stream(f, self)}
-          end
+          puts "#{self.class.name}#run_parser io object is a: #{io.class.ancestors}"
+          parser.parse_stream(io, self)
         end
 
         alias_method :tag_start, :_start_element

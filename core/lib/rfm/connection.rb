@@ -83,7 +83,7 @@ module Rfm
     #
     # Returns a ResultSet object containing _every record_ in the table associated with this layout.
     def findall(**options)
-      return unless const_defined(:ENABLE_FINDALL) && ENABLE_FINDALL
+      return unless self.class.const_defined?(:ENABLE_FINDALL) && ENABLE_FINDALL || ENV['ENABLE_FINDALL']
       options[:database] ||= database
       options[:layout] ||= layout
       get_records('-findall', {}, options)
@@ -189,18 +189,6 @@ module Rfm
     end
     
     ###  END COMMANDS  ###
-    
-
-    # def params(_database=nil, _layout=nil)
-    #   {"-db" => (_database || database), "-lay" => (_layout || layout)}
-    # end
-    # 
-    # # This is a new version of 'params' for rfm v4
-    # def gen_params(_binding, **opts)
-    #   _database = _binding.local_variable_get(:_database)
-    #   _layout = _binding.local_variable_get(:_layout)
-    #   {"-db" => (_database || database), "-lay" => (_layout || layout), **opts}
-    # end
 
     def check_for_errors(code=@meta['error'].to_i, raise_401=state[:raise_401])
       #puts ["\nRESULTSET#check_for_errors", code, raise_401]
@@ -250,36 +238,49 @@ module Rfm
     
     def get_records(action, params = {}, options = {})
       template = options.delete :template || {}
-      result_object = options.delete :result_object || []
+      result_object = options.delete :result_object || {}
       prepare_params!(params, options)
-
-      #puts params.to_yaml
-      #puts options.to_yaml
       
+      # ###
+      # # How streaming could work: 
+      # # parse(response.body, template, result_object) do |parser_stream_input|
+      # #   # some stuff here...
+      # #   parser_stream_input << 'chunk'
+      # #   # some stuff here...
+      # # end
+      # #
+      # # This is placeholder for export to streaming parser above.
+      # # Loads response into local response_body.
+      # response_body=''
+      # response = connect(action, params, options){|chunk| response_body << chunk }
+      # response.body = response_body
+      # ###
       
-      # How streaming could work: 
-      # parse(response.body, template, result_object) do |parser_stream_input|
-      #   # some stuff here...
-      #   parser_stream_input << 'chunk'
-      #   # some stuff here...
-      # end
-      #
-      # This is placeholder for export to streaming parser above.
-      # Loads response into local response_body.
-      response_body=''
-      response = connect(action, params, options){|chunk| response_body << chunk }
-      response.body = response_body
       # Usage: parse(xml_string_or_stream, template=nil, initial_object=nil, parser=nil, options={})
-      rslt = parse(response.body, template, result_object)  # old rfm code: , Rfm::Resultset.new(self, self))
-      #capture_resultset_meta(rslt) unless resultset_meta_valid? #(@resultset_meta && @resultset_meta.error != '401')
-      rslt
+      #rslt = parse(response.body, template, result_object)  # old rfm code: , Rfm::Resultset.new(self, self))
+      ##capture_resultset_meta(rslt) unless resultset_meta_valid? #(@resultset_meta && @resultset_meta.error != '401')
+      #rslt
+      
+      # The parse method builds a handler and yields the handler to the block.
+      parse('', template, result_object) do |handler|
+        # The connect block is eventually yielded with the chunk or io object.
+        connect(action, params, options) do |io|  #{|chunk| response_body << chunk }
+          handler.run_parser(io)
+        end
+        handler
+      end
+
     end # get_records
 
-    def connect(action, params={}, request_options={}, &block)
+    def connect(action, params={}, request_options={})
       grammar_option = request_options.delete(:grammar)
       post = params.merge(expand_options(request_options)).merge({action => ''})
       grammar = select_grammar(post, :grammar=>grammar_option)
-      http_fetch(host_name, port, "/fmi/xml/#{grammar}.xml", state[:account_name], state[:password], post, &block)
+      if block_given?
+        http_fetch(host_name, port, "/fmi/xml/#{grammar}.xml", state[:account_name], state[:password], post, &Proc.new)
+      else
+        http_fetch(host_name, port, "/fmi/xml/#{grammar}.xml", state[:account_name], state[:password], post)
+      end
     end
 
     def select_grammar(post, options={})
@@ -294,11 +295,16 @@ module Rfm
     end
     
     # TODO: Make this take a block and yield an open parser-input stream to the block (in? out? both?).
-    def parse(xml_string_or_stream, template=nil, initial_object=nil, parser=nil, options={})
+    def parse(xml_string_or_stream='', template=nil, initial_object=nil, parser=nil, options={})
       template ||= state[:template]
       #(template =  'fmresultset.yml') unless template
       #(template = File.join(File.dirname(__FILE__), '../sax/', template)) if template.is_a? String
-      Rfm::SaxParser.parse(xml_string_or_stream, template, initial_object, parser, state(*options)).result
+      if block_given?
+        puts "Connection.parse block-given!"
+        Rfm::SaxParser.parse(xml_string_or_stream, template, initial_object, parser, state(*options), &Proc.new).result
+      else
+        Rfm::SaxParser.parse(xml_string_or_stream, template, initial_object, parser, state(*options)).result
+      end
     end
 
     def parse_old(template=nil, initial_object=nil, parser=nil, options={})
@@ -312,6 +318,7 @@ module Rfm
 
     private
 
+    # TODO: Flesh out open-uri, if you keep it. Clean up.
     def http_fetch(host_name, port, path, account_name, password, post_data, limit=10)
       raise Rfm::CommunicationError.new("While trying to reach the Web Publishing Engine, RFM was redirected too many times.") if limit == 0
 
@@ -321,6 +328,20 @@ module Rfm
         #warn "#{@scheme}://#{@host_name}:#{@port}#{path}?#{qs}"
         log.info "#{scheme}://#{host_name}:#{port}#{path}?#{qs_unescaped}"
       end
+      
+      # Experimental open-uri
+      require 'open-uri'
+      output=[]
+      open("#{scheme}://#{host_name}:#{port}#{path}?#{qs_unescaped}",
+        ssl_verify_mode: OpenSSL::SSL::VERIFY_NONE,
+        http_basic_authentication: [account_name, password]
+      ) do |io|
+        output << io
+        yield(io)
+      end
+      return output[0]
+      
+      ###
 
       request = Net::HTTP::Post.new(path)
       request.basic_auth(account_name, password)
@@ -343,20 +364,23 @@ module Rfm
         end
       end
 
-
+      # Use streaming protocol if block given.
       if block_given?
         # New streaming process.
-        puts "http_fetch with block"
+        puts "Connection#http_fetch with block"
         connection.request request do |response|
           check_for_http_errors response
+          n=0
           response.read_body do |chunk|
+            puts "Connection#http_fetch chunk ##{n}, type #{chunk.class}"
+            n += 1
             yield(chunk)
           end
           response
         end
       else
         # Original non-streaming process.
-        puts "http_fetch without block"
+        puts "Connection.http_fetch without block"
         response = connection.start { |http| http.request(request) }
         check_for_http_errors(response)
         response
@@ -364,7 +388,6 @@ module Rfm
     end # http_fetch
     
     def check_for_http_errors(response)
-    
       if state[:log_responses] == true
         response.to_hash.each { |key, value| log.info "#{key}: #{value}" }
         # TODO: Move this to http connection block.
