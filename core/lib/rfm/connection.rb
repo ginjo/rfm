@@ -100,6 +100,7 @@ module Rfm
     def find(find_criteria, **options )
       options[:database] ||= database
       options[:layout] ||= layout
+      find_criteria = {'-recid'=>find_criteria} if (find_criteria.to_s.to_i > 0)
       # Original (and better!) code for making this 'find' command compound-capable:
       #get_records(*Rfm::CompoundQuery.new(find_criteria, options))
       # But then inserted this to stub 'find' to get it working for rfm v4 dev changes.
@@ -211,10 +212,13 @@ module Rfm
       mapping
     end
     
-    # Clean up passed params & options (destructive cleanup operates on original)
-    def prepare_params!(keyvalues={}, options={})
+    # Clean up passed params & options.
+    def prepare_params(keyvalues={}, options={})
       _database = options.delete(:database)
       _layout   = options.delete(:layout)
+      if keyvalues.is_a?(String)
+        keyvalues = Hash[URI.decode_www_form(keyvalues)]
+      end
       keyvalues['-db'] = _database if _database
       keyvalues['-lay'] = _layout if _layout
       
@@ -244,7 +248,7 @@ module Rfm
     def get_records(action, params = {}, options = {})
       template = options.delete :template || state[:template] || {}
       result_object = options.delete :result_object || state[:result_object] || {}
-      prepare_params!(params, options)
+      params, options = prepare_params(params, options)
       
       # Old pre v4 code. Note the capture_resultset_meta call!
       # Usage: parse(xml_string_or_stream, template=nil, initial_object=nil, parser=nil, options={})
