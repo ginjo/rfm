@@ -899,18 +899,13 @@ module Rfm
     PARSERS[:rexml] = {:file=>'rexml/document', :proc => proc do
       require 'rexml/document'
       require 'rexml/streamlistener'
-      require 'rexml/parsers/sax2parser'
       class RexmlHandler
-        # Both of these are needed to use rexml streaming parser,
-        # but don't put them here... put them at the _top.
-        #require 'rexml/streamlistener'
-        #require 'rexml/document'
         include REXML::StreamListener
         include Handler
 
         def run_parser(io)
           parser = REXML::Document
-          puts "#{self.class.name}#run_parser io object is a: #{io.class.ancestors}"
+          #puts "#{self.class.name}#run_parser io object is a: #{io.class.ancestors}"
           parser.parse_stream(io, self)
         end
 
