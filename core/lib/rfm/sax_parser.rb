@@ -881,11 +881,12 @@ module Rfm
 
         def run_parser(io)
           options={:convert_special=>true}
-          case
-          when (io.is_a?(File) || io.is_a?(StringIO)); Ox.sax_parse self, io, options
-          when io.to_s[/^</]; StringIO.open(io){|f| Ox.sax_parse self, f, options}
-          else File.open(io){|f| Ox.sax_parse self, f, options}
-          end
+          Ox.sax_parse self, io, options
+          # case
+          # when (io.is_a?(File) || io.is_a?(StringIO)); Ox.sax_parse self, io, options
+          # when io.to_s[/^</]; StringIO.open(io){|f| Ox.sax_parse self, f, options}
+          # else File.open(io){|f| Ox.sax_parse self, f, options}
+          # end
         end
 
         alias_method :start_element, :_start_element

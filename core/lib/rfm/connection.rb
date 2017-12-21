@@ -6,18 +6,17 @@
 require 'net/https'
 require 'cgi'
 #require 'rfm/config'
-require 'logger'
+#require 'logger'
 
 module Rfm
   class Connection
     #include Config
     using Refinements
+    
+    attr_accessor :defaults
 
     def initialize(host='localhost', **opts)     #(action, params, request_options={},  *args)
       #config(**opts)
-      
-      # New from WBR, maybe temp.
-      @logger = Logger.new($stdout)
 
       @defaults = {
         :host => host,
@@ -42,7 +41,7 @@ module Rfm
     end
     
     def log
-      @logger
+      Rfm.log
     end
 
     def state(**opts)
@@ -73,6 +72,12 @@ module Rfm
     def grammar
       state[:grammar]
     end
+    
+    # Field mapping is really a layout concern. Where should it go?
+    def field_mapping
+      @field_mapping ||= load_field_mapping(state[:field_mapping])
+    end
+
 
     ###  COMMANDS  ###
     #
@@ -194,57 +199,6 @@ module Rfm
     ###  END COMMANDS  ###
 
 
-    def check_for_errors(code=@meta['error'].to_i, raise_401=state[:raise_401])
-      #puts ["\nRESULTSET#check_for_errors", code, raise_401]
-      raise Rfm::Error.getError(code) if code != 0 && (code != 401 || raise_401)
-    end
-
-    # Field mapping is really a layout concern. Where should it go?
-    def field_mapping
-      @field_mapping ||= load_field_mapping(state[:field_mapping])
-    end
-
-    def load_field_mapping(mapping={})
-      mapping = (mapping || {}) #.to_cih
-      def mapping.invert
-        super #.to_cih
-      end
-      mapping
-    end
-    
-    # Clean up passed params & options.
-    def prepare_params(keyvalues={}, options={})
-      _database = options.delete(:database)
-      _layout   = options.delete(:layout)
-      if keyvalues.is_a?(String)
-        keyvalues = Hash[URI.decode_www_form(keyvalues)]
-      end
-      keyvalues['-db'] = _database if _database
-      keyvalues['-lay'] = _layout if _layout
-      
-      #options[:field_mapping] = field_mapping.invert if field_mapping && !options[:field_mapping]
-      mapping = options.extract(:field_mapping) || field_mapping
-      apply_field_mapping!(keyvalues, mapping.invert) if mapping.is_a?(Hash)
-      
-      options[:grammar] ||= grammar
-      [keyvalues, options]
-    end
-    
-    def apply_field_mapping!(params, mapping)
-      params.dup.each_key do |k|
-        new_key = mapping[k.to_s] || k
-        if params[new_key].is_a? Array
-          params[new_key].each_with_index do |v, i|
-            params["#{new_key}(#{i+1})"]=v
-          end
-          params.delete new_key
-        else
-          params[new_key]=params.delete(k) if new_key != k
-        end
-        #puts "PRMS: #{new_key} #{params[new_key].class} #{params[new_key]}"
-      end
-    end
-    
     def get_records(action, params = {}, options = {})
       template = options.delete :template || state[:template] || {}
       result_object = options.delete :result_object || state[:result_object] || {}
@@ -255,25 +209,13 @@ module Rfm
       #rslt = parse(response.body, template, result_object)  # old rfm code: , Rfm::Resultset.new(self, self))
       ##capture_resultset_meta(rslt) unless resultset_meta_valid? #(@resultset_meta && @resultset_meta.error != '401')
       #rslt
-      
-      # # The parse method builds a handler and yields the handler to the block.
-      # # Turns out this isn't really needed, since we can't call a parser twice
-      # # with random chunks of a stream (the parser must handle that with the given io object).
-      # parse('', template, result_object) do |handler|
-      #   # The connect block is eventually yielded with the chunk or io object.
-      #   cr = connect(action, params, options) do |io|  #{|chunk| response_body << chunk }
-      #     handler.run_parser(io)
-      #   end
-      #   puts "Connection#connect returned: (#{cr})"
-      #   handler
-      # end # parse
 
       # You could also use this without a block, and forgo http-to-sax-parser streaming.
       #   io = connect(action, params, options).body
       # The block enables streaming and returns whatever is ultimately returned from the yield,
       # the finished object tree from the parser, in this case.
       # If you call connection_thread.value, it will wait until thread is done,
-      # but you will get the connection response object.
+      # but you will get the finished connection response object.
       connect(action, params, options) do |io, connection_thread|
         #puts connection_thread.status
         Rfm::SaxParser.parse(io, template, result_object, nil, state(**options)).result
@@ -296,38 +238,8 @@ module Rfm
       end
     end
 
-    def select_grammar(post, options={})
-      grammar = state(options)[:grammar] || 'fmresultset'
-      if grammar.to_s.downcase == 'auto'
-        # TODO: Build grammar parser in new sax engine templates to handle FMPXMLRESULT.
-        return "fmresultset"
-        # post.keys.find(){|k| %w(-find -findall -dbnames -layoutnames -scriptnames).include? k.to_s} ? "FMPXMLRESULT" : "fmresultset"   
-      else
-        grammar
-      end
-    end
+    # TODO: Remove nested blocks from SaxParser.
     
-    # # TODO: Make this take a block and yield an open parser-input stream to the block (in? out? both?).
-    # def parse(xml_string_or_stream='', template=nil, initial_object=nil, parser=nil, options={})
-    #   template ||= state[:template]
-    #   #(template =  'fmresultset.yml') unless template
-    #   #(template = File.join(File.dirname(__FILE__), '../sax/', template)) if template.is_a? String
-    #   if block_given?
-    #     puts "Connection.parse block-given!"
-    #     Rfm::SaxParser.parse(xml_string_or_stream, template, initial_object, parser, state(*options), &Proc.new).result
-    #   else
-    #     Rfm::SaxParser.parse(xml_string_or_stream, template, initial_object, parser, state(*options)).result
-    #   end
-    # end
-
-    # def parse_old(template=nil, initial_object=nil, parser=nil, options={})
-    #   template ||= state[:template]
-    #   #(template =  'fmresultset.yml') unless template
-    #   #(template = File.join(File.dirname(__FILE__), '../sax/', template)) if template.is_a? String
-    #   Rfm::SaxParser.parse(connect.body, template, initial_object, parser, state(*options)).result
-    # end
-
-
 
     private
 
@@ -341,21 +253,6 @@ module Rfm
         #warn "#{@scheme}://#{@host_name}:#{@port}#{path}?#{qs}"
         log.info "#{scheme}://#{host_name}:#{port}#{path}?#{qs_unescaped}"
       end
-      
-      # # Experimental open-uri.
-      # # This works well but writes http response body to temp file.
-      # require 'open-uri'
-      # output=[]
-      # open("#{scheme}://#{host_name}:#{port}#{path}?#{qs_unescaped}",
-      #   ssl_verify_mode: OpenSSL::SSL::VERIFY_NONE,
-      #   http_basic_authentication: [account_name, password]
-      # ) do |io|
-      #   output << io
-      #   yield(io)
-      # end
-      # return output[0]
-      
-      ###
 
       request = Net::HTTP::Post.new(path)
       request.basic_auth(account_name, password)
@@ -508,8 +405,79 @@ module Rfm
         end
       end
       return result
-    end  
+    end
+    
+    def check_for_errors(code=@meta['error'].to_i, raise_401=state[:raise_401])
+      #puts ["\nRESULTSET#check_for_errors", code, raise_401]
+      raise Rfm::Error.getError(code) if code != 0 && (code != 401 || raise_401)
+    end
 
+    def load_field_mapping(mapping={})
+      mapping = (mapping || {}) #.to_cih
+      def mapping.invert
+        super #.to_cih
+      end
+      mapping
+    end
+    
+    # Clean up passed params & options.
+    def prepare_params(keyvalues={}, options={})
+      _database = options.delete(:database)
+      _layout   = options.delete(:layout)
+      if keyvalues.is_a?(String)
+        keyvalues = Hash[URI.decode_www_form(keyvalues)]
+      end
+      keyvalues['-db'] = _database if _database
+      keyvalues['-lay'] = _layout if _layout
+      
+      #options[:field_mapping] = field_mapping.invert if field_mapping && !options[:field_mapping]
+      mapping = options.extract(:field_mapping) || field_mapping
+      apply_field_mapping!(keyvalues, mapping.invert) if mapping.is_a?(Hash)
+      
+      options[:grammar] ||= grammar
+      [keyvalues, options]
+    end
+    
+    def apply_field_mapping!(params, mapping)
+      params.dup.each_key do |k|
+        new_key = mapping[k.to_s] || k
+        if params[new_key].is_a? Array
+          params[new_key].each_with_index do |v, i|
+            params["#{new_key}(#{i+1})"]=v
+          end
+          params.delete new_key
+        else
+          params[new_key]=params.delete(k) if new_key != k
+        end
+        #puts "PRMS: #{new_key} #{params[new_key].class} #{params[new_key]}"
+      end
+    end
+
+    def select_grammar(post, options={})
+      grammar = state(options)[:grammar] || 'fmresultset'
+      if grammar.to_s.downcase == 'auto'
+        # TODO: Build grammar parser in new sax engine templates to handle FMPXMLRESULT.
+        return "fmresultset"
+        # post.keys.find(){|k| %w(-find -findall -dbnames -layoutnames -scriptnames).include? k.to_s} ? "FMPXMLRESULT" : "fmresultset"   
+      else
+        grammar
+      end
+    end
+    
+    # # Experimental open-uri, was in http_fetch method.
+    # # This works well but writes entire http response body to temp file.
+    # require 'open-uri'
+    # output=[]
+    # open("#{scheme}://#{host_name}:#{port}#{path}?#{qs_unescaped}",
+    #   ssl_verify_mode: OpenSSL::SSL::VERIFY_NONE,
+    #   http_basic_authentication: [account_name, password]
+    # ) do |io|
+    #   output << io
+    #   yield(io)
+    # end
+    # return output[0]
+    
+    
   end # Connection
 
 

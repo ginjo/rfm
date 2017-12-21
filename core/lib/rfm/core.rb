@@ -1,5 +1,7 @@
 # require all core files here.
 
+require 'logger'
+
 # TODO: Probably move this to core_extensions.
 module Rfm
   module Refinements
@@ -19,7 +21,14 @@ module Rfm
     	end  
     end
   end
+  
+  @logger = Logger.new($stdout)
+  def self.log
+    @logger
+  end
 end
+
+
 
 
 require 'rfm/core_extensions'
