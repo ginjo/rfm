@@ -45,6 +45,9 @@ module Rfm
 
     extend self
     @config = {}
+    
+    # Try 'using Refinements' wherever Config is included or extended. Does it work?
+    using Refinements
 
     # Set @config with args & options hash.
     # Args should be symbols representing configuration groups,

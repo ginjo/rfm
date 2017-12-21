@@ -421,6 +421,8 @@ module Rfm
     end
     
     # Clean up passed params & options.
+    # This method does not fill in missing FMS api params or options,
+    # but it may fill in Rfm params and options.
     def prepare_params(keyvalues={}, options={})
       _database = options.delete(:database)
       _layout   = options.delete(:layout)
