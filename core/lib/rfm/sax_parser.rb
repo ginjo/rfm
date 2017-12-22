@@ -10,8 +10,8 @@
 # The currently supported parsers are the Ruby librarys libxml-ruby, nokogiri, ox, and rexml.
 #
 # Without a configuration template, this parser will return a generic tree of hashes and arrays,
-# representing the xml structure & data that was fed into the parser. With a configuration template,
-# this parser can create resulting objects that are custom transformations of the input xml.
+# representing the xml structure and data that was fed into the parser. With a configuration template,
+# this parser can create resulting objects and trees that are custom transformations of the input xml.
 #
 # The goal in writing this parser was to build custom objects from xml, in a single pass,
 # without having to build a generic tree first and then pick it apart with ugly code scattered all over
@@ -25,7 +25,7 @@
 # Useage:
 #   irb -rubygems -I./  -r  lib/rfm/utilities/sax_parser.rb
 #   SaxParser.parse(io, template=nil, initial_object=nil, parser=nil, options={})
-#     io: xml-string or xml-file-path or file-io or string-io
+#     io: xml-string or io object
 #      template: file-name, yaml, xml, symbol, or hash
 #      initial_object: the parent object - any object to which the resulting build will be attached to.
 #     parser: backend parser symbol or custom backend handler instance
@@ -34,7 +34,7 @@
 #
 # Note: 'attach: cursor' puts the object in the cursor & stack but does not attach it to the parent.
 #       'attach: none' prevents the object from entering the cursor or stack.
-#        Both of these will still allow processing of attributes and subelements.
+#        Both of these will still allow processing of attributes and child elements.
 #
 # Note: Attribute attachment is controlled first by the attributes' model's :attributes hash (controls individual attrs),
 #       and second by the base model's main hash. Any model's main hash :attach_attributes only controls
@@ -75,6 +75,7 @@
 #                                Should return an instance of new object.
 #   translate: UC               Consider adding a 'translate' option to point to a method on the current model's object to use to translate values for attributes.
 #
+#   compact?
 #
 # ####  See below for notes & todos  ####
 
@@ -634,16 +635,16 @@ module Rfm
       ###  Class Methods  ###
 
       # Main parsing interface (also aliased at SaxParser.parse)
-      # TODO: Use a different variable name for 'parser'... maybe 'handler'?
       def self.build(io='', template=nil, initial_object=nil, parser=nil, options={})
-        parser = parser || options[:parser] || BACKEND
-        parser = get_backend(parser)
-        (Rfm.log.info "Using backend parser: #{parser}, with template: #{template}") if options[:log_parser]
+        _parser = parser || options[:parser] || BACKEND
+        _template = template || options[:template]
+        handler_class = get_backend(_parser)
+        (Rfm.log.info "Using backend parser: #{handler_class}, with template: #{_template}") if options[:log_parser]
         if block_given?
           puts "Handler.build block_given!"
-          parser.build(io, template, initial_object, &Proc.new)
+          handler_class.build(io, _template, initial_object, &Proc.new)
         else
-          parser.build(io, template, initial_object)
+          handler_class.build(io, _template, initial_object)
         end
       end
 
@@ -652,6 +653,7 @@ module Rfm
         # Add a .build method to the custom handler instance, when the generic Handler module is included.
         def base.build(io='', template=nil, initial_object=nil)
           handler = new(template, initial_object)
+          # The block options was experimental but is not currently used for rfm.
           if block_given?
             puts "#{self.name}.build block_given!"
             #handler.run_parser(io, &Proc.new)

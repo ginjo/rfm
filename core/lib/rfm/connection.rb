@@ -35,7 +35,7 @@ module Rfm
         :raise_on_401 => false,
         :timeout => 60,
         :ignore_bad_data => false,
-        :template => :fmresultset,
+        :template => nil, #:fmresultset,
         :grammar => 'fmresultset'
       } .merge(opts)
     end
@@ -48,6 +48,9 @@ module Rfm
       #@defaults.merge(super(**opts))
       @defaults.merge(**opts)
     end
+
+
+    # Should all of these convenience getters exist?
 
     def host_name
       state[:host]
@@ -88,7 +91,7 @@ module Rfm
     #
     # Returns a ResultSet object containing _every record_ in the table associated with this layout.
     def findall(**options)
-      return unless self.class.const_defined?(:ENABLE_FINDALL) && ENABLE_FINDALL || ENV['ENABLE_FINDALL']
+      #return unless self.class.const_defined?(:ENABLE_FINDALL) && ENABLE_FINDALL || ENV['ENABLE_FINDALL']
       options[:database] ||= database
       options[:layout] ||= layout
       get_records('-findall', {}, options)
@@ -200,7 +203,9 @@ module Rfm
 
 
     def get_records(action, params = {}, options = {})
-      template = options.delete :template || state[:template] || {}
+      template = options.delete(:template) || state[:template] || select_grammar('', options).to_s.downcase.to_sym
+      puts "get_records options: #{options}"
+      puts "get_records template: #{template}"
       result_object = options.delete :result_object || state[:result_object] || {}
       params, options = prepare_params(params, options)
       

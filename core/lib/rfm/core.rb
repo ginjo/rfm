@@ -10,6 +10,17 @@ module Rfm
   end
 end
 
+# PARSER_DEFAULTS = {
+#   :default_class => Hash,  #CaseInsensitiveHash,
+#   :template_prefix => File.join(File.dirname(__FILE__), 'sax_templates/'),
+#   :templates => {
+#     :fmpxmllayout => 'fmpxmllayout.yml',
+#     :fmresultset => 'fmresultset.yml',
+#     :fmpxmlresult => 'fmpxmlresult.yml',
+#     :none => nil
+#   }
+# }
+
 require 'rfm/core_extensions'
 require 'rfm/config'
 require 'rfm/error'
