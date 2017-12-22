@@ -221,10 +221,36 @@ module Rfm
       # the finished object tree from the parser, in this case.
       # If you call connection_thread.value, it will wait until thread is done,
       # but you will get the finished connection response object.
+      #
+      # Example of passing block (this was active before currnet version, and works!)
+      # connect(action, params, options) do |io, connection_thread|
+      #   #puts connection_thread.status
+      #   Rfm::SaxParser.parse(io, template: template, initial_object: result_object, parser:nil, **state(options)).result
+      # end
+      
+      #   # From working prototype in rfm 4-0-dev local testing & sandbox app.
+      #   parser_options = {x:x, y:y, z:z, action:action, get_records_params:params, get_records_options:options}
+      #   if block_given?
+      #     connect(action, params, options) do |io|
+      #       yield(io, **parser_options)
+      #     end
+      #   elsif parser=options.delete(:parser)
+      #     connect(action, params, options) do |io|
+      #       parser.call(io, **parser_options)
+      #     end
+      #   else
+      #     # connect(action, params, options) do |io|
+      #     #   TestParser.new.parse(io, action, x)
+      #     # end
+      #     connect(action, params, options)
+      #   end     
+      
       connect(action, params, options) do |io, connection_thread|
-        #puts connection_thread.status
-        Rfm::SaxParser.parse(io, template, result_object, nil, state(**options)).result
-      end
+        # ...
+        # parser_instance.call(io, **parser_options)
+        Rfm::SaxParser.call(io, **options)
+      end 
+      
     end # get_records
 
     def connect(action, params={}, request_options={})

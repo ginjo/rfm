@@ -143,6 +143,14 @@ module Rfm
         Handler.build(*args)
       end
     end
+    
+    # This doesn't work here, so just manually define 'call'.
+    #class << self; alias_method :call, :parse; end    
+    def self.call(*args)
+      parse(*args)
+    end
+      
+
 
     # A Cursor instance is created for each element encountered in the parsing run
     # and is where the parsing result is constructed from the custom parsing template.
@@ -635,24 +643,33 @@ module Rfm
       ###  Class Methods  ###
 
       # Main parsing interface (also aliased at SaxParser.parse)
-      def self.build(io='', template=nil, initial_object=nil, parser=nil, options={})
-        _parser = parser || options[:parser] || BACKEND
-        _template = template || options[:template]
-        handler_class = get_backend(_parser)
-        (Rfm.log.info "Using backend parser: #{handler_class}, with template: #{_template}") if options[:log_parser]
+      # options: template:nil, initial_object:nil, parser:nil, ... 
+      def self.build(io='', **options) #template=nil, initial_object=nil, parser=nil, options={})
+        parser = options[:parser] || BACKEND
+        template = options[:template]
+        initial_object = options[:initial_object]
+        handler_class = get_backend(parser)
+        (Rfm.log.info "Using backend parser: #{handler_class}, with template: #{template}") if options[:log_parser]
         if block_given?
           puts "Handler.build block_given!"
-          handler_class.build(io, _template, initial_object, &Proc.new)
+          handler_class.build(io, **options, &Proc.new)
         else
-          handler_class.build(io, _template, initial_object)
+          handler_class.build(io, **options)
         end
       end
-
+      
+      # Didn't work:
+      #class << self; alias_method :call, :parse; end
+      # so...
+      def self.call(*args)
+        build(*args)
+      end
+      
       def self.included(base)
       
         # Add a .build method to the custom handler instance, when the generic Handler module is included.
-        def base.build(io='', template=nil, initial_object=nil)
-          handler = new(template, initial_object)
+        def base.build(io='', **options)  # template=nil, initial_object=nil)
+          handler = new(options[:template], options[:initial_object])
           # The block options was experimental but is not currently used for rfm.
           if block_given?
             puts "#{self.name}.build block_given!"
