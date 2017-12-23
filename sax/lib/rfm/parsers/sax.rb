@@ -119,7 +119,7 @@ module Rfm
     # on top of these true-defaults.
     if defined? PARSER_DEFAULTS
       tmp_defaults = PARSER_DEFAULTS.dup
-      PARSER_DEFAULTS.replace(tmp_defaults).merge!(@parser_defaults)
+      PARSER_DEFAULTS.replace(@parser_defaults).merge!(tmp_defaults)
     else
       PARSER_DEFAULTS = @parser_defaults
     end
@@ -711,7 +711,7 @@ module Rfm
                           end
         @stack = []
         @stack_debug=[]
-        @template_prefix = options[:template_prefix] || defined?(TEMPLATE_PREFIX) && TEMPLATE_PREFIX || ''
+        @template_prefix = options[:template_prefix] || SaxParser::PARSER_DEFAULTS[:template_prefix] || defined?(TEMPLATE_PREFIX) && TEMPLATE_PREFIX || ''
         @template = get_template(_template)
         set_cursor Cursor.new('__TOP__', self).process_new_element
       end

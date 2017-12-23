@@ -3,13 +3,19 @@
 # This is required because rfm-core does not specifically require it.
 # This is a rfm-model feature.
 require 'rfm/case_insensitive_hash'
-  
-module Rfm
-  
+
+# TODO: Consider removing the rfm-xxx.rb files and just requiring rfm/xxx.
+#       But how would the sub-gem's lib dir be added to PATH then?
+require 'rfm-core'
+require 'rfm-sax'
+
+
+class Rfm::SaxParser
+
   # TODO: This should not be a global setting.
   # This should be specified when SaxParser or Connection object is instanciated by rfm-model.
   parser_defaults = {
-    :default_class => CaseInsensitiveHash,
+    :default_class => Rfm::CaseInsensitiveHash,
     :template_prefix => File.join(File.dirname(__FILE__), 'sax/'),
     :templates => {
       :fmpxmllayout => 'fmpxmllayout.yml',
@@ -19,19 +25,13 @@ module Rfm
     }
   }
   
-  if defined?(PARSER_DEFAULTS)
+  if const_defined?(:PARSER_DEFAULTS)
     PARSER_DEFAULTS.merge! parser_defaults
   else
     PARSER_DEFAULTS = parser_defaults
   end
-
+  
 end
-
-# TODO: Consider removing the rfm-xxx.rb files and just requiring rfm/xxx.
-#       But how would the sub-gem's lib dir be added to PATH then?
-require 'rfm-core'
-require 'rfm-sax'
-
 
 
 module Rfm
