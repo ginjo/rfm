@@ -85,7 +85,13 @@ require 'forwardable'
 require 'stringio'
 
 module Rfm
-  module SaxParser
+  class SaxParser
+  
+    extend Forwardable
+    
+    def_delegator :'Rfm::SaxParser::Handler', :build
+    def_delegator :'Rfm::SaxParser::Handler', :build, :parse
+    def_delegator :'Rfm::SaxParser::Handler', :build, :call
 
     RUBY_VERSION_NUM = RUBY_VERSION[0,3].to_f
 
@@ -133,24 +139,8 @@ module Rfm
       :default_class => DEFAULT_CLASS,
       :text_label => TEXT_LABEL,
       :create_accessors => [] #:all, :private, :shared, :hash
-    }    
-
-    def self.parse(*args)
-      if block_given?
-        puts "SaxParser.parse block given!"
-        Handler.build(*args, &Proc.new)
-      else
-        Handler.build(*args)
-      end
-    end
+    }
     
-    # This doesn't work here, so just manually define 'call'.
-    #class << self; alias_method :call, :parse; end    
-    def self.call(*args)
-      parse(*args)
-    end
-      
-
 
     # A Cursor instance is created for each element encountered in the parsing run
     # and is where the parsing result is constructed from the custom parsing template.
@@ -621,6 +611,7 @@ module Rfm
 
     #####  SAX HANDLER  #####
 
+    # TODO: Find out why handler instance template_prefix attribute is empty, even when passing a template thru options.
 
     # A handler instance is created for each parsing run. The handler has several important functions:
     # 1. Receive callbacks from the sax/stream parsing engine (start_element, end_element, attribute...).
@@ -635,7 +626,7 @@ module Rfm
     # is returned to the object that originally called for the parsing run (your script/app/whatever).
     module Handler
 
-      attr_accessor :stack, :template, :initial_object, :stack_debug
+      attr_accessor :stack, :template, :initial_object, :stack_debug, :template_prefix
 
       #SaxParser.install_defaults(self)
 
@@ -645,37 +636,40 @@ module Rfm
       # Main parsing interface (also aliased at SaxParser.parse)
       # options: template:nil, initial_object:nil, parser:nil, ... 
       def self.build(io='', **options) #template=nil, initial_object=nil, parser=nil, options={})
-        parser = options[:parser] || BACKEND
+        #puts "Handler.build options: #{options}"
+        parser_backend = options[:parser_backend] || BACKEND
         template = options[:template]
         initial_object = options[:initial_object]
-        handler_class = get_backend(parser)
+        handler_class = get_backend(parser_backend)
         (Rfm.log.info "Using backend parser: #{handler_class}, with template: #{template}") if options[:log_parser]
         if block_given?
-          puts "Handler.build block_given!"
+          #puts "Handler.build block_given!"
           handler_class.build(io, **options, &Proc.new)
         else
+          #puts "Handler.build no block given"
           handler_class.build(io, **options)
         end
       end
       
-      # Didn't work:
-      #class << self; alias_method :call, :parse; end
-      # so...
-      def self.call(*args)
-        build(*args)
-      end
-      
+      # This works whereas class << self does not appear to.
+      # These alias definitions must go after the original method def.
+      # Turns out these aren't needed here. Only 'build' should exist on Handler class.
+      # singleton_class.send :alias_method, :call, :build
+      # singleton_class.send :alias_method, :parse, :build
+    
       def self.included(base)
       
-        # Add a .build method to the custom handler instance, when the generic Handler module is included.
+        # Adds a .build method to the custom handler instance, when the generic Handler module is included.
         def base.build(io='', **options)  # template=nil, initial_object=nil)
           handler = new(options[:template], options[:initial_object])
-          # The block options was experimental but is not currently used for rfm.
+          # The block options was experimental but is not currently used for rfm,
+          # all the block magic happens in Connection.
           if block_given?
-            puts "#{self.name}.build block_given!"
+            #puts "#{self.name}.build block_given!"
             #handler.run_parser(io, &Proc.new)
             yield(handler)
           else
+            #puts "#{self.name}.build no block given"
             handler.run_parser(io)
           end
           
@@ -684,12 +678,12 @@ module Rfm
       end # self.included
 
       # Takes backend symbol and returns custom Handler class for specified backend.
-      def self.get_backend(parser=BACKEND)
-        (parser = decide_backend) unless parser
-        if parser.is_a?(String) || parser.is_a?(Symbol)
-          parser_proc = PARSERS[parser.to_sym][:proc]
-          parser_proc.call unless parser_proc.nil? || const_defined?((parser.to_s.capitalize + 'Handler').to_sym)
-          SaxParser.const_get(parser.to_s.capitalize + "Handler")
+      def self.get_backend(parser_backend=BACKEND)
+        (parser_backend = decide_backend) unless parser_backend
+        if parser_backend.is_a?(String) || parser_backend.is_a?(Symbol)
+          parser_proc = PARSERS[parser_backend.to_sym][:proc]
+          parser_proc.call unless parser_proc.nil? || const_defined?((parser_backend.to_s.capitalize + 'Handler').to_sym)
+          SaxParser.const_get(parser_backend.to_s.capitalize + "Handler")
         end
       rescue
         raise "Could not load the backend parser '#{parser}': #{$!}"
@@ -707,7 +701,7 @@ module Rfm
 
       ###  Instance Methods  ###
 
-      def initialize(_template=nil, _initial_object=nil)
+      def initialize(_template=nil, _initial_object=nil, **options)
         @initial_object = case
                           when _initial_object.nil?; DEFAULT_CLASS.new
                           when _initial_object.is_a?(Class); _initial_object.new
@@ -716,6 +710,7 @@ module Rfm
                           end
         @stack = []
         @stack_debug=[]
+        @template_prefix = options[:template_prefix] || defined?(TEMPLATE_PREFIX) && TEMPLATE_PREFIX || ''
         @template = get_template(_template)
         set_cursor Cursor.new('__TOP__', self).process_new_element
       end
@@ -738,15 +733,12 @@ module Rfm
 
       # Does the heavy-lifting of template retrieval.
       def load_template(dat)
-        #puts "DAT: #{dat}, class #{dat.class}"
-        prefix = defined?(TEMPLATE_PREFIX) ? TEMPLATE_PREFIX : ''
-        #puts "SaxParser::Handler#load_template... 'prefix' is #{prefix}"
         rslt = case
                when dat.is_a?(Hash); dat
                when (dat.is_a?(String) && dat[/^\//]); YAML.load_file dat
-               when dat.to_s[/\.y.?ml$/i]; (YAML.load_file(File.join(*[prefix, dat].compact)))
+               when dat.to_s[/\.y.?ml$/i]; (YAML.load_file(File.join(*[template_prefix, dat].compact)))
                  # This line might cause an infinite loop.
-               when dat.to_s[/\.xml$/i]; self.class.build(File.join(*[prefix, dat].compact), nil, {'compact'=>true})
+               when dat.to_s[/\.xml$/i]; self.class.build(File.join(*[template_prefix, dat].compact), nil, {'compact'=>true})
                when dat.to_s[/^<.*>/i]; "Convert from xml to Hash - under construction"
                when dat.is_a?(String); YAML.load dat
                else DEFAULT_CLASS.new
@@ -846,22 +838,18 @@ module Rfm
         include Handler
 
         def run_parser(io)
-          parser = case
-                   when (io.is_a?(File) || io.is_a?(StringIO))
-                     XML::SaxParser.io(io)
-                   when io[/^</]
-                     XML::SaxParser.io(StringIO.new(io))
-                   else
-                     XML::SaxParser.io(File.new(io))
-                   end
+          # parser = case
+          #   when (io.is_a?(File) || io.is_a?(StringIO))
+          #    XML::SaxParser.io(io)
+          #   when io[/^</]
+          #    XML::SaxParser.io(StringIO.new(io))
+          #   else
+          #    XML::SaxParser.io(File.new(io))
+          # end
+          parser = SaxParser.io(io)
           parser.callbacks = self
           parser.parse
         end
-
-        #   def on_start_element_ns(name, attributes, prefix, uri, namespaces)
-        #     attributes.merge!(:prefix=>prefix, :uri=>uri, :xmlns=>namespaces)
-        #     _start_element(name, attributes)
-        #   end
 
         alias_method :on_start_element, :_start_element
         alias_method :on_end_element, :_end_element
@@ -877,14 +865,15 @@ module Rfm
 
         def run_parser(io)
           parser = Nokogiri::XML::SAX::Parser.new(self)
-          parser.parse case
-                       when (io.is_a?(File) || io.is_a?(StringIO))
-                         io
-                       when io[/^</]
-                         StringIO.new(io)
-                       else
-                         File.new(io)
-                       end
+          # parser.parse case
+          #   when (io.is_a?(File) || io.is_a?(StringIO))
+          #    io
+          #   when io[/^</]
+          #    StringIO.new(io)
+          #   else
+          #    File.new(io)
+          # end
+          parser.parse(io)
         end
 
         alias_method :start_element, :_start_element
@@ -900,12 +889,12 @@ module Rfm
 
         def run_parser(io)
           options={:convert_special=>true}
-          Ox.sax_parse self, io, options
           # case
           # when (io.is_a?(File) || io.is_a?(StringIO)); Ox.sax_parse self, io, options
           # when io.to_s[/^</]; StringIO.open(io){|f| Ox.sax_parse self, f, options}
           # else File.open(io){|f| Ox.sax_parse self, f, options}
           # end
+          Ox.sax_parse self, io, options
         end
 
         alias_method :start_element, :_start_element

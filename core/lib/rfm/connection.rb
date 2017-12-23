@@ -1,8 +1,3 @@
-# Connection object takes over the communication functionality that was previously in Rfm::Server.
-# TODO: Clean up the way :grammar is sent in to the initializing method.
-#       Currently, the actual connection instance config doesn't get set with the correct grammar,
-#       even if the http_fetch is using the correct grammar.
-
 require 'net/https'
 require 'cgi'
 #require 'rfm/config'
@@ -17,6 +12,9 @@ module Rfm
 
     def initialize(host='localhost', **opts)     #(action, params, request_options={},  *args)
       #config(**opts)
+      
+      parser_instance = SaxParser.new() #fill in args if needed
+      parser_proc = proc {|*args| parser_instance.call(*args).result } # necessary to get response from handler.
 
       @defaults = {
         :host => host,
@@ -36,7 +34,9 @@ module Rfm
         :timeout => 60,
         :ignore_bad_data => false,
         :template => nil, #:fmresultset,
-        :grammar => 'fmresultset'
+        :grammar => 'fmresultset',
+        :parser => parser_proc,
+        :raise_invalid_option => false
       } .merge(opts)
     end
     
@@ -203,10 +203,10 @@ module Rfm
 
 
     def get_records(action, params = {}, options = {})
-      template = options.delete(:template) || state[:template] || select_grammar('', options).to_s.downcase.to_sym
-      puts "get_records options: #{options}"
-      puts "get_records template: #{template}"
-      result_object = options.delete :result_object || state[:result_object] || {}
+      options[:template] ||= state[:template] || select_grammar('', options).to_s.downcase.to_sym
+      puts "Connection#get_records action: #{action}, params: #{params}, options: #{options}"
+
+      parser = state(options)[:parser]
       params, options = prepare_params(params, options)
       
       # Old pre v4 code. Note the capture_resultset_meta call!
@@ -219,43 +219,29 @@ module Rfm
       #   io = connect(action, params, options).body
       # The block enables streaming and returns whatever is ultimately returned from the yield,
       # the finished object tree from the parser, in this case.
-      # If you call connection_thread.value, it will wait until thread is done,
-      # but you will get the finished connection response object.
-      #
-      # Example of passing block (this was active before currnet version, and works!)
-      # connect(action, params, options) do |io, connection_thread|
-      #   #puts connection_thread.status
-      #   Rfm::SaxParser.parse(io, template: template, initial_object: result_object, parser:nil, **state(options)).result
-      # end
+      # If you call connection_thread.value, you will get the finished connection response object,
+      # but it will wait until thread is done, so it defeats the purpose of streaming to the io object.
       
-      #   # From working prototype in rfm 4-0-dev local testing & sandbox app.
-      #   parser_options = {x:x, y:y, z:z, action:action, get_records_params:params, get_records_options:options}
-      #   if block_given?
-      #     connect(action, params, options) do |io|
-      #       yield(io, **parser_options)
-      #     end
-      #   elsif parser=options.delete(:parser)
-      #     connect(action, params, options) do |io|
-      #       parser.call(io, **parser_options)
-      #     end
-      #   else
-      #     # connect(action, params, options) do |io|
-      #     #   TestParser.new.parse(io, action, x)
-      #     # end
-      #     connect(action, params, options)
-      #   end     
+      _options = state(options)
       
-      connect(action, params, options) do |io, connection_thread|
-        # ...
-        # parser_instance.call(io, **parser_options)
-        Rfm::SaxParser.call(io, **options)
-      end 
-      
+      if block_given?
+        connect(action, params, _options) do |io, connection_thread|
+          yield(io, _options.merge({connection_thread:connection_thread}))
+        end
+      elsif parser
+        connect(action, params, _options) do |io, connection_thread|
+          parser.call(io, _options.merge({connection_thread:connection_thread}))
+        end
+      else
+        connect(action, params, _options)
+      end     
+
     end # get_records
 
+    # TODO: Stop deleting options, just let them fall out of the way by expand_options method.
     def connect(action, params={}, request_options={})
       grammar_option = request_options.delete(:grammar)
-      post = params.merge(expand_options(request_options)).merge({action => ''})
+      post = params.merge(expand_options(state(request_options))).merge({action => ''})
       grammar = select_grammar(post, :grammar=>grammar_option)
       host = request_options.delete(:host) || host_name
       
@@ -268,13 +254,10 @@ module Rfm
         http_fetch(host, port, "/fmi/xml/#{grammar}.xml", state[:account_name], state[:password], post)
       end
     end
-
-    # TODO: Remove nested blocks from SaxParser.
     
 
     private
 
-    # TODO: Flesh out open-uri, if you keep it, and clean up sax-parser and connection files.
     def http_fetch(host_name, port, path, account_name, password, post_data, limit=10)
       raise Rfm::CommunicationError.new("While trying to reach the Web Publishing Engine, RFM was redirected too many times.") if limit == 0
 
@@ -310,31 +293,31 @@ module Rfm
       # See: https://www.jstorimer.com/blogs/workingwithcode/7766091-introduction-to-ipc-in-ruby
       if block_given?
         #puts "Connection#http_fetch (with block)"
-        
         #pipe_reader, pipe_writer = IO.pipe
         IO.pipe do |pipe_reader, pipe_writer|
-        thread = Thread.new do
-          #pipe_reader.close # close the unused reader.
-          connection.request request do |response|
-            check_for_http_errors response
-
-            response.read_body do |chunk|
-              pipe_writer.write chunk
-            end
-            
-            # Close writer here if using Thread.
-            pipe_writer.close
-          end # request
-        end # Thread
-        #pipe_writer.close # close unused writer if using Fork.
-        # Hand over the reader IO (and connection - experimental) to the block (which likely contains the parsing call).
-        # TODO: Try not to set a variable here
-        result = yield(pipe_reader, thread)
+          thread = Thread.new do
+            #pipe_reader.close # close the unused reader if forking.
+            connection.request request do |response|
+              check_for_http_errors response
+  
+              # This is NET::HTTP's way of streaming the response body.
+              # Note that the response object already has the header information at this point.
+              response.read_body do |chunk|
+                pipe_writer.write chunk
+              end
+              
+              pipe_writer.close # close writer here if using Thread.
+            end # request
+          end # Thread
+          #pipe_writer.close # close unused writer if using Fork.
+          
+          # Hand over the reader IO and thread to the block.
+          # Note that thread.value will give the return value of thread,
+          # but only after the thread has closed. So beware how you use 'thread'.
+          yield(pipe_reader, thread)
         end
-        #pipe_reader.close
-        #result
       else
-        # Original non-streaming process.
+        # Give straight response object, if no block given.
         puts "Connection.http_fetch (without block)"
         response = connection.start { |http| http.request(request) }
         check_for_http_errors(response)
@@ -368,6 +351,65 @@ module Rfm
       else
         msg = "Unexpected response from server: #{response.code} (#{response.class.to_s}). Unable to communicate with the Web Publishing Engine."
         raise Rfm::CommunicationError.new(msg)
+      end
+    end
+    
+    def check_for_errors(code=@meta['error'].to_i, raise_401=state[:raise_401])
+      #puts ["\nRESULTSET#check_for_errors", code, raise_401]
+      raise Rfm::Error.getError(code) if code != 0 && (code != 401 || raise_401)
+    end
+
+    def load_field_mapping(mapping={})
+      mapping = (mapping || {}) #.to_cih
+      def mapping.invert
+        super #.to_cih
+      end
+      mapping
+    end
+    
+    # Clean up passed params & options.
+    # This method does not fill in missing FMS api params or options,
+    # but it may fill in Rfm params and options.
+    def prepare_params(keyvalues={}, options={})
+      _database = options.delete(:database)
+      _layout   = options.delete(:layout)
+      if keyvalues.is_a?(String)
+        keyvalues = Hash[URI.decode_www_form(keyvalues)]
+      end
+      keyvalues['-db'] = _database if _database
+      keyvalues['-lay'] = _layout if _layout
+      
+      #options[:field_mapping] = field_mapping.invert if field_mapping && !options[:field_mapping]
+      mapping = options.extract(:field_mapping) || field_mapping
+      apply_field_mapping!(keyvalues, mapping.invert) if mapping.is_a?(Hash)
+      
+      options[:grammar] ||= grammar
+      [keyvalues, options]
+    end
+    
+    def apply_field_mapping!(params, mapping)
+      params.dup.each_key do |k|
+        new_key = mapping[k.to_s] || k
+        if params[new_key].is_a? Array
+          params[new_key].each_with_index do |v, i|
+            params["#{new_key}(#{i+1})"]=v
+          end
+          params.delete new_key
+        else
+          params[new_key]=params.delete(k) if new_key != k
+        end
+        #puts "PRMS: #{new_key} #{params[new_key].class} #{params[new_key]}"
+      end
+    end
+
+    def select_grammar(post, options={})
+      grammar = state(options)[:grammar] || 'fmresultset'
+      if grammar.to_s.downcase == 'auto'
+        # TODO: Build grammar parser in new sax engine templates to handle FMPXMLRESULT.
+        return "fmresultset"
+        # post.keys.find(){|k| %w(-find -findall -dbnames -layoutnames -scriptnames).include? k.to_s} ? "FMPXMLRESULT" : "fmresultset"   
+      else
+        grammar
       end
     end
 
@@ -431,70 +473,13 @@ module Rfm
           if state.keys.member?(key.to_sym)
             state(key.to_sym=>value)
           else
-            raise Rfm::ParameterError.new("Invalid option: #{key} (are you using a string instead of a symbol?)")
+            if state[:raise_on_invalid_option]
+              raise Rfm::ParameterError.new("Invalid option: #{key} (are you using a string instead of a symbol?)")
+            end
           end
         end
       end
       return result
-    end
-    
-    def check_for_errors(code=@meta['error'].to_i, raise_401=state[:raise_401])
-      #puts ["\nRESULTSET#check_for_errors", code, raise_401]
-      raise Rfm::Error.getError(code) if code != 0 && (code != 401 || raise_401)
-    end
-
-    def load_field_mapping(mapping={})
-      mapping = (mapping || {}) #.to_cih
-      def mapping.invert
-        super #.to_cih
-      end
-      mapping
-    end
-    
-    # Clean up passed params & options.
-    # This method does not fill in missing FMS api params or options,
-    # but it may fill in Rfm params and options.
-    def prepare_params(keyvalues={}, options={})
-      _database = options.delete(:database)
-      _layout   = options.delete(:layout)
-      if keyvalues.is_a?(String)
-        keyvalues = Hash[URI.decode_www_form(keyvalues)]
-      end
-      keyvalues['-db'] = _database if _database
-      keyvalues['-lay'] = _layout if _layout
-      
-      #options[:field_mapping] = field_mapping.invert if field_mapping && !options[:field_mapping]
-      mapping = options.extract(:field_mapping) || field_mapping
-      apply_field_mapping!(keyvalues, mapping.invert) if mapping.is_a?(Hash)
-      
-      options[:grammar] ||= grammar
-      [keyvalues, options]
-    end
-    
-    def apply_field_mapping!(params, mapping)
-      params.dup.each_key do |k|
-        new_key = mapping[k.to_s] || k
-        if params[new_key].is_a? Array
-          params[new_key].each_with_index do |v, i|
-            params["#{new_key}(#{i+1})"]=v
-          end
-          params.delete new_key
-        else
-          params[new_key]=params.delete(k) if new_key != k
-        end
-        #puts "PRMS: #{new_key} #{params[new_key].class} #{params[new_key]}"
-      end
-    end
-
-    def select_grammar(post, options={})
-      grammar = state(options)[:grammar] || 'fmresultset'
-      if grammar.to_s.downcase == 'auto'
-        # TODO: Build grammar parser in new sax engine templates to handle FMPXMLRESULT.
-        return "fmresultset"
-        # post.keys.find(){|k| %w(-find -findall -dbnames -layoutnames -scriptnames).include? k.to_s} ? "FMPXMLRESULT" : "fmresultset"   
-      else
-        grammar
-      end
     end
     
     # # Experimental open-uri, was in http_fetch method.
@@ -509,7 +494,6 @@ module Rfm
     #   yield(io)
     # end
     # return output[0]
-    
     
   end # Connection
 
