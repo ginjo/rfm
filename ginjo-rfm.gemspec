@@ -21,7 +21,7 @@ Gem::Specification.new do |s|
   s.homepage = "https://github.com/ginjo/rfm"
   
   s.require_paths = ["lib"]
-  s.files = Dir['lib/**/*.rb', 'lib/**/sax/*', 'lib/**/VERSION',  '.yardopts']
+  s.files = Dir['lib/**/*.rb', 'lib/**/VERSION',  '.yardopts']
   
   s.rdoc_options = ["--line-numbers", "--main", "README.md"]
   s.extra_rdoc_files = [
@@ -30,6 +30,10 @@ Gem::Specification.new do |s|
     "CHANGELOG.md",
     "lib/rfm/VERSION"
   ]
+
+  s.add_dependency('rfm-core')
+  s.add_dependency('rfm-sax')
+  s.add_dependency('rfm-model')
 
   # s.add_runtime_dependency('activesupport', '>= 2.3.5')
   s.add_development_dependency(%q<activemodel>, [">= 0"])
