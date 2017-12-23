@@ -13,8 +13,10 @@ module Rfm
     def initialize(host='localhost', **opts)     #(action, params, request_options={},  *args)
       #config(**opts)
       
-      parser_instance = SaxParser.new() #fill in args if needed
-      parser_proc = proc {|*args| parser_instance.call(*args).result } # necessary to get response from handler.
+      formatter_instance = SaxParser.new() #fill in args if needed
+      formatter_proc = proc {|*args| formatter_instance.call(*args).result } # necessary to get response from handler.
+      # Example formatter that would return pretty-formatted XML string:
+      # proc {|io, opts| out=''; REXML::Document.new(io.read).write(out, 2); out}
 
       @defaults = {
         :host => host,
@@ -35,7 +37,7 @@ module Rfm
         :ignore_bad_data => false,
         :template => nil, #:fmresultset,
         :grammar => 'fmresultset',
-        :parser => parser_proc,
+        :formatter => formatter_proc,
         :raise_invalid_option => false
       } .merge(opts)
     end
@@ -206,19 +208,16 @@ module Rfm
       options[:template] ||= state[:template] || select_grammar('', options).to_s.downcase.to_sym
       puts "Connection#get_records action: #{action}, params: #{params}, options: #{options}"
 
-      parser = state(options)[:parser]
+      formatter = state(options)[:formatter]
       params, options = prepare_params(params, options)
       
-      # Old pre v4 code. Note the capture_resultset_meta call!
-      # Usage: parse(xml_string_or_stream, template=nil, initial_object=nil, parser=nil, options={})
-      #rslt = parse(response.body, template, result_object)  # old rfm code: , Rfm::Resultset.new(self, self))
-      ##capture_resultset_meta(rslt) unless resultset_meta_valid? #(@resultset_meta && @resultset_meta.error != '401')
-      #rslt
+      # Note the capture_resultset_meta call from rfm v3.
+      #capture_resultset_meta(rslt) unless resultset_meta_valid? #(@resultset_meta && @resultset_meta.error != '401')
 
       # You could also use this without a block, and forgo http-to-sax-parser streaming.
       #   io = connect(action, params, options).body
       # The block enables streaming and returns whatever is ultimately returned from the yield,
-      # the finished object tree from the parser, in this case.
+      # the finished object tree from the formatter, in this case.
       # If you call connection_thread.value, you will get the finished connection response object,
       # but it will wait until thread is done, so it defeats the purpose of streaming to the io object.
       
@@ -228,13 +227,16 @@ module Rfm
         connect(action, params, _options) do |io, connection_thread|
           yield(io, _options.merge({connection_thread:connection_thread}))
         end
-      elsif parser
+      elsif formatter
         connect(action, params, _options) do |io, connection_thread|
-          parser.call(io, _options.merge({connection_thread:connection_thread}))
+          formatter.call(io, _options.merge({connection_thread:connection_thread}))
         end
       else
         connect(action, params, _options)
-      end     
+      end
+      
+      # As a side note, here's a way to pretty-print raw xml in ruby:
+      # REXML::Document.new(xml_string).write($stdout, 2)
 
     end # get_records
 

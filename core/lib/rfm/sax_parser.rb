@@ -637,7 +637,7 @@ module Rfm
       # options: template:nil, initial_object:nil, parser:nil, ... 
       def self.build(io='', **options) #template=nil, initial_object=nil, parser=nil, options={})
         #puts "Handler.build options: #{options}"
-        parser_backend = options[:parser_backend] || BACKEND
+        parser_backend = options[:parser] || BACKEND
         template = options[:template]
         initial_object = options[:initial_object]
         handler_class = get_backend(parser_backend)
