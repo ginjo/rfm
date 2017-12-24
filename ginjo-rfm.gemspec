@@ -32,8 +32,8 @@ Gem::Specification.new do |s|
   ]
 
   s.add_dependency('rfm-core')
-  s.add_dependency('rfm-sax')
   s.add_dependency('rfm-model')
+  s.add_dependency('saxchange')
 
   # s.add_runtime_dependency('activesupport', '>= 2.3.5')
   s.add_development_dependency(%q<activemodel>, [">= 0"])

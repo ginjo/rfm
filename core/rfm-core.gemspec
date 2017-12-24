@@ -29,7 +29,7 @@ Gem::Specification.new do |s|
     #"lib/rfm/VERSION"
   ]
 
-  s.add_dependency('rfm-sax')
+  s.add_dependency('saxchange')
 
   #   s.add_development_dependency(%q<rake>, [">= 0"])
   #   s.add_development_dependency(%q<rdoc>, [">= 0"])

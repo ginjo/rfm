@@ -8,8 +8,8 @@ module Rfm
   #require 'logger'
   
   require 'rfm-core'
-  require 'rfm-sax'
   require 'rfm-model'
+  require 'saxchange'
 
   autoload :VERSION,      'rfm/version'
 

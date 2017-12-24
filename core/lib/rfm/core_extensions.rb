@@ -25,7 +25,6 @@ module Rfm
   end
 end # 
 
-return 0
 
 
 class Object

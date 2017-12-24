@@ -8,9 +8,9 @@ source 'https://rubygems.org'
 gemspec
 
 # TODO: Remove this before shipping.
-gem 'rfm-core', path:'/Users/wbr/Documents/Programming/GitProjects/GinjoRfm.git/core'
-gem 'rfm-sax', path:'/Users/wbr/Documents/Programming/GitProjects/GinjoRfm.git/sax'
-gem 'rfm-sax', path:'/Users/wbr/Documents/Programming/GitProjects/GinjoRfm.git/model'
+# gem 'rfm-core', path:'/Users/wbr/Documents/Programming/GitProjects/GinjoRfm.git/core'
+# gem 'rfm-sax', path:'/Users/wbr/Documents/Programming/GitProjects/GinjoRfm.git/model'
+# gem 'saxchange', path:'/Users/wbr/Documents/Programming/GitProjects/GinjoRfm.git/saxchange'
 
 
 # If you don't want dev dependencies.

@@ -8,7 +8,7 @@ source 'https://rubygems.org'
 gemspec
 
 # TODO: Remove this before shipping.
-gem 'rfm-sax', path:'/Users/wbr/Documents/Programming/GitProjects/GinjoRfm.git/sax'
+#gem 'saxchange', path:'/Users/wbr/Documents/Programming/GitProjects/GinjoRfm.git/saxchange'
 
 # If you don't want dev dependencies.
 # bundle install --without development

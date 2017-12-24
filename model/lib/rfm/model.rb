@@ -7,7 +7,7 @@ require 'rfm/case_insensitive_hash'
 # TODO: Consider removing the rfm-xxx.rb files and just requiring rfm/xxx.
 #       But how would the sub-gem's lib dir be added to PATH then?
 require 'rfm-core'
-require 'rfm-sax'
+require 'saxchange'
 
 
 class Rfm::SaxParser

@@ -2,7 +2,7 @@ require 'net/https'
 require 'cgi'
 #require 'rfm/config'
 #require 'logger'
-require 'rfm/parsers/sax'
+require 'saxchange'
 
 module Rfm
   class Connection
@@ -15,7 +15,7 @@ module Rfm
       #config(**opts)
       
       
-      formatter_proc = proc {|*args| SaxParser.new().call(*args) } # necessary to get response from handler.
+      formatter_proc = proc {|*args| SaxChange::Parser.new().call(*args) } # necessary to get response from handler.
       # Example formatter that would return pretty-formatted XML string:
       # proc {|io, opts| out=''; REXML::Document.new(io.read).write(out, 2); out}
 
