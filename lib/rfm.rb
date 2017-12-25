@@ -19,7 +19,7 @@ module Rfm
       Version: #{VERSION}
       ActiveModel loadable? #{begin; Gem::Specification::find_all_by_name('activemodel')[0].version.to_s; rescue Exception; false; end}
       ActiveModel loaded? #{defined?(ActiveModel) ? 'true' : 'false'}
-      XML default parser: #{SaxParser::Handler.get_backend}
+      XML default parser: #{SaxChange::Handler.get_backend}
       Ruby: #{RUBY_VERSION}
     EEOOFF
     rslt.gsub!(/^[ \t]*/, '')
