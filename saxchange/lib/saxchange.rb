@@ -3,15 +3,15 @@ module SaxChange
   $LOAD_PATH.unshift(PATH) unless $LOAD_PATH.include?(PATH)
 end
 
-require 'saxchange/config'
-require 'saxchange/parser'
-require 'saxchange/cursor'
-require 'saxchange/handler'
-require 'saxchange/handler/handlers'
-
-
-# Regular code ends here.
-__END__
+# require 'saxchange/config'
+# require 'saxchange/parser'
+# require 'saxchange/cursor'
+# require 'saxchange/handler'
+# require 'saxchange/handler/handlers'
+# 
+# 
+# # Regular code ends here.
+# __END__
 
 
 
@@ -36,15 +36,9 @@ module SaxChange
     :template_prefix => nil,
     :logger => Logger.new($stdout)
   }
-      
-  ::Object.const_set(:ATTACH_OBJECT_DEFAULT_OPTIONS, {
-    :shared_variable_name => 'SHARED_VARIABLE_NAME',
-    :default_class => 'DEFAULT_CLASS',
-    :text_label => 'TEXT_LABEL',
-    :create_accessors => [] #:all, :private, :shared, :hash
-  })
     
   ### End SaxChange module setup ###
+  
   
   
   class Parser

@@ -15,7 +15,9 @@ module Rfm
       #config(**opts)
       
       
-      formatter_proc = proc {|*args| SaxChange::Parser.new().call(*args) } # necessary to get response from handler.
+      formatter_proc = proc {|*args| SaxChange::Parser.new().call(*args).result }
+      # To get the full Handler object:
+      # formatter_proc = proc {|*args| SaxChange::Parser.new().call(*args).result }
       # Example formatter that would return pretty-formatted XML string:
       # proc {|io, opts| out=''; REXML::Document.new(io.read).write(out, 2); out}
 

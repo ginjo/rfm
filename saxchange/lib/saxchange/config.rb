@@ -17,7 +17,7 @@ module SaxChange
     def config(**opts)
       if opts.any? || @defaults.nil?
       
-        upstream = if self.is_a?(Class)
+        upstream = if self.is_a?(Class) || self.is_a?(Module)
           #puts "#{self} is CLASS, using Config.defaults #{Config.defaults}"
           Config.defaults
         else

@@ -103,19 +103,21 @@ module SaxChange
     ###  Instance Methods  ###
   
     def initialize(_template=nil, _initial_object=nil, **options)
+      puts "Initializing #{self} with _template: #{_template}, _initial_object: #{_initial_object}, options: #{options}"
       config options
-      #super options
       
       @initial_object = case
                         when _initial_object.nil?; config[:default_class].new
                         when _initial_object.is_a?(Class); _initial_object.new
-                        when _initial_object.is_a?(String) || _initial_object.is_a?(Symbol); Parser.get_constant(_initial_object).new
+                        when _initial_object.is_a?(String) || _initial_object.is_a?(Symbol); get_constant(_initial_object).new
                         else _initial_object
                         end
       @stack = []
       @stack_debug=[]
       @template_prefix = options[:template_prefix] || defaults[:template_prefix] || ''
       @template = get_template(_template)
+      #puts "NEW HANDLER #{self}"
+      #puts self.to_yaml
       set_cursor Cursor.new('__TOP__', self).process_new_element
     end
   
@@ -132,7 +134,8 @@ module SaxChange
       #   end
       #   (templates[name] = rslt) #unless dat == rslt
       # The above works, but this is cleaner.
-      template = self.class.defaults[:templates].tap {|templates| templates[name] = templates[name] && load_template(templates[name]) || load_template(name) }
+      self.class.defaults[:templates].tap {|templates| templates[name] = templates[name] && load_template(templates[name]) || load_template(name) }
+      template = defaults[:templates][name]
       defaults[:template] = template
     end
   

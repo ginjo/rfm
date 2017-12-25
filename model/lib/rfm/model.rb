@@ -7,31 +7,43 @@ require 'rfm/case_insensitive_hash'
 # TODO: Consider removing the rfm-xxx.rb files and just requiring rfm/xxx.
 #       But how would the sub-gem's lib dir be added to PATH then?
 require 'rfm-core'
-require 'saxchange'
+require 'saxchange/config'
 
 
-class Rfm::SaxParser
+# class Rfm::SaxParser
+# 
+#   # TODO: This should not be a global setting.
+#   # This should be specified when SaxParser or Connection object is instanciated by rfm-model.
+#   parser_defaults = {
+#     :default_class => Rfm::CaseInsensitiveHash,
+#     :template_prefix => File.join(File.dirname(__FILE__), 'sax/'),
+#     :templates => {
+#       :fmpxmllayout => 'fmpxmllayout.yml',
+#       :fmresultset => 'fmresultset.yml',
+#       :fmpxmlresult => 'fmpxmlresult.yml',
+#       :none => nil
+#     }
+#   }
+#   
+#   if const_defined?(:PARSER_DEFAULTS)
+#     PARSER_DEFAULTS.merge! parser_defaults
+#   else
+#     PARSER_DEFAULTS = parser_defaults
+#   end
+#   
+# end
 
-  # TODO: This should not be a global setting.
-  # This should be specified when SaxParser or Connection object is instanciated by rfm-model.
-  parser_defaults = {
-    :default_class => Rfm::CaseInsensitiveHash,
-    :template_prefix => File.join(File.dirname(__FILE__), 'sax/'),
-    :templates => {
-      :fmpxmllayout => 'fmpxmllayout.yml',
-      :fmresultset => 'fmresultset.yml',
-      :fmpxmlresult => 'fmpxmlresult.yml',
-      :none => nil
-    }
+SaxChange::Config.config( {
+  :default_class => Rfm::CaseInsensitiveHash,
+  :initial_object => 'Rfm::Resultset.new',
+  :template_prefix => File.join(File.dirname(__FILE__), 'sax/'),
+  :templates => {
+    :fmpxmllayout => 'fmpxmllayout.yml',
+    :fmresultset => 'fmresultset.yml',
+    #:fmpxmlresult => 'fmpxmlresult.yml',
+    :none => nil
   }
-  
-  if const_defined?(:PARSER_DEFAULTS)
-    PARSER_DEFAULTS.merge! parser_defaults
-  else
-    PARSER_DEFAULTS = parser_defaults
-  end
-  
-end
+} )
 
 
 module Rfm

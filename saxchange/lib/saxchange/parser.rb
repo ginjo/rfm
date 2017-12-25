@@ -154,6 +154,10 @@ module SaxChange
       :create_accessors => [] #:all, :private, :shared, :hash
     }
     
+    def initialize(**options)
+      config(**options) if options.any?
+    end
+    
   end # Parser
 end # SaxChange
 
