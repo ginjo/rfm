@@ -89,8 +89,10 @@ require 'saxchange/config'
 # require 'saxchange/handler/handlers'
 
 module SaxChange
+  RUBY_VERSION_NUM = RUBY_VERSION[0,3].to_f
+
   singleton_class.extend Forwardable
-  singleton_class.def_delegators SaxChange::Config, :defaults, :config
+  singleton_class.def_delegators :'SaxChange::Config', :defaults, :'defaults='
     
   # These defaults can be set here or in any ancestor/enclosing module or class,
   # as long as the defaults or their constants can be seen from this POV.
@@ -111,7 +113,6 @@ module SaxChange
     :logger => Logger.new($stdout)
   }
   
-  RUBY_VERSION_NUM = RUBY_VERSION[0,3].to_f
   
   def self.log
     defaults[:logger]
@@ -141,16 +142,16 @@ module SaxChange
   class Parser
   
     extend Forwardable
-    include Config
+    prepend Config
     
     def_delegator :'SaxChange::Handler', :build
     def_delegator :'SaxChange::Handler', :build, :parse
     def_delegator :'SaxChange::Handler', :build, :call
 
     ::Object::ATTACH_OBJECT_DEFAULT_OPTIONS = {
-      :shared_variable_name => defaults[:shared_variable_name],
-      :default_class => defaults[:default_class],
-      :text_label => defaults[:text_label],
+      :shared_variable_name => Config.defaults[:shared_variable_name],
+      :default_class => Config.defaults[:default_class],
+      :text_label => Config.defaults[:text_label],
       :create_accessors => [] #:all, :private, :shared, :hash
     }
     

@@ -18,10 +18,8 @@ module SaxChange
   module Handler
   
     attr_accessor :stack, :template, :initial_object, :stack_debug, :template_prefix
-  
-    #Parser.install_defaults(self)
-    
-    include Config
+      
+    prepend Config
   
   
     ###  Class Methods  ###
@@ -29,12 +27,12 @@ module SaxChange
     # Main parsing interface (also aliased at Parser.parse)
     # options: template:nil, initial_object:nil, parser:nil, ... 
     def self.build(io='', **options) #template=nil, initial_object=nil, parser=nil, options={})
-      puts "Handler.build options: #{options}"
-      parser_backend = options[:parser] || defaults[:backend]
-      template = options[:template]
-      initial_object = options[:initial_object]
+      #puts "Handler.build options: #{options}"
+      parser_backend = config(**options)[:parser] || config(**options)[:backend]
+      #template = options[:template]
+      #initial_object = options[:initial_object]
       handler_class = get_backend(parser_backend)
-      (SaxChange.log.info "Using backend parser: #{handler_class}, with template: #{template}") if options[:log_parser]
+      (SaxChange.log.info "Using backend parser: #{handler_class}, with template: #{config(**options)[:template]}") if config(**options)[:log_parser]
       if block_given?
         #puts "Handler.build block_given!"
         handler_class.build(io, **options, &Proc.new)
@@ -53,7 +51,7 @@ module SaxChange
     def self.included(base)
       # Adds a .build method to the custom handler instance, when the generic Handler module is included.
       def base.build(io='', **options)  # template=nil, initial_object=nil)
-        handler = new(options[:template], options[:initial_object])
+        handler = new(**options) #new(options[:template], options[:initial_object])
         # The block options was experimental but is not currently used for rfm,
         # all the block magic happens in Connection.
         if block_given?
@@ -71,15 +69,15 @@ module SaxChange
       # def base.included(other_other)
       #   other_other.send :include, Config
       # end
-      base.send :include, Config
+      base.send :prepend, Config
       
       #super
     end # self.included
   
     # Takes backend symbol and returns custom Handler class for specified backend.
-    def self.get_backend(parser_backend=defaults[:backend])
+    def self.get_backend(parser_backend = config[:backend])
       (parser_backend = decide_backend) unless parser_backend
-      puts "PARSER_BACKEND: #{parser_backend}"
+      #puts "Handler.get_backend parser_backend: #{parser_backend}"
       if parser_backend.is_a?(String) || parser_backend.is_a?(Symbol)
         parser_proc = PARSERS[parser_backend.to_sym][:proc]
         parser_proc.call unless parser_proc.nil? || const_defined?((parser_backend.to_s.capitalize + 'Handler').to_sym)
@@ -94,7 +92,7 @@ module SaxChange
       #BACKENDS.find{|b| !Gem::Specification::find_all_by_name(b[1]).empty? || b[0]==:rexml}[0]
       PARSERS.find{|k,v| !Gem::Specification::find_all_by_name(v[:file]).empty? || k == :rexml}[0]
     rescue
-      puts "Handler.decide_backend raising #{$!}"
+      #puts "Handler.decide_backend raising #{$!}"
       raise "The xml parser could not find a loadable backend library: #{$!}"
     end
   
@@ -102,22 +100,23 @@ module SaxChange
   
     ###  Instance Methods  ###
   
-    def initialize(_template=nil, _initial_object=nil, **options)
-      puts "Initializing #{self} with _template: #{_template}, _initial_object: #{_initial_object}, options: #{options}"
+    def initialize(**options)
       config options
+      puts "Initializing #{self} with resolved config: #{config}"
       
+      _initial_object = config[:initial_object]
       @initial_object = case
                         when _initial_object.nil?; config[:default_class].new
                         when _initial_object.is_a?(Class); _initial_object.new
-                        when _initial_object.is_a?(String) || _initial_object.is_a?(Symbol); get_constant(_initial_object).new
+                        when _initial_object.is_a?(String) || _initial_object.is_a?(Symbol); self.class.const_get(_initial_object).new
                         else _initial_object
                         end
       @stack = []
       @stack_debug=[]
-      @template_prefix = options[:template_prefix] || defaults[:template_prefix] || ''
-      @template = get_template(_template)
-      #puts "NEW HANDLER #{self}"
-      #puts self.to_yaml
+      @template_prefix = config(**options)[:template_prefix] || ''
+      @template = get_template(config(**options)[:template])
+      puts "NEW HANDLER #{self}"
+      puts @template.to_yaml
       set_cursor Cursor.new('__TOP__', self).process_new_element
     end
   
@@ -134,9 +133,9 @@ module SaxChange
       #   end
       #   (templates[name] = rslt) #unless dat == rslt
       # The above works, but this is cleaner.
-      self.class.defaults[:templates].tap {|templates| templates[name] = templates[name] && load_template(templates[name]) || load_template(name) }
-      template = defaults[:templates][name]
-      defaults[:template] = template
+      config[:templates].tap {|templates| templates[name] = templates[name] && load_template(templates[name]) || load_template(name) }
+      template = config[:templates][name]
+      #config template: template
     end
   
     # Does the heavy-lifting of template retrieval.
@@ -149,7 +148,7 @@ module SaxChange
              when dat.to_s[/\.xml$/i]; self.class.build(File.join(*[template_prefix, dat].compact), nil, {'compact'=>true})
              when dat.to_s[/^<.*>/i]; "Convert from xml to Hash - under construction"
              when dat.is_a?(String); YAML.load dat
-             else defaults[:default_class].new
+             else config[:default_class].new
              end
       #puts rslt
       rslt
@@ -180,8 +179,8 @@ module SaxChange
     end
   
     def transform(name)
-      return name unless defaults[:tag_translation].is_a?(Proc)
-      defaults[:tag_translation].call(name.to_s)
+      return name unless config[:tag_translation].is_a?(Proc)
+      config[:tag_translation].call(name.to_s)
     end
   
     # Add a node to an existing element.
@@ -192,7 +191,7 @@ module SaxChange
         # This crazy thing transforms attribute keys to underscore (or whatever).
         #attributes = default_class[*attributes.collect{|k,v| [transform(k),v] }.flatten]
         # This works but downcases all attribute names - not good.
-        attributes = defaults[:default_class].new.tap {|hash| attributes.each {|k, v| hash[transform(k)] = v}}
+        attributes = config[:default_class].new.tap {|hash| attributes.each {|k, v| hash[transform(k)] = v}}
         # This doesn't work yet, but at least it wont downcase hash keys.
         #attributes = Hash.new.tap {|hash| attributes.each {|k, v| hash[transform(k)] = v}}
       end
@@ -216,7 +215,7 @@ module SaxChange
       end
       # I think the reason this was here is no longer relevant, so I'm disabeling.
       return unless value[/[^\s]/]
-      cursor.receive_attribute(defaults[:text_label], value)
+      cursor.receive_attribute(config[:text_label], value)
     end
   
     # Close out an existing element.

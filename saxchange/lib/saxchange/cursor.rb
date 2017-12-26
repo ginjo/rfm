@@ -34,14 +34,14 @@ module SaxChange
       case
       when klass.is_a?(Class); klass
         #when (klass=klass.to_s) == ''; DEFAULT_CLASS
-      when klass.nil?; defaults[:default_class]
-      when klass == ''; defaults[:default_class]
+      when klass.nil?; config[:default_class]
+      when klass == ''; config[:default_class]
       when klass[/::/]; eval(klass)
       when defined?(klass); const_get(klass)  ## == 'constant'; const_get(klass)
         #when defined?(klass); eval(klass) # This was for 'element_handler' pattern.
       else
         SaxChange.log.warn "Could not find constant '#{klass}'"
-        defaults[:default_class]
+        config[:default_class]
       end
     end
 
@@ -54,7 +54,7 @@ module SaxChange
       @parent = _parent || self
       @initial_attributes = _initial_attributes
       @level = @parent.level.to_i + 1
-      @local_model = (model_elements?(@tag, @parent.model) || defaults[:default_class].new)
+      @local_model = (model_elements?(@tag, @parent.model) || config[:default_class].new)
       @element_attachment_prefs = attachment_prefs(@parent.model, @local_model, 'element')
       #@attribute_attachment_prefs = attachment_prefs(@parent.model, @local_model, 'attribute')
 
@@ -115,7 +115,7 @@ module SaxChange
       when @element_attachment_prefs == 'cursor';
         #puts "__CURSOR__"
         @model = @local_model
-        @object = new_element || defaults[:default_class].allocate
+        @object = new_element || config[:default_class].allocate
 
         if @initial_attributes && @initial_attributes.any? #&& @attribute_attachment_prefs != 'none'
           assign_attributes(@initial_attributes) #, @object, @model, @local_model) 
@@ -124,7 +124,7 @@ module SaxChange
       else
         #puts "__OTHER__"
         @model = @local_model
-        @object = new_element || defaults[:default_class].allocate
+        @object = new_element || config[:default_class].allocate
 
         if @initial_attributes && @initial_attributes.any? #&& @attribute_attachment_prefs != 'none'
           #puts "PROCESS_NEW_ELEMENT calling assign_attributes with ATTRIBUTES #{@initial_attributes}"
@@ -206,7 +206,7 @@ module SaxChange
     # TODO-MAYBE: Change param order to (method, object, params),
     #             might help confusion with param complexities.
     #
-    def get_callback(callback, caller_binding=binding, defaults={})
+    def get_callback(callback, caller_binding=binding, _defaults={})
       input = callback.is_a?(Array) ? callback.dup : callback
       #puts "\nGET_CALLBACK tag: #{tag}, callback: #{callback}"
       params = case
@@ -241,17 +241,17 @@ module SaxChange
               obj_raw
             end
       if obj.nil? || obj == ''
-        obj = defaults[:object] || @object
+        obj = _defaults[:object] || @object
       end
       #puts ["\nOBJECT:","class: #{obj.class}", "object: #{obj}"]
 
-      code = params.shift || defaults[:method]
+      code = params.shift || _defaults[:method]
       params.each_with_index do |str, i|
         if str.is_a?(String)
           params[i] = eval(str, caller_binding)
         end
       end
-      params = defaults[:params] if params.size == 0
+      params = _defaults[:params] if params.size == 0
       #puts ["\nGET_CALLBACK tag: #{@tag}" ,"callback: #{callback}", "obj.class: #{obj.class}", "code: #{code}", "params-class #{params.class}"]
       case
       when (code.nil? || code=='')
@@ -302,7 +302,7 @@ module SaxChange
           #(create_accessors = create_accessors?(@model)) unless create_accessors && create_accessors.any?
 
           #puts ["\nATTACH_NEW_OBJECT 1", "type: #{type}", "label: #{label}", "base_object: #{base_object.class}", "new_object: #{new_object.class}", "delimiter: #{delimiter?(new_model)}", "prefs: #{prefs}", "shared_var_name: #{shared_var_name}", "create_accessors: #{create_accessors}"]
-          @object._attach_object!(v, label, delimiter?(attr_model), prefs, 'attribute', :default_class=>defaults[:default_class], :shared_variable_name=>shared_var_name, :create_accessors=>create_accessors)
+          @object._attach_object!(v, label, delimiter?(attr_model), prefs, 'attribute', :default_class=>config[:default_class], :shared_variable_name=>shared_var_name, :create_accessors=>create_accessors)
         end
 
       end
@@ -363,7 +363,7 @@ module SaxChange
 
 
       #puts ["\nATTACH_NEW_ELEMENT 1", "new_object: #{new_object}", "parent_object: #{@parent.object}", "label: #{label}", "delimiter: #{delimiter?(@local_model)}", "prefs: #{prefs}", "shared_var_name: #{shared_var_name}", "create_accessors: #{create_accessors}"]
-      @parent.object._attach_object!(new_object, label, delimiter?(@local_model), prefs, 'element', :default_class=>defaults[:default_class], :shared_variable_name=>shared_var_name, :create_accessors=>create_accessors)
+      @parent.object._attach_object!(new_object, label, delimiter?(@local_model), prefs, 'element', :default_class=>config[:default_class], :shared_variable_name=>shared_var_name, :create_accessors=>create_accessors)
       # if type == 'attribute'
       #   puts ["\nATTACH_ATTR", "name: #{name}", "label: #{label}", "new_object: #{new_object.class rescue ''}", "base_object: #{base_object.class rescue ''}", "base_model: #{base_model['name'] rescue ''}", "new_model: #{new_model['name'] rescue ''}", "prefs: #{prefs}"]
       # end

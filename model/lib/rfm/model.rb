@@ -33,9 +33,9 @@ require 'saxchange/config'
 #   
 # end
 
-SaxChange::Config.config( {
+SaxChange::Config.defaults.merge!( {
   :default_class => Rfm::CaseInsensitiveHash,
-  :initial_object => 'Rfm::Resultset.new',
+  :initial_object => 'Rfm::Resultset',
   :template_prefix => File.join(File.dirname(__FILE__), 'sax/'),
   :templates => {
     :fmpxmllayout => 'fmpxmllayout.yml',

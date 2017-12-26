@@ -3,15 +3,15 @@ module SaxChange
   $LOAD_PATH.unshift(PATH) unless $LOAD_PATH.include?(PATH)
 end
 
-# require 'saxchange/config'
-# require 'saxchange/parser'
-# require 'saxchange/cursor'
-# require 'saxchange/handler'
-# require 'saxchange/handler/handlers'
-# 
-# 
-# # Regular code ends here.
-# __END__
+require 'saxchange/config'
+require 'saxchange/parser'
+require 'saxchange/cursor'
+require 'saxchange/handler'
+require 'saxchange/handler/handlers'
+
+
+# Regular code ends here.
+__END__
 
 
 
@@ -24,7 +24,7 @@ require 'saxchange/config'
 module SaxChange
 
   extend Forwardable
-  def_delegators :Config, :defaults, :config
+  singleton_class.def_delegators Config, :defaults
   
   Config.defaults = {
     :default_class => Hash,
@@ -42,11 +42,11 @@ module SaxChange
   
   
   class Parser
-    include Config
+    prepend Config
   end # Parser
   
   class Cursor
-    include Config
+    prepend Config
     
     attr_accessor :model, :local_model, :object, :tag, :handler, :parent, :level, :element_attachment_prefs, :new_element_callback, :initial_attributes
     #DEFAULT_CLASS
@@ -55,11 +55,11 @@ module SaxChange
   end
   
   module Handler
-    include Config
+    prepend Config
     
-    # def self.included(other)
-    #   other.send :include, Config
-    # end
+    def self.included(other)
+      other.send :prepend, Config
+    end
     
     attr_accessor :stack, :template, :initial_object, :stack_debug, :template_prefix
     #BACKEND
