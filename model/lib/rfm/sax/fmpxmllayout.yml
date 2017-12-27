@@ -2,6 +2,7 @@
 # YAML structure defining a SAX parsing scheme for fmpxmllayout xml.
 # The initial object of this parse should be a new instance of Rfm::Layout.
 ---
+initial_object: "Rfm::Layout.new(config[:layout])"
 attach_elements: _meta
 attach_attributes: _meta
 elements:

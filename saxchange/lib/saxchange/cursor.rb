@@ -13,7 +13,7 @@ module SaxChange
   # a framework of tools that accompany each element's build process.
   class Cursor
     extend Forwardable
-    include Config
+    prepend Config
 
     # model - currently active model (rename to current_model)
     # local_model - model of this cursor's tag (rename to local_model)

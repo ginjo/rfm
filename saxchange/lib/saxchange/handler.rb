@@ -102,21 +102,26 @@ module SaxChange
   
     def initialize(**options)
       config options
-      puts "Initializing #{self} with resolved config: #{config}"
+      #puts "Initializing #{self} with resolved config: #{config}"
+
+      @template_prefix = config[:template_prefix] || ''
+      @template = get_template(config[:template])
       
-      _initial_object = config[:initial_object]
+      _initial_object = config[:initial_object] || @template['initial_object']
+      
       @initial_object = case
-                        when _initial_object.nil?; config[:default_class].new
-                        when _initial_object.is_a?(Class); _initial_object.new
-                        when _initial_object.is_a?(String) || _initial_object.is_a?(Symbol); self.class.const_get(_initial_object).new
-                        else _initial_object
-                        end
+        when _initial_object.nil?; config[:default_class].new
+        when _initial_object.is_a?(Class); _initial_object.new
+        when _initial_object.is_a?(String); eval(_initial_object)
+        when _initial_object.is_a?(Symbol); self.class.const_get(_initial_object).new
+        when _initial_object.is_a?(Proc); _initial_object.call(self)
+        else _initial_object
+      end
       @stack = []
       @stack_debug=[]
-      @template_prefix = config(**options)[:template_prefix] || ''
-      @template = get_template(config(**options)[:template])
-      puts "NEW HANDLER #{self}"
-      puts @template.to_yaml
+
+      #puts "NEW HANDLER #{self}"
+      #puts self.to_yaml
       set_cursor Cursor.new('__TOP__', self).process_new_element
     end
   

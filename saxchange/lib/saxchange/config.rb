@@ -42,7 +42,8 @@ module SaxChange
       (defaults || {}).merge(@config ||= {})
     end
     
-    def initialize(opts={caller:self})
+    def initialize(*args, **opts) #(opts={caller:self})
+      #opts.merge!({caller:_caller})
       #puts "#{self.class.name}#initialize, opts: #{opts}"
       @config ||= {}
       config(**opts)

@@ -156,7 +156,7 @@ module SaxChange
     }
     
     def initialize(**options)
-      config(**options) if options.any?
+      config(**options)
     end
     
   end # Parser
