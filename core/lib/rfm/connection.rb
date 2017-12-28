@@ -13,13 +13,6 @@ module Rfm
 
     def initialize(host='localhost', **opts)     #(action, params, request_options={},  *args)
       #config(**opts)
-      
-      
-      formatter_proc = proc {|*args| SaxChange::Parser.new().call(*args).result }
-      # To get the full Handler object:
-      # formatter_proc = proc {|*args| SaxChange::Parser.new().call(*args).result }
-      # Example formatter that would return pretty-formatted XML string:
-      # proc {|io, opts| out=''; REXML::Document.new(io.read).write(out, 2); out}
 
       @defaults = {
         :host => host,
@@ -38,11 +31,20 @@ module Rfm
         :raise_on_401 => false,
         :timeout => 60,
         :ignore_bad_data => false,
-        :template => nil, #:fmresultset,
+        :template => nil,
         :grammar => 'fmresultset',
-        :formatter => formatter_proc,
+        :formatter => nil,
         :raise_invalid_option => false
-      } .merge(opts)
+      } .merge!(opts)
+      
+      @defaults[:formatter] ||= (
+        parser_instance = SaxChange::Parser.new(**opts)
+        # To get the full Handler object:
+        # formatter_proc = proc {|*args| parser_instance.build(*args) }
+        # Example formatter that would return pretty-formatted XML string:
+        # proc {|io, opts| out=''; REXML::Document.new(io.read).write(out, 2); out}
+        proc {|*args| parser_instance.call(*args).result }
+      )
     end
     
     def log
