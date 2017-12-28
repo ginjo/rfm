@@ -26,19 +26,18 @@ module SaxChange
   
     # Main parsing interface (also aliased at Parser.parse)
     # options: template:nil, initial_object:nil, parser:nil, ... 
-    def self.build(io='', **options) #template=nil, initial_object=nil, parser=nil, options={})
-      #puts "Handler.build options: #{options}"
-      parser_backend = config(**options)[:parser] || config(**options)[:backend]
+    def self.build(io='', _template=nil, _initial_object=nil, _parser_backend=nil, **options)
+      parser_backend = _parser_backend || config(**options)[:backend]
       #template = options[:template]
       #initial_object = options[:initial_object]
       handler_class = get_backend(parser_backend)
-      (SaxChange.log.info "Using backend parser: #{handler_class}, with template: #{config(**options)[:template]}") if config(**options)[:log_parser]
+      (SaxChange.log.info "Using backend parser: #{handler_class}") if config(**options)[:log_parser]
       if block_given?
         #puts "Handler.build block_given!"
-        handler_class.build(io, **options, &Proc.new)
+        handler_class.build(io, _template=nil, _initial_object=nil, **options, &Proc.new)
       else
         #puts "Handler.build no block given"
-        handler_class.build(io, **options)
+        handler_class.build(io, _template=nil, _initial_object=nil, **options)
       end
     end
     
@@ -50,8 +49,10 @@ module SaxChange
   
     def self.included(base)
       # Adds a .build method to the custom handler instance, when the generic Handler module is included.
-      def base.build(io='', **options)  # template=nil, initial_object=nil)
-        handler = new(**options) #new(options[:template], options[:initial_object])
+      def base.build(io='', _template=nil, _initial_object=nil, **options)
+        template = _template || config(**options)[:template]
+        initial_object = _initial_object || config(**options)[:initial_object]
+        handler = new(template, initial_object, **options) #new(options[:template], options[:initial_object])
         # The block options was experimental but is not currently used for rfm,
         # all the block magic happens in Connection.
         if block_given?
@@ -100,14 +101,14 @@ module SaxChange
   
     ###  Instance Methods  ###
   
-    def initialize(**options)
+    def initialize(_template=nil, _initial_object=nil, **options)
       config options
       #puts "Initializing #{self} with resolved config: #{config}"
 
       @template_prefix = config[:template_prefix] || ''
-      @template = get_template(config[:template])
+      @template = get_template(_template || config[:template])
       
-      _initial_object = config[:initial_object] || @template['initial_object']
+      _initial_object = _initial_object || config[:initial_object] || @template['initial_object']
       
       @initial_object = case
         when _initial_object.nil?; config[:default_class].new

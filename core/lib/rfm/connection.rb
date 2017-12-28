@@ -97,24 +97,24 @@ module Rfm
     #    with specific reference to '_database' and '_layout', but not limited to those params.
     #
     # Returns a ResultSet object containing _every record_ in the table associated with this layout.
-    def findall(**options)
+    def findall(_layout=nil, **options)
       #return unless self.class.const_defined?(:ENABLE_FINDALL) && ENABLE_FINDALL || ENV['ENABLE_FINDALL']
       options[:database] ||= database
-      options[:layout] ||= layout
+      options[:layout] = _layout || options[:layout] || layout
       get_records('-findall', {}, options)
     end
 
     # Returns a ResultSet containing a single random record from the table associated with this layout.
-    def findany(**options)
+    def findany(_layout=nil, **options)
       options[:database] ||= database
-      options[:layout] ||= layout
+      options[:layout] = _layout || options[:layout] || layout
       get_records('-findany', {}, options)
     end
 
     # Finds a record. Typically you will pass in a hash of field names and values. For example:
-    def find(find_criteria, **options )
+    def find(_layout=nil, find_criteria, **options )
       options[:database] ||= database
-      options[:layout] ||= layout
+      options[:layout] = _layout || options[:layout] || layout
       find_criteria = {'-recid'=>find_criteria} if (find_criteria.to_s.to_i > 0)
       # Original (and better!) code for making this 'find' command compound-capable:
       #get_records(*Rfm::CompoundQuery.new(find_criteria, options))
@@ -123,31 +123,31 @@ module Rfm
     end
 
     # Access to raw -findquery command.
-    def query(query_hash, **options)
+    def query(_layout=nil, query_hash, **options)
       options[:database] ||= database
-      options[:layout] ||= layout
+      options[:layout] = _layout || options[:layout] || layout
       get_records('-findquery', query_hash, options)
     end
 
     # Updates the contents of the record whose internal +recid+ is specified.
-    def edit(recid, values, **options)
+    def edit(_layout=nil, recid, values, **options)
       options[:database] ||= database
-      options[:layout] ||= layout
+      options[:layout] = _layout || options[:layout] || layout
       get_records('-edit', {'-recid' => recid}.merge(values), options)
       #get_records('-edit', {'-recid' => recid}.merge(expand_repeats(values)), options) # attempt to set repeating fields.
     end
 
     # Creates a new record in the table associated with this layout.
-    def create(values, **options)
+    def create(_layout=nil, values, **options)
       options[:database] ||= database
-      options[:layout] ||= layout
+      options[:layout] = _layout || options[:layout] || layout
       get_records('-new', values, options)
     end
 
     # Deletes the record with the specified internal recid.
-    def delete(recid, **options)
+    def delete(_layout=nil, recid, **options)
       options[:database] ||= database
-      options[:layout] ||= layout
+      options[:layout] = _layout || options[:layout] || layout
       get_records('-delete', {'-recid' => recid}, options)
       
       # Do we really want to return nil? FMP XML API returns the original record.
@@ -155,19 +155,19 @@ module Rfm
     end
 
     # Retrieves metadata only, with an empty resultset.
-    def view(**options)
+    def view(_layout=nil, **options)
       options[:database] ||= database
-      options[:layout] ||= layout
+      options[:layout] = _layout || options[:layout] || layout
       get_records('-view', {}, options)
     end
 
     # Get the foundset_count only given criteria & options.
-    # This should probably be abstracted up to the Model layer of Rfm,
+    # TODO: This should probably be abstracted up to the Model layer of Rfm,
     # since it has no FMServer-specific command.
-    def count(find_criteria, **options)
+    def count(_layout=nil, find_criteria, **options)
       # foundset_count won't work until xml is parsed (still need to dev the xml parser interface to rfm v4).
       options[:database] ||= database
-      options[:layout] ||= layout
+      options[:layout] = _layout || options[:layout] || layout
       options[:max_records] = 0
       find(find_criteria, **options)['fmresultset']['resultset']['count'].to_i  #.foundset_count
     end
@@ -190,11 +190,11 @@ module Rfm
       get_records('-layoutnames', {}, options)
     end
     
-    def layout_meta(**options)
+    def layout_meta(_layout=nil, **options)
       #get_records('-view', gen_params(binding, {}), options)
       #connect('-view', gen_params(binding, {}), {:grammar=>'FMPXMLLAYOUT'}.merge(options)).body
       options[:database] ||= database
-      options[:layout] ||= layout
+      options[:layout] = _layout || options[:layout] || layout
       options[:grammar] ||= 'FMPXMLLAYOUT'
       get_records('-view', {}, options)
     end

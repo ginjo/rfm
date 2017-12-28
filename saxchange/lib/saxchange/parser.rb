@@ -155,7 +155,10 @@ module SaxChange
       :create_accessors => [] #:all, :private, :shared, :hash
     }
     
-    def initialize(**options)
+    def initialize(_template=nil, _initial_object=nil, _backend=nil, **options)
+      options[:template] = _template if _template
+      options[:initial_object] = _initial_object if _initial_object
+      options[:backend] = _backend if _backend
       config(**options)
     end
     
