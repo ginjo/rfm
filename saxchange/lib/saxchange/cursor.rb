@@ -287,12 +287,15 @@ module SaxChange
       if _attributes && !_attributes.empty?
 
         _attributes.each do |k,v|
-          #attach_new_object(base_object, v, k, base_model, model_attributes?(k, new_model), 'attribute')}
-          attr_model = model_attributes?(k, @local_model)
+          # This now grabs top-level :attributes hash if exists and no local_model.
+          attr_model = model_attributes?(k, @local_model) || model_attributes?(k, @model)
+          #puts "\nASSIGN_ATTRIBUTES each attr key:#{k}, val:#{v}, attr_model:#{attr_model}, local_model:#{@local_model}"
 
           label = label_or_tag(k, attr_model)
 
           prefs = [attachment_prefs(@model, attr_model, 'attribute')].flatten(1)[0]
+          #puts "ASSIGN_ATTRIBUTES @model: #{@model}"
+          #puts "ASSIGN_ATTRIBUTES compiled prefs: #{prefs}"
 
           shared_var_name = shared_variable_name(prefs)
           (prefs = "shared") if shared_var_name
@@ -301,7 +304,7 @@ module SaxChange
           create_accessors = accessor?(attr_model) || create_accessors?(@model)
           #(create_accessors = create_accessors?(@model)) unless create_accessors && create_accessors.any?
 
-          #puts ["\nATTACH_NEW_OBJECT 1", "type: #{type}", "label: #{label}", "base_object: #{base_object.class}", "new_object: #{new_object.class}", "delimiter: #{delimiter?(new_model)}", "prefs: #{prefs}", "shared_var_name: #{shared_var_name}", "create_accessors: #{create_accessors}"]
+          #puts ["\nASSIGN_ATTRIBUTES-attach-object", "label: #{label}", "object-class: #{@object.class}", "k,v: #{[k,v]}", "attr_model: #{attr_model}", "prefs: #{prefs}", "shared_var_name: #{shared_var_name}", "create_accessors: #{create_accessors}"]
           @object._attach_object!(v, label, delimiter?(attr_model), prefs, 'attribute', :default_class=>config[:default_class], :shared_variable_name=>shared_var_name, :create_accessors=>create_accessors)
         end
 

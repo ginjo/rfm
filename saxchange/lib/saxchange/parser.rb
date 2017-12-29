@@ -339,8 +339,13 @@ end # Object
 
 class Array
   def _merge_object!(obj, name, delimiter, prefs, type, options={})
-    #puts ["\n+++++ARRAY._merge_object", self.class, (obj.to_s rescue obj.class), name, delimiter, prefs, type, options].join(', ')
+    #puts ["\n+++++ARRAY._merge_object", self.class, (obj.inspect), name, delimiter, prefs, type, options].join(', ')
     case
+    # I added the 'values' option to capture values-only from hashes or arrays.
+    # This is needed to generate array of database-names from rfm.
+    when prefs=='values' && obj.is_a?(Hash); self.concat(obj.values)
+    when prefs=='values' && obj.is_a?(Array); self.concat(obj)
+    when prefs=='values'; self << obj
     when prefs=='shared' || type == 'attribute' && prefs.to_s != 'private' ; _merge_shared!(obj, name, delimiter, prefs, type, options)
     when prefs=='private'; _merge_instance!(obj, name, delimiter, prefs, type, options)
     else self << obj

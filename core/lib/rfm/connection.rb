@@ -184,10 +184,13 @@ module Rfm
     end
 
     def layouts(**options)
-      #connect('-layoutnames', {"-db" => database}, {:grammar=>'FMPXMLRESULT'}.merge(options)).body
-      options[:database] ||= database
-      options[:grammar] ||= 'FMPXMLRESULT'
-      get_records('-layoutnames', {}, options)
+      # #connect('-layoutnames', {"-db" => database}, {:grammar=>'FMPXMLRESULT'}.merge(options)).body
+      # options[:database] ||= database
+      # options[:grammar] ||= 'FMPXMLRESULT'
+      # get_records('-layoutnames', {}, options)
+      
+      require 'rfm/layouts_cmd'
+      Rfm::Commands::Layouts.new(self, **options).call
     end
     
     def layout_meta(_layout=nil, **options)
@@ -211,7 +214,7 @@ module Rfm
 
     def get_records(action, params = {}, options = {})
       options[:template] ||= state[:template] || select_grammar('', options).to_s.downcase.to_sym
-      puts "Connection#get_records action: #{action}, params: #{params}, options: #{options}"
+      #puts "Connection#get_records action: #{action}, params: #{params}, options: #{options}"
 
       formatter = state(options)[:formatter]
       params, options = prepare_params(params, options)

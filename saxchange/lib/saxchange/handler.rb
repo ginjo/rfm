@@ -31,7 +31,7 @@ module SaxChange
       #template = options[:template]
       #initial_object = options[:initial_object]
       handler_class = get_backend(parser_backend)
-      (SaxChange.log.info "Using backend parser: #{handler_class}") if config(**options)[:log_parser]
+      # (SaxChange.log.info "Using backend parser: '#{handler_class}' with template: '#{_template}'") if config(**options)[:log_parser]
       if block_given?
         #puts "Handler.build block_given!"
         handler_class.build(io, _template=nil, _initial_object=nil, **options, &Proc.new)
@@ -53,6 +53,7 @@ module SaxChange
         template = _template || config(**options)[:template]
         initial_object = _initial_object || config(**options)[:initial_object]
         handler = new(template, initial_object, **options) #new(options[:template], options[:initial_object])
+        (SaxChange.log.info "Using backend parser: '#{self}' with template: '#{template}'") if config(**options)[:log_parser]
         # The block options was experimental but is not currently used for rfm,
         # all the block magic happens in Connection.
         if block_given?
@@ -141,7 +142,9 @@ module SaxChange
       # The above works, but this is cleaner.
       config[:templates].tap {|templates| templates[name] = templates[name] && load_template(templates[name]) || load_template(name) }
       template = config[:templates][name]
-      #config template: template
+      #puts "TEMPLATE"
+      #y template
+      template
     end
   
     # Does the heavy-lifting of template retrieval.
