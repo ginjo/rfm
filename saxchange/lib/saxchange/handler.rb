@@ -17,99 +17,25 @@ module SaxChange
   # is returned to the object that originally called for the parsing run (your script/app/whatever).
   module Handler
   
-    attr_accessor :stack, :template, :initial_object, :stack_debug, :template_prefix, :templates
+    attr_accessor :stack, :template, :initial_object, :stack_debug, :parser
       
     prepend Config
   
-  
-    ###  Class Methods  ###
-  
-    # Main parsing interface (also aliased at Parser.parse)
-    # options: template:nil, initial_object:nil, parser:nil, ... 
-    def self.build(io='', _template=nil, _initial_object=nil, _parser_backend=nil, **options)
-      parser_backend = _parser_backend || config(**options)[:backend]
-      handler_class = get_backend(parser_backend)
-      # (SaxChange.log.info "Using backend parser: '#{handler_class}' with template: '#{_template}'") if config(**options)[:log_parser]
-      if block_given?
-        #puts "Handler.build block_given!"
-        handler_class.build(io, _template=nil, _initial_object=nil, **options, &Proc.new)
-      else
-        #puts "Handler.build no block given"
-        handler_class.build(io, _template=nil, _initial_object=nil, **options)
-      end
-    end
-    
-    # This works whereas class << self does not appear to.
-    # These alias definitions must go after the original method def.
-    # Turns out these aren't needed here. Only 'build' should exist on Handler class.
-    # singleton_class.send :alias_method, :call, :build
-    # singleton_class.send :alias_method, :parse, :build
-  
     def self.included(base)
-      # Adds a .build method to the custom handler instance, when the generic Handler module is included.
-      def base.build(io='', _template=nil, _initial_object=nil, **options)
-        template = _template || config(**options)[:template]
-        initial_object = _initial_object || config(**options)[:initial_object]
-        handler = new(template, initial_object, **options) #new(options[:template], options[:initial_object])
-        (SaxChange.log.info "Using backend parser: '#{self}' with template: '#{handler.template}'") if config(**options)[:log_parser]
-        # The block options was experimental but is not currently used for rfm,
-        # all the block magic happens in Connection.
-        if block_given?
-          #puts "#{self.name}.build block_given!"
-          #handler.run_parser(io, &Proc.new)
-          yield(handler)
-        else
-          #puts "#{self.name}.build no block given"
-          handler.run_parser(io)
-        end
-        
-        handler
-      end # base.build
-      
-      # def base.included(other_other)
-      #   other_other.send :include, Config
-      # end
       base.send :prepend, Config
-      
-      #super
-    end # self.included
-  
-    # Takes backend symbol and returns custom Handler class for specified backend.
-    def self.get_backend(parser_backend = config[:backend])
-      (parser_backend = decide_backend) unless parser_backend
-      #puts "Handler.get_backend parser_backend: #{parser_backend}"
-      if parser_backend.is_a?(String) || parser_backend.is_a?(Symbol)
-        parser_proc = PARSERS[parser_backend.to_sym][:proc]
-        parser_proc.call unless parser_proc.nil? || const_defined?((parser_backend.to_s.capitalize + 'Handler').to_sym)
-        const_get(parser_backend.to_s.capitalize + "Handler")
-      end
-    rescue
-      raise "Could not load the backend parser '#{parser_backend}': #{$!}"
     end
-  
-    # Finds a loadable backend and returns its symbol.
-    def self.decide_backend
-      #BACKENDS.find{|b| !Gem::Specification::find_all_by_name(b[1]).empty? || b[0]==:rexml}[0]
-      PARSERS.find{|k,v| !Gem::Specification::find_all_by_name(v[:file]).empty? || k == :rexml}[0]
-    rescue
-      #puts "Handler.decide_backend raising #{$!}"
-      raise "The xml parser could not find a loadable backend library: #{$!}"
-    end
-  
-  
+   
   
     ###  Instance Methods  ###
   
     def initialize(_template=nil, _initial_object=nil, **options)
       config options
-      config[:template] ||= _template
     
-      @template_prefix = config[:template_prefix] || ''
-      @templates = config[:templates] || {}
-      @template = get_template config[:template]
+      @template = _template || config[:template]
       
       #_initial_object = _initial_object || config[:initial_object] || @template['initial_object']
-      config[:initial_object] ||= _initial_object || @template[:initial_object]
+      #config[:initial_object] ||= _initial_object || @template[:initial_object]
+      _initial_object ||= config[:initial_object] || @template[:initial_object]
       
       @initial_object = case
         when _initial_object.nil?; config[:default_class].new
@@ -127,50 +53,50 @@ module SaxChange
       set_cursor Cursor.new('__TOP__', self).process_new_element
     end
 
-    # TODO: All template management should be at the parser instance level, not here in the handler.
-    #
-    # Takes string, symbol, or hash, and returns a (possibly cached) parsing template.
-    # String can be a file name, yaml, xml.
-    # Symbol is a name of a template stored in Parser@templates (you would set the templates when your app or gem loads).
-    # Templates stored in the Parser@templates var can be strings of code, file specs, or hashes.
-    # The Handler@template
-    def get_template(_template)
-      puts "HANDLER#get_template with _template: '#{_template}'"
-      puts "HANDLER @templates: #{@templates}"
-      #   dat = templates[name]
-      #   if dat
-      #     rslt = load_template(dat)
-      #   else
-      #     rslt = load_template(name)
-      #   end
-      #   (templates[name] = rslt) #unless dat == rslt
-      # The above works, but this is cleaner.
-      #config[:templates].tap {|templates| templates[name] = templates[name] && load_template(templates[name]) || load_template(name) }
-      # And this is more readable.
-      return _template if _template.is_a?(Hash)
-      template = @templates[_template] = (
-        @templates[_template] && load_template(@templates[_template]) \
-      ||
-        load_template(_template)
-      )
-      template
-    end
-  
-    # Does the heavy-lifting of template retrieval.
-    def load_template(dat)
-      rslt = case
-        when dat.is_a?(Hash); dat
-        when (dat.is_a?(String) && dat[/^\//]); YAML.load_file dat
-        when dat.to_s[/\.y.?ml$/i]; (YAML.load_file(File.join(*[template_prefix, dat].compact)))
-         # This line might cause an infinite loop.
-        when dat.to_s[/\.xml$/i]; self.class.build(File.join(*[template_prefix, dat].compact), nil, {'compact'=>true})
-        when dat.to_s[/^<.*>/i]; "Convert from xml to Hash - under construction"
-        when dat.is_a?(String); YAML.load dat
-        else config[:default_class].new
-      end
-      #puts rslt
-      rslt
-    end
+    # # TODO: All template management should be at the parser instance level, not here in the handler.
+    # #
+    # # Takes string, symbol, or hash, and returns a (possibly cached) parsing template.
+    # # String can be a file name, yaml, xml.
+    # # Symbol is a name of a template stored in Parser@templates (you would set the templates when your app or gem loads).
+    # # Templates stored in the Parser@templates var can be strings of code, file specs, or hashes.
+    # # The Handler@template
+    # def get_template(_template)
+    #   puts "HANDLER#get_template with _template: '#{_template}'"
+    #   puts "HANDLER @templates: #{@templates}"
+    #   #   dat = templates[name]
+    #   #   if dat
+    #   #     rslt = load_template(dat)
+    #   #   else
+    #   #     rslt = load_template(name)
+    #   #   end
+    #   #   (templates[name] = rslt) #unless dat == rslt
+    #   # The above works, but this is cleaner.
+    #   #config[:templates].tap {|templates| templates[name] = templates[name] && load_template(templates[name]) || load_template(name) }
+    #   # And this is more readable.
+    #   return _template if _template.is_a?(Hash)
+    #   template = @templates[_template] = (
+    #     @templates[_template] && load_template(@templates[_template]) \
+    #   ||
+    #     load_template(_template)
+    #   )
+    #   template
+    # end
+    # 
+    # # Does the heavy-lifting of template retrieval.
+    # def load_template(dat)
+    #   rslt = case
+    #     when dat.is_a?(Hash); dat
+    #     when (dat.is_a?(String) && dat[/^\//]); YAML.load_file dat
+    #     when dat.to_s[/\.y.?ml$/i]; (YAML.load_file(File.join(*[template_prefix, dat].compact)))
+    #      # This line might cause an infinite loop.
+    #     when dat.to_s[/\.xml$/i]; self.class.build(File.join(*[template_prefix, dat].compact), nil, {'compact'=>true})
+    #     when dat.to_s[/^<.*>/i]; "Convert from xml to Hash - under construction"
+    #     when dat.is_a?(String); YAML.load dat
+    #     else config[:default_class].new
+    #   end
+    #   #puts rslt
+    #   rslt
+    # end
   
     def result
       stack[0].object if stack[0].is_a? Cursor

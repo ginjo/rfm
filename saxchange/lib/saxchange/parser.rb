@@ -89,45 +89,17 @@ require 'saxchange/config'
 # require 'saxchange/handler/handlers'
 
 module SaxChange
-  RUBY_VERSION_NUM = RUBY_VERSION[0,3].to_f
-
-  singleton_class.extend Forwardable
-  singleton_class.def_delegators :'SaxChange::Config', :defaults, :'defaults='
-    
-  # These defaults can be set here or in any ancestor/enclosing module or class,
-  # as long as the defaults or their constants can be seen from this POV.
-  #
-  #  Default class MUST be a descendant of Hash or respond to hash methods !!!
-  #   
-  # For backend, use :libxml, :nokogiri, :ox, :rexml, or anything else, if you want it to always default
-  # to something other than the fastest backend found.
-  # Using nil will let the Parser decide.
-  Config.defaults = {
-    :default_class => Hash,
-    :backend => nil,
-    :text_label => 'text',
-    :tag_translation => lambda {|txt| txt.gsub(/\-/, '_').downcase},
-    :shared_variable_name => 'attributes',
-    :templates => nil,
-    :template_prefix => nil,
-    :template => {'compact' => true},
-    :logger => Logger.new($stdout),
-  }
-  
-  
-  def self.log
-    defaults[:logger]
-  end
-
 
   class Parser
+  
+    attr_accessor :templates
   
     extend Forwardable
     prepend Config
     
-    def_delegator :'SaxChange::Handler', :build
-    def_delegator :'SaxChange::Handler', :build, :parse
-    def_delegator :'SaxChange::Handler', :build, :call
+    # def_delegator :'SaxChange::Handler', :build
+    # def_delegator :'SaxChange::Handler', :build, :parse
+    # def_delegator :'SaxChange::Handler', :build, :call
 
     ::Object::ATTACH_OBJECT_DEFAULT_OPTIONS = {
       :shared_variable_name => Config.defaults[:shared_variable_name],
@@ -136,12 +108,121 @@ module SaxChange
       :create_accessors => [] #:all, :private, :shared, :hash
     }
     
-    def initialize(_template=nil, _initial_object=nil, _backend=nil, **options)
-      options[:template] = _template if _template
-      options[:initial_object] = _initial_object if _initial_object
-      options[:backend] = _backend if _backend
+    def initialize(_templates=nil, **options)
       config(**options)
+      config[:templates] = _templates if _templates
+      @templates = config[:templates].dup || Hash.new
     end
+
+
+    # Takes string, symbol, or hash, and returns a (possibly cached) parsing template.
+    # String can be a file name, yaml, xml.
+    # Symbol is a name of a template stored in Parser@templates (you would set the templates when your app or gem loads).
+    # Templates stored in the Parser@templates var can be strings of code, file specs, or hashes.
+    # The Handler@template
+    def get_template(_template, _template_prefix=config[:template_prefix])
+      puts "Parser#get_template with _template: '#{_template}'"
+      puts "Parser @templates: #{@templates}"
+      #   dat = templates[name]
+      #   if dat
+      #     rslt = load_template(dat)
+      #   else
+      #     rslt = load_template(name)
+      #   end
+      #   (templates[name] = rslt) #unless dat == rslt
+      # The above works, but this is cleaner.
+      #config[:templates].tap {|templates| templates[name] = templates[name] && load_template(templates[name]) || load_template(name) }
+      # And this is more readable.
+      return _template if _template.is_a?(Hash)
+      template = @templates[_template] = (
+        @templates[_template] && load_template(@templates[_template], _template_prefix) \
+      ||
+        load_template(_template, _template_prefix)
+      )
+      template
+    end
+  
+    # Does the heavy-lifting of template retrieval.
+    def load_template(dat, _template_prefix=config[:template_prefix])
+      rslt = case
+        when dat.is_a?(Hash); dat
+        when (dat.is_a?(String) && dat[/^\//]); YAML.load_file dat
+        when dat.to_s[/\.y.?ml$/i]; (YAML.load_file(File.join(*[template_prefix, dat].compact)))
+         # This line might cause an infinite loop.
+        when dat.to_s[/\.xml$/i]; self.class.build(File.join(*[template_prefix, dat].compact), nil, {'compact'=>true})
+        when dat.to_s[/^<.*>/i]; "Convert from xml to Hash - under construction"
+        when dat.is_a?(String); YAML.load dat
+        else config[:default_class].new
+      end
+      #puts rslt
+      rslt
+    end
+
+
+    ###  Transplanted class methods from Handler module  ###
+  
+    # Main parsing interface (also aliased at Parser.parse)
+    # options: template:nil, initial_object:nil, parser:nil, ... 
+    #def self.build(io='', _template=nil, _initial_object=nil, _parser_backend=nil, **options)
+    def build_handler(_template=nil, _initial_object=nil, _parser_backend=nil, **options)
+      config_merge_options = config.merge(options)
+      parser_backend = _parser_backend || config_merge_options[:backend]
+      handler_class = get_backend(parser_backend)
+
+      template_prefix = config_merge_options[:template_prefix]
+      template_object = get_template(_template || config_merge_options[:template], template_prefix)
+      initial_object = _initial_object || config_merge_options[:initial_object]      
+      handler = handler_class.new(template_object, initial_object, **options)
+      
+      # I don't think I need this after all!
+      #handler.parser = self
+      
+      (SaxChange.log.info "Using backend parser: '#{handler_class}' with template: '#{template_object}'") if config(**options)[:log_parser]
+      handler
+    end
+    
+
+    #def base.build(io='', _template=nil, _initial_object=nil, **options)
+    def call(io='', _template=nil, _initial_object=nil, _parser_backend=nil, **options)
+    
+      #(SaxChange.log.info "Using backend parser: '#{self}' with template: '#{handler.template}'") if config(**options)[:log_parser]
+    
+      handler = build_handler(_template=nil, _initial_object=nil, _parser_backend=nil, **options)
+      handler.run_parser(io)
+
+      handler
+    end # base.build
+
+    alias_method :parse, :call
+      
+
+  
+    # Takes backend symbol and returns custom Handler class for specified backend.
+    # TODO: Should this be private? Should it accept options?
+    #def self.get_backend(parser_backend = config[:backend])
+    def get_backend(parser_backend = config[:backend])
+      (parser_backend = decide_backend) unless parser_backend
+      #puts "Handler.get_backend parser_backend: #{parser_backend}"
+      if parser_backend.is_a?(String) || parser_backend.is_a?(Symbol)
+        parser_proc = Handler::PARSERS[parser_backend.to_sym][:proc]
+        parser_proc.call unless parser_proc.nil? || Handler.const_defined?((parser_backend.to_s.capitalize + 'Handler').to_sym)
+        Handler.const_get(parser_backend.to_s.capitalize + "Handler")
+      end
+    rescue
+      raise "Could not load the backend parser '#{parser_backend}': #{$!}"
+    end
+  
+    # Finds a loadable backend and returns its symbol.
+    # TODO: Should this be private? Take options?
+    #def self.decide_backend
+    def decide_backend
+      #BACKENDS.find{|b| !Gem::Specification::find_all_by_name(b[1]).empty? || b[0]==:rexml}[0]
+      Handler::PARSERS.find{|k,v| !Gem::Specification::find_all_by_name(v[:file]).empty? || k == :rexml}[0]
+    rescue
+      #puts "Handler.decide_backend raising #{$!}"
+      raise "The xml parser could not find a loadable backend library: #{$!}"
+    end
+
     
   end # Parser
 end # SaxChange
@@ -152,13 +233,6 @@ end # SaxChange
 #####  CORE ADDITIONS  #####
 
 class Object
-
-  # ATTACH_OBJECT_DEFAULT_OPTIONS = {
-  #   :shared_variable_name => SHARED_VARIABLE_NAME,
-  #   :default_class => DEFAULT_CLASS,
-  #   :text_label => TEXT_LABEL,
-  #   :create_accessors => [] #:all, :private, :shared, :hash
-  # }
 
   # Master method to attach any object to this object.
   def _attach_object!(obj, *args) # name/label, collision-delimiter, attachment-prefs, type, *options: <options>
