@@ -108,35 +108,16 @@ module SaxChange
     :text_label => 'text',
     :tag_translation => lambda {|txt| txt.gsub(/\-/, '_').downcase},
     :shared_variable_name => 'attributes',
-    :templates => {},
+    :templates => nil,
     :template_prefix => nil,
-    :logger => Logger.new($stdout)
+    :template => {'compact' => true},
+    :logger => Logger.new($stdout),
   }
   
   
   def self.log
     defaults[:logger]
   end
-  
-  #   # Any other parser-defaults should be merged
-  #   # on top of these true-defaults.
-  #   if defined? PARSER_DEFAULTS
-  #     tmp_defaults = PARSER_DEFAULTS.dup
-  #     PARSER_DEFAULTS.replace(@parser_defaults).merge!(tmp_defaults)
-  #   else
-  #     PARSER_DEFAULTS = @parser_defaults
-  #   end
-  #   
-  #   # Convert defaults to constants, available to all sub classes/modules/instances.
-  #   PARSER_DEFAULTS.each do |k, v|
-  #     k = k.to_s.upcase
-  #     #(const_set k, v) unless eval("defined? #{k}")   #(const_defined?(k) or defined?(k))
-  #     if eval("defined? #{k}")
-  #       (const_set k, eval(k))
-  #     else
-  #       (const_set k, v)
-  #     end
-  #   end
 
 
   class Parser

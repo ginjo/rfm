@@ -17,7 +17,7 @@ module SaxChange
   # is returned to the object that originally called for the parsing run (your script/app/whatever).
   module Handler
   
-    attr_accessor :stack, :template, :initial_object, :stack_debug, :template_prefix
+    attr_accessor :stack, :template, :initial_object, :stack_debug, :template_prefix, :templates
       
     prepend Config
   
@@ -28,8 +28,6 @@ module SaxChange
     # options: template:nil, initial_object:nil, parser:nil, ... 
     def self.build(io='', _template=nil, _initial_object=nil, _parser_backend=nil, **options)
       parser_backend = _parser_backend || config(**options)[:backend]
-      #template = options[:template]
-      #initial_object = options[:initial_object]
       handler_class = get_backend(parser_backend)
       # (SaxChange.log.info "Using backend parser: '#{handler_class}' with template: '#{_template}'") if config(**options)[:log_parser]
       if block_given?
@@ -53,7 +51,7 @@ module SaxChange
         template = _template || config(**options)[:template]
         initial_object = _initial_object || config(**options)[:initial_object]
         handler = new(template, initial_object, **options) #new(options[:template], options[:initial_object])
-        (SaxChange.log.info "Using backend parser: '#{self}' with template: '#{template}'") if config(**options)[:log_parser]
+        (SaxChange.log.info "Using backend parser: '#{self}' with template: '#{handler.template}'") if config(**options)[:log_parser]
         # The block options was experimental but is not currently used for rfm,
         # all the block magic happens in Connection.
         if block_given?
@@ -104,12 +102,14 @@ module SaxChange
   
     def initialize(_template=nil, _initial_object=nil, **options)
       config options
-      #puts "Initializing #{self} with resolved config: #{config}"
-
+      config[:template] ||= _template
+    
       @template_prefix = config[:template_prefix] || ''
-      @template = get_template(_template || config[:template])
+      @templates = config[:templates] || {}
+      @template = get_template config[:template]
       
-      _initial_object = _initial_object || config[:initial_object] || @template['initial_object']
+      #_initial_object = _initial_object || config[:initial_object] || @template['initial_object']
+      config[:initial_object] ||= _initial_object || @template[:initial_object]
       
       @initial_object = case
         when _initial_object.nil?; config[:default_class].new
@@ -126,12 +126,17 @@ module SaxChange
       #puts self.to_yaml
       set_cursor Cursor.new('__TOP__', self).process_new_element
     end
-  
-    # Takes string, symbol, hash, and returns a (possibly cached) parsing template.
+
+    # TODO: All template management should be at the parser instance level, not here in the handler.
+    #
+    # Takes string, symbol, or hash, and returns a (possibly cached) parsing template.
     # String can be a file name, yaml, xml.
     # Symbol is a name of a template stored in Parser@templates (you would set the templates when your app or gem loads).
     # Templates stored in the Parser@templates var can be strings of code, file specs, or hashes.
-    def get_template(name)
+    # The Handler@template
+    def get_template(_template)
+      puts "HANDLER#get_template with _template: '#{_template}'"
+      puts "HANDLER @templates: #{@templates}"
       #   dat = templates[name]
       #   if dat
       #     rslt = load_template(dat)
@@ -140,25 +145,29 @@ module SaxChange
       #   end
       #   (templates[name] = rslt) #unless dat == rslt
       # The above works, but this is cleaner.
-      config[:templates].tap {|templates| templates[name] = templates[name] && load_template(templates[name]) || load_template(name) }
-      template = config[:templates][name]
-      #puts "TEMPLATE"
-      #y template
+      #config[:templates].tap {|templates| templates[name] = templates[name] && load_template(templates[name]) || load_template(name) }
+      # And this is more readable.
+      return _template if _template.is_a?(Hash)
+      template = @templates[_template] = (
+        @templates[_template] && load_template(@templates[_template]) \
+      ||
+        load_template(_template)
+      )
       template
     end
   
     # Does the heavy-lifting of template retrieval.
     def load_template(dat)
       rslt = case
-             when dat.is_a?(Hash); dat
-             when (dat.is_a?(String) && dat[/^\//]); YAML.load_file dat
-             when dat.to_s[/\.y.?ml$/i]; (YAML.load_file(File.join(*[template_prefix, dat].compact)))
-               # This line might cause an infinite loop.
-             when dat.to_s[/\.xml$/i]; self.class.build(File.join(*[template_prefix, dat].compact), nil, {'compact'=>true})
-             when dat.to_s[/^<.*>/i]; "Convert from xml to Hash - under construction"
-             when dat.is_a?(String); YAML.load dat
-             else config[:default_class].new
-             end
+        when dat.is_a?(Hash); dat
+        when (dat.is_a?(String) && dat[/^\//]); YAML.load_file dat
+        when dat.to_s[/\.y.?ml$/i]; (YAML.load_file(File.join(*[template_prefix, dat].compact)))
+         # This line might cause an infinite loop.
+        when dat.to_s[/\.xml$/i]; self.class.build(File.join(*[template_prefix, dat].compact), nil, {'compact'=>true})
+        when dat.to_s[/^<.*>/i]; "Convert from xml to Hash - under construction"
+        when dat.is_a?(String); YAML.load dat
+        else config[:default_class].new
+      end
       #puts rslt
       rslt
     end

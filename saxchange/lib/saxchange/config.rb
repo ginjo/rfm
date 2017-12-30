@@ -5,6 +5,9 @@ module SaxChange
     
     ###  CLASS LEVEL  ###
     
+    # Using Config or config at the class level is non-destructive.
+    # It will always go back to the base config at Config#@defaults
+    
     # Top-level config goes in Config.@defaults
     singleton_class.send :attr_accessor, :defaults
     @defaults = {}
@@ -22,6 +25,10 @@ module SaxChange
     
     
     ###  INSTANCE LEVEL  ###
+    
+    # Using Config or config at the instance level will change data
+    # for the local instance, if you pass it options.
+    # If you don't pass anything, it will only read data.
     
     extend Forwardable
     

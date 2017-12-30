@@ -37,6 +37,7 @@ module Rfm
         :raise_invalid_option => false
       } .merge!(opts)
       
+      # Set the default response formatter.
       @defaults[:formatter] ||= (
         parser_instance = SaxChange::Parser.new(**opts)
         # To get the full Handler object:
@@ -117,9 +118,9 @@ module Rfm
       options[:layout] = _layout || options[:layout] || layout
       find_criteria = {'-recid'=>find_criteria} if (find_criteria.to_s.to_i > 0)
       # Original (and better!) code for making this 'find' command compound-capable:
-      #get_records(*Rfm::CompoundQuery.new(find_criteria, options))
+      get_records(*Rfm::CompoundQuery.new(find_criteria, options))
       # But then inserted this to stub 'find' to get it working for rfm v4 dev changes.
-      get_records('-find', find_criteria, options)
+      #get_records('-find', find_criteria, options)
     end
 
     # Access to raw -findquery command.
@@ -212,11 +213,12 @@ module Rfm
     ###  END COMMANDS  ###
 
 
-    def get_records(action, params = {}, options = {})
-      options[:template] ||= state[:template] || select_grammar('', options).to_s.downcase.to_sym
-      #puts "Connection#get_records action: #{action}, params: #{params}, options: #{options}"
+    def get_records(action, params = {}, _options = {})
+      #options[:template] ||= state[:template] # Dont decide template here!  #|| select_grammar('', options).to_s.downcase.to_sym
+      options = state(**_options)
+      puts "Connection#get_records action: #{action}, params: #{params}, options: #{options}"
 
-      formatter = state(options)[:formatter]
+      #formatter = state(options)[:formatter]
       params, options = prepare_params(params, options)
       
       # Note the capture_resultset_meta call from rfm v3.
@@ -229,18 +231,19 @@ module Rfm
       # If you call connection_thread.value, you will get the finished connection response object,
       # but it will wait until thread is done, so it defeats the purpose of streaming to the io object.
       
-      _options = state(options)
+      #_options = state(options)
+      formatter = options[:formatter]
       
       if block_given?
-        connect(action, params, _options) do |io, connection_thread|
-          yield(io, _options.merge({connection_thread:connection_thread}))
+        connect(action, params, options) do |io, connection_thread|
+          yield(io, options.merge({connection_thread:connection_thread}))
         end
       elsif formatter
-        connect(action, params, _options) do |io, connection_thread|
-          formatter.call(io, _options.merge({connection_thread:connection_thread}))
+        connect(action, params, options) do |io, connection_thread|
+          formatter.call(io, options.merge({connection_thread:connection_thread}))
         end
       else
-        connect(action, params, _options)
+        connect(action, params, options)
       end
       
       # As a side note, here's a way to pretty-print raw xml in ruby:

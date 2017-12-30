@@ -72,24 +72,24 @@ module SaxChange
     #RUBY_VERSION_NUM
     #TEST_LABEL
     
-    Parser
-    Cursor
-  
-    class LibxmlHandler
-      include Handler
-    end
-    
-    class NokogiriHandler
-      include Handler
-    end
-    
-    class OxHandler
-      include Handler
-    end
-    
-    class RexmlHandler
-      include Handler
-    end
+    # Parser
+    # Cursor
+    # 
+    # class LibxmlHandler
+    #   include Handler
+    # end
+    # 
+    # class NokogiriHandler
+    #   include Handler
+    # end
+    # 
+    # class OxHandler
+    #   include Handler
+    # end
+    # 
+    # class RexmlHandler
+    #   include Handler
+    # end
   end
   
 end
