@@ -108,6 +108,8 @@ module SaxChange
       :create_accessors => [] #:all, :private, :shared, :hash
     }
     
+    puts "Parser loaded Object::ATTACH_OBJECT_DEFAULT_OPTIONS: '#{::Object::ATTACH_OBJECT_DEFAULT_OPTIONS}'"
+    
     def initialize(_templates=nil, **options)
       config(**options)
       config[:templates] = _templates if _templates
@@ -134,14 +136,16 @@ module SaxChange
       #config[:templates].tap {|templates| templates[name] = templates[name] && load_template(templates[name]) || load_template(name) }
       # And this is more readable.
       return _template if _template.is_a?(Hash)
-      template = @templates[_template] = (
+      template_object = (
         @templates[_template] && load_template(@templates[_template], _template_prefix) \
       ||
         load_template(_template, _template_prefix)
       )
       
-      puts "Parser#get_template template: '#{@template}'"
-      template
+      @templates[_template] = template_object
+      
+      puts "Parser#get_template template_object: '#{template_object}'"
+      template_object
     end
   
     # Does the heavy-lifting of template retrieval.
@@ -149,9 +153,9 @@ module SaxChange
       rslt = case
         when dat.is_a?(Hash); dat
         when (dat.is_a?(String) && dat[/^\//]); YAML.load_file dat
-        when dat.to_s[/\.y.?ml$/i]; (YAML.load_file(File.join(*[template_prefix, dat].compact)))
+        when dat.to_s[/\.y.?ml$/i]; (YAML.load_file(File.join(*[_template_prefix, dat].compact)))
          # This line might cause an infinite loop.
-        when dat.to_s[/\.xml$/i]; self.class.build(File.join(*[template_prefix, dat].compact), nil, {'compact'=>true})
+        when dat.to_s[/\.xml$/i]; self.class.build(File.join(*[_template_prefix, dat].compact), nil, {'compact'=>true})
         when dat.to_s[/^<.*>/i]; "Convert from xml to Hash - under construction"
         when dat.is_a?(String); YAML.load dat
         else config[:default_class].new

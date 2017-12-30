@@ -34,7 +34,7 @@ module Rfm
         #:template => nil,
         # Custom templates are the concern of the posessor
         # of the Parser instance. For rfm, it's here, the Connection instance.
-        :template => {'compact' => true},
+        #:template => {'compact' => true},
         :grammar => 'fmresultset',
         :formatter => nil,
         :raise_invalid_option => true
@@ -226,7 +226,6 @@ module Rfm
       options = state(**_options)
       puts "Connection#get_records action: #{action}, params: #{params}, options: #{options}"
 
-      #formatter = state(options)[:formatter]
       params, options = prepare_params(params, options)
       
       # Note the capture_resultset_meta call from rfm v3.
@@ -239,7 +238,6 @@ module Rfm
       # If you call connection_thread.value, you will get the finished connection response object,
       # but it will wait until thread is done, so it defeats the purpose of streaming to the io object.
       
-      #_options = state(options)
       formatter = options[:formatter]
       
       if block_given?
@@ -392,8 +390,8 @@ module Rfm
     # This method does not fill in missing FMS api params or options,
     # but it may fill in Rfm params and options.
     def prepare_params(keyvalues={}, options={})
-      _database = options.delete(:database)
-      _layout   = options.delete(:layout)
+      _database = options[:database] #options.delete(:database)
+      _layout   = options[:layout]   #options.delete(:layout)
       if keyvalues.is_a?(String)
         keyvalues = Hash[URI.decode_www_form(keyvalues)]
       end
@@ -405,6 +403,8 @@ module Rfm
       apply_field_mapping!(keyvalues, mapping.invert) if mapping.is_a?(Hash)
       
       options[:grammar] ||= grammar
+      options[:template] ||= options[:grammar].to_s.downcase.to_sym
+      
       [keyvalues, options]
     end
     

@@ -15,6 +15,7 @@ module SaxChange
   # a new instance of the spcified parer's handler class and runs the handler's main parsing method.
   # At the end of the parsing run the handler instance, along with it's newly parsed object,
   # is returned to the object that originally called for the parsing run (your script/app/whatever).
+  # Remember: The template hash keys must be Strings, not Symbols.
   module Handler
   
     attr_accessor :stack, :template, :initial_object, :stack_debug, :parser
@@ -35,8 +36,9 @@ module SaxChange
       
       #_initial_object = _initial_object || config[:initial_object] || @template['initial_object']
       #config[:initial_object] ||= _initial_object || @template[:initial_object]
-      _initial_object ||= config[:initial_object] || @template[:initial_object]
+      _initial_object ||= config[:initial_object] || (@template && @template['initial_object'])
       
+      puts "#{self} _initial_object: '#{_initial_object}'"
       @initial_object = case
         when _initial_object.nil?; config[:default_class].new
         when _initial_object.is_a?(Class); _initial_object.new

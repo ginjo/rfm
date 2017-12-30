@@ -1,15 +1,8 @@
 module SaxChange
   PATH = File.expand_path(File.dirname(__FILE__))
   $LOAD_PATH.unshift(PATH) unless $LOAD_PATH.include?(PATH)
-end
 
-require 'saxchange/config'
-require 'saxchange/parser'
-require 'saxchange/cursor'
-require 'saxchange/handler'
-require 'saxchange/handler/handlers'
-
-module SaxChange
+  require 'saxchange/config'
 
   RUBY_VERSION_NUM = RUBY_VERSION[0,3].to_f
 
@@ -44,6 +37,11 @@ module SaxChange
   end
 
 end # SaxChange
+
+require 'saxchange/parser'
+require 'saxchange/cursor'
+require 'saxchange/handler'
+require 'saxchange/handler/handlers'
 
 
 
