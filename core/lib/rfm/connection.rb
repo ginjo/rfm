@@ -9,7 +9,7 @@ module Rfm
     #include Config
     using Refinements
     
-    attr_accessor :defaults
+    attr_accessor :defaults, :parser_instance
 
     def initialize(host='localhost', **opts)     #(action, params, request_options={},  *args)
       #config(**opts)
@@ -25,27 +25,35 @@ module Rfm
         :account_name => '',
         :password => '',
         :log_actions => false,
-        :log_responses => false,
-        :log_parser => false,
+        #:log_responses => false,
+        #:log_parser => false,
         :warn_on_redirect => true,
         :raise_on_401 => false,
         :timeout => 60,
-        :ignore_bad_data => false,
-        :template => nil,
+        #:ignore_bad_data => false,
+        #:template => nil,
+        # Custom templates are the concern of the posessor
+        # of the Parser instance. For rfm, it's here, the Connection instance.
+        :template => {'compact' => true},
         :grammar => 'fmresultset',
         :formatter => nil,
-        :raise_invalid_option => false
+        :raise_invalid_option => true
       } .merge!(opts)
+      
+      # TODO: Filter out irrelevant keys from the merged defaults & opts when passing to Parser.new.
+      @parser_instance = SaxChange::Parser.new(@defaults)
       
       # Set the default response formatter.
       @defaults[:formatter] ||= (
-        parser_instance = SaxChange::Parser.new(**opts)
+        #parser_instance = SaxChange::Parser.new(**opts)
         # To get the full Handler object:
         # formatter_proc = proc {|*args| parser_instance.build(*args) }
         # Example formatter that would return pretty-formatted XML string:
         # proc {|io, opts| out=''; REXML::Document.new(io.read).write(out, 2); out}
-        proc {|*args| parser_instance.call(*args).result }
+        proc {|*args| @parser_instance.call(*args).result }
       )
+      
+      puts "Connection#initialize @parser_instance: #{@parser_instance}"
     end
     
     def log

@@ -111,7 +111,7 @@ module SaxChange
     def initialize(_templates=nil, **options)
       config(**options)
       config[:templates] = _templates if _templates
-      @templates = config[:templates].dup || Hash.new
+      @templates = config[:templates] || Hash.new
     end
 
 
@@ -121,8 +121,8 @@ module SaxChange
     # Templates stored in the Parser@templates var can be strings of code, file specs, or hashes.
     # The Handler@template
     def get_template(_template, _template_prefix=config[:template_prefix])
-      puts "Parser#get_template with _template: '#{_template}'"
-      puts "Parser @templates: #{@templates}"
+      puts "Parser#get_template with _template: '#{_template}', and template_prefix: '#{_template_prefix}'"
+      puts "Parser#get_template @templates: #{@templates}"
       #   dat = templates[name]
       #   if dat
       #     rslt = load_template(dat)
@@ -139,6 +139,8 @@ module SaxChange
       ||
         load_template(_template, _template_prefix)
       )
+      
+      puts "Parser#get_template template: '#{@template}'"
       template
     end
   
@@ -177,17 +179,17 @@ module SaxChange
       # I don't think I need this after all!
       #handler.parser = self
       
-      (SaxChange.log.info "Using backend parser: '#{handler_class}' with template: '#{template_object}'") if config(**options)[:log_parser]
+      (SaxChange.log.info "Using backend parser: '#{handler_class}' with template: '#{template_object}'") if config_merge_options[:log_parser]
       handler
     end
     
 
     #def base.build(io='', _template=nil, _initial_object=nil, **options)
     def call(io='', _template=nil, _initial_object=nil, _parser_backend=nil, **options)
-    
-      #(SaxChange.log.info "Using backend parser: '#{self}' with template: '#{handler.template}'") if config(**options)[:log_parser]
-    
       handler = build_handler(_template=nil, _initial_object=nil, _parser_backend=nil, **options)
+      
+      (SaxChange.log.info "Parser#call using handler: '#{handler.to_yaml}'") if config.merge(options)[:log_parser]
+      
       handler.run_parser(io)
 
       handler
