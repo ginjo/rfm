@@ -38,7 +38,7 @@ module SaxChange
       #config[:initial_object] ||= _initial_object || @template[:initial_object]
       _initial_object ||= config[:initial_object] || (@template && @template['initial_object'])
       
-      puts "#{self} _initial_object: '#{_initial_object}'"
+      #puts "#{self} _initial_object: '#{_initial_object}'"
       @initial_object = case
         when _initial_object.nil?; config[:default_class].new
         when _initial_object.is_a?(Class); _initial_object.new
@@ -54,51 +54,12 @@ module SaxChange
       #puts self.to_yaml
       set_cursor Cursor.new('__TOP__', self).process_new_element
     end
+    
+    def run_parser(io)
+      (SaxChange.log.info "SaxChange handler using backend parser: '#{self.class}' with template: '#{template}'") if config[:log_parser]
+      super
+    end
 
-    # # TODO: All template management should be at the parser instance level, not here in the handler.
-    # #
-    # # Takes string, symbol, or hash, and returns a (possibly cached) parsing template.
-    # # String can be a file name, yaml, xml.
-    # # Symbol is a name of a template stored in Parser@templates (you would set the templates when your app or gem loads).
-    # # Templates stored in the Parser@templates var can be strings of code, file specs, or hashes.
-    # # The Handler@template
-    # def get_template(_template)
-    #   puts "HANDLER#get_template with _template: '#{_template}'"
-    #   puts "HANDLER @templates: #{@templates}"
-    #   #   dat = templates[name]
-    #   #   if dat
-    #   #     rslt = load_template(dat)
-    #   #   else
-    #   #     rslt = load_template(name)
-    #   #   end
-    #   #   (templates[name] = rslt) #unless dat == rslt
-    #   # The above works, but this is cleaner.
-    #   #config[:templates].tap {|templates| templates[name] = templates[name] && load_template(templates[name]) || load_template(name) }
-    #   # And this is more readable.
-    #   return _template if _template.is_a?(Hash)
-    #   template = @templates[_template] = (
-    #     @templates[_template] && load_template(@templates[_template]) \
-    #   ||
-    #     load_template(_template)
-    #   )
-    #   template
-    # end
-    # 
-    # # Does the heavy-lifting of template retrieval.
-    # def load_template(dat)
-    #   rslt = case
-    #     when dat.is_a?(Hash); dat
-    #     when (dat.is_a?(String) && dat[/^\//]); YAML.load_file dat
-    #     when dat.to_s[/\.y.?ml$/i]; (YAML.load_file(File.join(*[template_prefix, dat].compact)))
-    #      # This line might cause an infinite loop.
-    #     when dat.to_s[/\.xml$/i]; self.class.build(File.join(*[template_prefix, dat].compact), nil, {'compact'=>true})
-    #     when dat.to_s[/^<.*>/i]; "Convert from xml to Hash - under construction"
-    #     when dat.is_a?(String); YAML.load dat
-    #     else config[:default_class].new
-    #   end
-    #   #puts rslt
-    #   rslt
-    # end
   
     def result
       stack[0].object if stack[0].is_a? Cursor

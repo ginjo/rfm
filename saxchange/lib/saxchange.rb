@@ -25,10 +25,6 @@ module SaxChange
     :shared_variable_name => 'attributes',
     :templates => nil,
     :template_prefix => nil,
-    # The default should ben nil or {}, but which one? See the get_template and load_template methods.
-    #:template => {}
-    # This custom template was moved to Rfm::Connection.
-    #:template => {'compact' => true},
     :logger => Logger.new($stdout),
   }
   

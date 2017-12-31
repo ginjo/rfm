@@ -1,15 +1,15 @@
-require 'net/https'
+ require 'net/https'
 require 'cgi'
 #require 'rfm/config'
 #require 'logger'
-require 'saxchange'
+#require 'saxchange'
 
 module Rfm
   class Connection
     #include Config
     using Refinements
     
-    attr_accessor :defaults, :parser_instance
+    attr_accessor :defaults
 
     def initialize(host='localhost', **opts)     #(action, params, request_options={},  *args)
       #config(**opts)
@@ -25,35 +25,16 @@ module Rfm
         :account_name => '',
         :password => '',
         :log_actions => false,
-        #:log_responses => false,
-        #:log_parser => false,
         :warn_on_redirect => true,
         :raise_on_401 => false,
         :timeout => 60,
         #:ignore_bad_data => false,
         #:template => nil,
-        # Custom templates are the concern of the posessor
-        # of the Parser instance. For rfm, it's here, the Connection instance.
-        #:template => {'compact' => true},
         :grammar => 'fmresultset',
-        :formatter => nil,
+        :parse_response => false,
         :raise_invalid_option => true
       } .merge!(opts)
-      
-      # TODO: Filter out irrelevant keys from the merged defaults & opts when passing to Parser.new.
-      @parser_instance = SaxChange::Parser.new(@defaults)
-      
-      # Set the default response formatter.
-      @defaults[:formatter] ||= (
-        #parser_instance = SaxChange::Parser.new(**opts)
-        # To get the full Handler object:
-        # formatter_proc = proc {|*args| parser_instance.build(*args) }
-        # Example formatter that would return pretty-formatted XML string:
-        # proc {|io, opts| out=''; REXML::Document.new(io.read).write(out, 2); out}
-        proc {|*args| @parser_instance.call(*args).result }
-      )
-      
-      puts "Connection#initialize @parser_instance: #{@parser_instance}"
+
     end
     
     def log
@@ -95,6 +76,18 @@ module Rfm
     # Field mapping is really a layout concern. Where should it go?
     def field_mapping
       @field_mapping ||= load_field_mapping(state[:field_mapping])
+    end
+    
+    def formatter(**_options)
+      options = state.merge(_options)
+      case
+        when options[:formatter]; options[:formatter]
+        when options[:parse_response];
+          # Note that this formatter is built on every call to the db.
+          # The better way to do it is set the parser/formatter when Connection is instanciated.
+          require 'saxchange'
+          -> *args {SaxChange::Parser.new(**options).call(*args).result}
+      end
     end
 
 
@@ -238,15 +231,15 @@ module Rfm
       # If you call connection_thread.value, you will get the finished connection response object,
       # but it will wait until thread is done, so it defeats the purpose of streaming to the io object.
       
-      formatter = options[:formatter]
+      _formatter = formatter(options)
       
       if block_given?
         connect(action, params, options) do |io, connection_thread|
           yield(io, options.merge({connection_thread:connection_thread}))
         end
-      elsif formatter
+      elsif _formatter
         connect(action, params, options) do |io, connection_thread|
-          formatter.call(io, options.merge({connection_thread:connection_thread}))
+          _formatter.call(io, options.merge({connection_thread:connection_thread}))
         end
       else
         connect(action, params, options)
@@ -259,10 +252,10 @@ module Rfm
 
     # TODO: Stop deleting options, just let them fall out of the way by expand_options method.
     def connect(action, params={}, request_options={})
-      grammar_option = request_options.delete(:grammar)
+      grammar_option = request_options[:grammar]   #request_options.delete(:grammar)
       post = params.merge(expand_options(state(request_options))).merge({action => ''})
       grammar = select_grammar(post, :grammar=>grammar_option)
-      host = request_options.delete(:host) || host_name
+      host = request_options[:host] || host_name   #request_options.delete(:host) || host_name
       
       # The block will be yielded with an io_reader and a connection object,
       # after the http connection has begun in its own thread.
@@ -388,7 +381,7 @@ module Rfm
     
     # Clean up passed params & options.
     # This method does not fill in missing FMS api params or options,
-    # but it may fill in Rfm params and options.
+    # but it may fill in Rfm params and options... Hmmm, it really should not.
     def prepare_params(keyvalues={}, options={})
       _database = options[:database] #options.delete(:database)
       _layout   = options[:layout]   #options.delete(:layout)
@@ -402,8 +395,8 @@ module Rfm
       mapping = options.extract(:field_mapping) || field_mapping
       apply_field_mapping!(keyvalues, mapping.invert) if mapping.is_a?(Hash)
       
-      options[:grammar] ||= grammar
-      options[:template] ||= options[:grammar].to_s.downcase.to_sym
+#       options[:grammar] ||= grammar
+#       options[:template] ||= options[:grammar].to_s.downcase.to_sym
       
       [keyvalues, options]
     end

@@ -9,6 +9,9 @@ require 'rfm/case_insensitive_hash'
 require 'rfm-core'
 require 'saxchange/config'
 
+# this is the code needed to get template from grammar:
+#   options[:grammar].to_s.downcase.to_sym
+
 
 # class Rfm::SaxParser
 # 
@@ -37,12 +40,13 @@ SaxChange::Config.defaults.merge!( {
   :default_class => Rfm::CaseInsensitiveHash,
   #:initial_object => proc { Rfm::Resultset.new(Rfm::Layout.new('test'), Rfm::Layout.new('test')) },
   :template_prefix => File.join(File.dirname(__FILE__), 'sax/'),
-  :templates => {
-    :fmpxmllayout => 'fmpxmllayout.yml',
-    :fmresultset => 'fmresultset.yml',
-    #:fmpxmlresult => 'fmpxmlresult.yml',
-    :none => nil
-  }
+  :template => ->(options, env_binding){ options[:grammar].to_s.downcase + '.yml' },
+  # :templates => {
+  #   :fmpxmllayout => 'fmpxmllayout.yml',
+  #   :fmresultset => 'fmresultset.yml',
+  #   #:fmpxmlresult => 'fmpxmlresult.yml',
+  #   :none => nil
+  # }
 } )
 
 

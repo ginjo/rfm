@@ -107,101 +107,41 @@ module SaxChange
       :text_label => Config.defaults[:text_label],
       :create_accessors => [] #:all, :private, :shared, :hash
     }
-    
-    puts "Parser loaded Object::ATTACH_OBJECT_DEFAULT_OPTIONS: '#{::Object::ATTACH_OBJECT_DEFAULT_OPTIONS}'"
-    
+        
     def initialize(_templates=nil, **options)
       config(**options)
       config[:templates] = _templates if _templates
-      @templates = config[:templates] || Hash.new
+      @templates = config[:templates].dup || Hash.new
     end
 
-
-    # Takes string, symbol, or hash, and returns a (possibly cached) parsing template.
-    # String can be a file name, yaml, xml.
-    # Symbol is a name of a template stored in Parser@templates (you would set the templates when your app or gem loads).
-    # Templates stored in the Parser@templates var can be strings of code, file specs, or hashes.
-    # The Handler@template
-    def get_template(_template, _template_prefix=config[:template_prefix])
-      puts "Parser#get_template with _template: '#{_template}', and template_prefix: '#{_template_prefix}'"
-      puts "Parser#get_template @templates: #{@templates}"
-      #   dat = templates[name]
-      #   if dat
-      #     rslt = load_template(dat)
-      #   else
-      #     rslt = load_template(name)
-      #   end
-      #   (templates[name] = rslt) #unless dat == rslt
-      # The above works, but this is cleaner.
-      #config[:templates].tap {|templates| templates[name] = templates[name] && load_template(templates[name]) || load_template(name) }
-      # And this is more readable.
-      return _template if _template.is_a?(Hash)
-      template_object = (
-        @templates[_template] && load_template(@templates[_template], _template_prefix) \
-      ||
-        load_template(_template, _template_prefix)
-      )
-      
-      @templates[_template] = template_object
-      
-      puts "Parser#get_template template_object: '#{template_object}'"
-      template_object
-    end
-  
-    # Does the heavy-lifting of template retrieval.
-    def load_template(dat, _template_prefix=config[:template_prefix])
-      rslt = case
-        when dat.is_a?(Hash); dat
-        when (dat.is_a?(String) && dat[/^\//]); YAML.load_file dat
-        when dat.to_s[/\.y.?ml$/i]; (YAML.load_file(File.join(*[_template_prefix, dat].compact)))
-         # This line might cause an infinite loop.
-        when dat.to_s[/\.xml$/i]; self.class.build(File.join(*[_template_prefix, dat].compact), nil, {'compact'=>true})
-        when dat.to_s[/^<.*>/i]; "Convert from xml to Hash - under construction"
-        when dat.is_a?(String); YAML.load dat
-        else config[:default_class].new
-      end
-      #puts rslt
-      rslt
-    end
-
-
-    ###  Transplanted class methods from Handler module  ###
-  
-    # Main parsing interface (also aliased at Parser.parse)
-    # options: template:nil, initial_object:nil, parser:nil, ... 
-    #def self.build(io='', _template=nil, _initial_object=nil, _parser_backend=nil, **options)
     def build_handler(_template=nil, _initial_object=nil, _parser_backend=nil, **options)
       config_merge_options = config.merge(options)
+      (SaxChange.log.info "SaxChange::Parser#build_handler config_merge_options:") if config_merge_options[:log_parser]
+      (SaxChange.log.info config_merge_options.to_yaml) if config_merge_options[:log_parser]
       parser_backend = _parser_backend || config_merge_options[:backend]
       handler_class = get_backend(parser_backend)
 
-      template_prefix = config_merge_options[:template_prefix]
-      template_object = get_template(_template || config_merge_options[:template], template_prefix)
+      #template_prefix = config_merge_options[:template_prefix]
+      _template = _template || config_merge_options[:template]  #|| config_merge_options[:grammar].to_s.downcase.to_sym # This doesn't belong here.
+      template_object = get_template(_template, **config_merge_options)
       initial_object = _initial_object || config_merge_options[:initial_object]      
       handler = handler_class.new(template_object, initial_object, **options)
       
       # I don't think I need this after all!
       #handler.parser = self
       
-      (SaxChange.log.info "Using backend parser: '#{handler_class}' with template: '#{template_object}'") if config_merge_options[:log_parser]
       handler
     end
     
-
-    #def base.build(io='', _template=nil, _initial_object=nil, **options)
     def call(io='', _template=nil, _initial_object=nil, _parser_backend=nil, **options)
       handler = build_handler(_template=nil, _initial_object=nil, _parser_backend=nil, **options)
-      
-      (SaxChange.log.info "Parser#call using handler: '#{handler.to_yaml}'") if config.merge(options)[:log_parser]
-      
+            
       handler.run_parser(io)
 
       handler
     end # base.build
 
     alias_method :parse, :call
-      
-
   
     # Takes backend symbol and returns custom Handler class for specified backend.
     # TODO: Should this be private? Should it accept options?
@@ -228,8 +168,35 @@ module SaxChange
       #puts "Handler.decide_backend raising #{$!}"
       raise "The xml parser could not find a loadable backend library: #{$!}"
     end
-
     
+
+    # Takes string, symbol, or hash, and returns a (possibly cached) parsing template.
+    def get_template(_template, _template_prefix=nil, **options)  #_template_prefix=config[:template_prefix])
+      _template_prefix = _template_prefix || options[:template_prefix] || config[:template_prefix]
+      return _template if !['String', 'Symbol', 'Proc'].include?(_template.class.name)
+      
+      template_string = case
+        when _template.is_a?(Proc); _template.call(options, binding)
+        when _template.to_s[/\.[yx].?ml$/i]; _template.to_s
+        when _template.is_a?(Symbol); _template.to_s + '.yml'
+        else raise "Template '#{_template}' cannot be found."
+      end
+      
+      load_template(template_string, _template_prefix)  #, **options)
+    end
+
+    # Does the heavy-lifting of template retrieval.
+    def load_template(name, _template_prefix=nil)  #, **options)
+      puts "LOAD_TEMPLATE name: '#{name}', prefix: '#{_template_prefix}'"
+      #_template_prefix = _template_prefix || options[:template_prefix] || config[:template_prefix]
+      @templates[name] ||= case
+        when name.to_s[/\.y.?ml$/i]; (YAML.load_file(File.join(*[_template_prefix, name].compact)))
+         # This line might cause an infinite loop.
+        when name.to_s[/\.xml$/i]; self.class.build(File.join(*[_template_prefix, name].compact), nil, {'compact'=>true})
+        else config[:default_class].new
+      end
+    end
+
   end # Parser
 end # SaxChange
 
