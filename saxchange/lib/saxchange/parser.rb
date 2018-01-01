@@ -116,8 +116,8 @@ module SaxChange
 
     def build_handler(_template=nil, _initial_object=nil, _parser_backend=nil, **options)
       config_merge_options = config.merge(options)
-      (SaxChange.log.info "SaxChange::Parser#build_handler config_merge_options:") if config_merge_options[:log_parser]
-      (SaxChange.log.info config_merge_options.to_yaml) if config_merge_options[:log_parser]
+      #(SaxChange.log.info "SaxChange::Parser#build_handler config_merge_options:") if config_merge_options[:log_parser]
+      #(SaxChange.log.info config_merge_options.to_yaml) if config_merge_options[:log_parser]
       parser_backend = _parser_backend || config_merge_options[:backend]
       handler_class = get_backend(parser_backend)
 
@@ -187,7 +187,7 @@ module SaxChange
 
     # Does the heavy-lifting of template retrieval.
     def load_template(name, _template_prefix=nil)  #, **options)
-      puts "LOAD_TEMPLATE name: '#{name}', prefix: '#{_template_prefix}'"
+      #puts "LOAD_TEMPLATE name: '#{name}', prefix: '#{_template_prefix}'"
       #_template_prefix = _template_prefix || options[:template_prefix] || config[:template_prefix]
       @templates[name] ||= case
         when name.to_s[/\.y.?ml$/i]; (YAML.load_file(File.join(*[_template_prefix, name].compact)))
@@ -195,6 +195,9 @@ module SaxChange
         when name.to_s[/\.xml$/i]; self.class.build(File.join(*[_template_prefix, name].compact), nil, {'compact'=>true})
         else config[:default_class].new
       end
+    rescue #:error
+      SaxChange.log.warn "SaxChange::Parser#load_template raised exception: #{$!}"
+      {}
     end
 
   end # Parser

@@ -7,7 +7,8 @@ require 'rfm/case_insensitive_hash'
 # TODO: Consider removing the rfm-xxx.rb files and just requiring rfm/xxx.
 #       But how would the sub-gem's lib dir be added to PATH then?
 require 'rfm-core'
-require 'saxchange/config'
+#require 'saxchange/config'
+require 'saxchange'
 
 # this is the code needed to get template from grammar:
 #   options[:grammar].to_s.downcase.to_sym

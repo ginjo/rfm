@@ -1,7 +1,7 @@
 # require all core files here.
 
 require 'logger'
-require 'saxchange'
+#require 'saxchange'
 
 # TODO: This should maybe to somewhere else
 module Rfm

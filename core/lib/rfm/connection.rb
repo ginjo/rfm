@@ -30,10 +30,16 @@ module Rfm
         :timeout => 60,
         #:ignore_bad_data => false,
         #:template => nil,
-        :grammar => 'fmresultset',
-        :parse_response => false,
+        #:grammar => 'fmresultset',
         :raise_invalid_option => true
       } .merge!(opts)
+      
+      # Set default parser
+      
+      if Kernel.const_defined?(:SaxChange)
+        # Do we really want to pass connection options to parser?
+        @defaults[:parser] = SaxChange::Parser.new(**@defaults)   #.merge({template:{'compact'=>true}})
+      end
 
     end
     
@@ -82,11 +88,10 @@ module Rfm
       options = state.merge(_options)
       case
         when options[:formatter]; options[:formatter]
-        when options[:parse_response];
+        when options[:parser];
           # Note that this formatter is built on every call to the db.
           # The better way to do it is set the parser/formatter when Connection is instanciated.
-          require 'saxchange'
-          -> *args {SaxChange::Parser.new(**options).call(*args).result}
+          -> *args {options[:parser].call(*args).result}
       end
     end
 
@@ -218,7 +223,8 @@ module Rfm
       #options[:template] ||= state[:template] # Dont decide template here!  #|| select_grammar('', options).to_s.downcase.to_sym
       options = state(**_options)
       puts "Connection#get_records action: #{action}, params: #{params}, options: #{options}"
-
+      
+      options[:grammar] ||= 'fmresultset'  #select_grammar(post, request_options)
       params, options = prepare_params(params, options)
       
       # Note the capture_resultset_meta call from rfm v3.
@@ -252,9 +258,9 @@ module Rfm
 
     # TODO: Stop deleting options, just let them fall out of the way by expand_options method.
     def connect(action, params={}, request_options={})
-      grammar_option = request_options[:grammar]   #request_options.delete(:grammar)
+      #grammar_option = request_options[:grammar]   #request_options.delete(:grammar)
       post = params.merge(expand_options(state(request_options))).merge({action => ''})
-      grammar = select_grammar(post, :grammar=>grammar_option)
+      grammar = select_grammar(post, request_options)
       host = request_options[:host] || host_name   #request_options.delete(:host) || host_name
       
       # The block will be yielded with an io_reader and a connection object,
@@ -395,9 +401,6 @@ module Rfm
       mapping = options.extract(:field_mapping) || field_mapping
       apply_field_mapping!(keyvalues, mapping.invert) if mapping.is_a?(Hash)
       
-#       options[:grammar] ||= grammar
-#       options[:template] ||= options[:grammar].to_s.downcase.to_sym
-      
       [keyvalues, options]
     end
     
@@ -419,7 +422,7 @@ module Rfm
     def select_grammar(post, options={})
       grammar = state(options)[:grammar] || 'fmresultset'
       if grammar.to_s.downcase == 'auto'
-        # TODO: Build grammar parser in new sax engine templates to handle FMPXMLRESULT.
+        # TODO: build grammar-decider here.
         return "fmresultset"
         # post.keys.find(){|k| %w(-find -findall -dbnames -layoutnames -scriptnames).include? k.to_s} ? "FMPXMLRESULT" : "fmresultset"   
       else
