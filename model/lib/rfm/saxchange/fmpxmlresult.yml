@@ -1,0 +1,18 @@
+# Another (better?) minimal FMPXMLRESULT parser.
+---
+elements:
+- name: fmpxmlresult
+  elements:
+  - name: metadata
+    elements:
+    - name: field
+      as_name: fields
+  - name: resultset
+    elements:
+    - name: row
+      as_name: rows
+      compact: true
+      elements:
+      - name: col
+        as_name: columns
+        compact: true

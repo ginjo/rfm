@@ -11,11 +11,9 @@ module Rfm
     class Layouts
       singleton_class.send :attr_accessor, :name, :main_call, :last_call, :options
       @name      = 'layouts'
-      
       @main_call = proc {|connection, **options| connection.get_records('-layoutnames', {}, options) }
-      
       @options = {
-        database:  ->(cnct){cnct.database},
+        database:  ->(connection){connection.database},
         grammar:   'FMPXMLRESULT',
         template:  'databases.yml'
       }

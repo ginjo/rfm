@@ -130,14 +130,15 @@ module SaxChange
       # I don't think I need this after all!
       #handler.parser = self
       
+      (SaxChange.log.info "SaxChange::Parser#build_handler with #{handler_class} and template: #{_template}") if config_merge_options[:log_parser]
+      
       handler
     end
     
     def call(io='', _template=nil, _initial_object=nil, _parser_backend=nil, **options)
       handler = build_handler(_template=nil, _initial_object=nil, _parser_backend=nil, **options)
-            
+      (SaxChange.log.info "SaxChange::Parser#call with #{handler} and template: #{handler.template}") if config.merge(options)[:log_parser]
       handler.run_parser(io)
-
       handler
     end # base.build
 

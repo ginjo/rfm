@@ -18,7 +18,7 @@ module SaxChange
   # Remember: The template hash keys must be Strings, not Symbols.
   module Handler
   
-    attr_accessor :stack, :template, :initial_object, :stack_debug, :parser
+    attr_accessor :stack, :template, :initial_object, :stack_debug    #, :parser # I don't think :parser is needed after-all.
       
     prepend Config
   
