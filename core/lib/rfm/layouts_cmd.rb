@@ -3,7 +3,7 @@
 module Rfm
   module Commands
   
-    # TODO: This is kinda messy.
+    # TODO: This is kinda messy. It might be overkill, but it would provide an API for user-modifyable commands.
     # Should it be a class or an instance at the connection level?
     # Where should command's default options be stored?
     # How should devs and users access this to modify it?
@@ -15,7 +15,8 @@ module Rfm
       @options = {
         database:  ->(connection){connection.database},
         grammar:   'FMPXMLRESULT',
-        template:  'databases.yml'
+        # Don't set this here. Try to use rfm-model to set it, if even needed at all.
+        #template:  'databases.yml'
       }
       
       
