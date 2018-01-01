@@ -19,7 +19,8 @@ elements:
 - name: product
 - name: error
   attach: none
-  before_close: :check_for_errors
+  # I've disabled this for v4.
+  #before_close: :check_for_errors
   attributes:
   - name: code
     as_name: error

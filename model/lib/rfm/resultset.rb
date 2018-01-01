@@ -36,7 +36,7 @@ module Rfm
   #   it provides metadata about the portals in the ResultSet and the Fields on those portals
 
   class Resultset < Array
-    include Config
+#     include Config
 
     attr_reader :layout, :meta, :calling_object
     #     attr_reader :layout, :database, :server, :calling_object, :doc
@@ -47,11 +47,11 @@ module Rfm
     # alias_method :db, :database
     def_delegators :meta, :field_meta, :portal_meta, :date_format, :time_format, :timestamp_format, :total_count, :foundset_count, :fetch_size, :table, :error, :field_names, :field_keys, :portal_names
 
-    class << self
-      def load_data(data, object=self.new)
-        Rfm::SaxParser.parse(data, :fmresultset, object)
-      end
-    end
+#     class << self
+#       def load_data(data, object=self.new)
+#         Rfm::SaxParser.parse(data, :fmresultset, object)
+#       end
+#     end
 
     # Initializes a new ResultSet object. You will probably never do this your self (instead, use the Layout
     # object to get various ResultSet obejects).
@@ -74,19 +74,20 @@ module Rfm
     # * *portals* is a hash (with table occurrence names for keys and Field objects for values). If your
     #   layout contains portals, you can find out what fields they contain here. Again, if it's the data you're
     #   after, you want to look at the Record object.
-    def initialize(*args) # parent, layout
-      config(*args)
+    def initialize(*args, **opts) # parent, layout
+#       config(*args)
+      @layout = args[0] || opts[:layout]
       self.meta
     end # initialize
 
-    def config(*args)
-      super do |params|
-        (@layout = params[:objects][0]) if params &&
-          params[:objects] &&
-          params[:objects][0] &&
-          params[:objects][0].is_a?(Rfm::Layout)
-      end
-    end
+#     def config(*args)
+#       super do |params|
+#         (@layout = params[:objects][0]) if params &&
+#           params[:objects] &&
+#           params[:objects][0] &&
+#           params[:objects][0].is_a?(Rfm::Layout)
+#       end
+#     end
 
     # This method was added for situations where a layout was not provided at resultset instantiation,
     # such as when loading a resultset from an xml file.
@@ -123,10 +124,10 @@ module Rfm
 
     private
 
-    def check_for_errors(error_code=@meta['error'].to_i, raise_401=state[:raise_401])
-      #puts ["\nRESULTSET#check_for_errors", "meta[:error] #{@meta[:error]}", "error_code: #{error_code}", "raise_401: #{raise_401}"]
-      raise Rfm::Error.getError(error_code) if error_code != 0 && (error_code != 401 || raise_401)
-    end
+#     def check_for_errors(error_code=@meta['error'].to_i, raise_401=state[:raise_401])
+#       #puts ["\nRESULTSET#check_for_errors", "meta[:error] #{@meta[:error]}", "error_code: #{error_code}", "raise_401: #{raise_401}"]
+#       raise Rfm::Error.getError(error_code) if error_code != 0 && (error_code != 401 || raise_401)
+#     end
 
     def convert_date_time_format(fm_format)
       fm_format.gsub!('MM', '%m')

@@ -83,10 +83,13 @@ module Rfm
       @field_mapping ||= load_field_mapping(state[:field_mapping])
     end
     
+    # A formatter is any object that responds to call(io, options).
     def formatter(**_options)
       options = state.merge(_options)
       case
-        when options[:formatter]; options[:formatter]
+        # This allows nil formatter, which results in raw http response.
+        when options.has_key?(:formatter); options[:formatter]
+        # If no formatter defined, but a parser is, create default formatter.
         when options[:parser];
           # Note that this formatter is built on every call to the db.
           # The better way to do it is set the parser/formatter when Connection is instanciated.
