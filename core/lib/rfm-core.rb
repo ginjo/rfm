@@ -1,5 +1,5 @@
 module Rfm
-  PATH = File.expand_path(File.dirname(__FILE__))
+  CORE_PATH = File.expand_path(File.dirname(__FILE__))
   $LOAD_PATH.unshift(PATH) unless $LOAD_PATH.include?(PATH)
 end
 

@@ -1,8 +1,7 @@
- require 'net/https'
+require 'net/https'
 require 'cgi'
 #require 'rfm/config'
 #require 'logger'
-#require 'saxchange'
 
 module Rfm
   class Connection
@@ -158,7 +157,7 @@ module Rfm
       get_records('-delete', {'-recid' => recid}, options)
       
       # Do we really want to return nil? FMP XML API returns the original record.
-      return nil
+      #return nil
     end
 
     # Retrieves metadata only, with an empty resultset.
@@ -176,7 +175,7 @@ module Rfm
       options[:database] ||= database
       options[:layout] = _layout || options[:layout] || layout
       options[:max_records] = 0
-      find(find_criteria, **options)['fmresultset']['resultset']['count'].to_i  #.foundset_count
+      find(find_criteria, **options).foundset_count   # from basic hash:  ['fmresultset']['resultset']['count'].to_i
     end
     
     def databases(**options)
@@ -247,7 +246,7 @@ module Rfm
       
       _formatter = formatter(options)
       
-      puts "Connection#get_records calling 'connect' with action: #{action}, params: #{params}, options: #{options}"
+      #puts "Connection#get_records calling 'connect' with action: #{action}, params: #{params}, options: #{options}"
       
       if block_given?
         connect(action, params, options) do |io, connection_thread|

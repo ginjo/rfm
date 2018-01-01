@@ -18,19 +18,21 @@ module SaxChange
   # Remember: The template hash keys must be Strings, not Symbols.
   module Handler
   
-    attr_accessor :stack, :template, :initial_object, :stack_debug    #, :parser # I don't think :parser is needed after-all.
-      
+    using Refinements
     prepend Config
   
+    attr_accessor :stack, :template, :initial_object, :stack_debug    #, :parser # I don't think :parser is needed after-all.
+      
     def self.included(base)
       base.send :prepend, Config
     end
    
-  
+
     ###  Instance Methods  ###
   
     def initialize(_template=nil, _initial_object=nil, **options)
-      config options
+      # This is already handled invisibly by Config module.
+      #config options
     
       @template = _template || config[:template]
       
@@ -38,7 +40,7 @@ module SaxChange
       #config[:initial_object] ||= _initial_object || @template[:initial_object]
       _initial_object ||= config[:initial_object] || (@template && @template['initial_object'])
       
-      #puts "#{self} _initial_object: '#{_initial_object}'"
+      puts "#{self} _initial_object: '#{_initial_object}'"
       @initial_object = case
         when _initial_object.nil?; config[:default_class].new
         when _initial_object.is_a?(Class); _initial_object.new
@@ -56,7 +58,7 @@ module SaxChange
     end
     
     def run_parser(io)
-      (SaxChange.log.info "SaxChange handler using backend parser: '#{self.class}' with template: '#{template}'") if config[:log_parser]
+      #(SaxChange.log.info "SaxChange handler using backend parser: '#{self.class}' with template: '#{template}'") if config[:log_parser]
       super
     end
 

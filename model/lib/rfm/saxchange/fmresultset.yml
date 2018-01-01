@@ -2,7 +2,9 @@
 # YAML structure defining a SAX parsing scheme for fmresultset xml.
 # The initial object of this parse should be a new instance of Rfm::Resultset.
 ---
-initial_object: "Rfm::Resultset.new(Rfm::Layout.new(config[:layout]))"
+# This first function doesn't work anymore, since config[:layout] is not available in the parser environment.
+#initial_object: "Rfm::Resultset.new(Rfm::Layout.new(config[:layout]))"
+initial_object: "Rfm::Resultset.new(Rfm::Layout.new('temp_name_until_Rfm_Resultset_class_is_fixed_and_layout_name_is_generated_from_xml_data'))"
 attach_elements: _meta
 attach_attributes: _meta
 create_accessors: all

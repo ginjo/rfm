@@ -10,32 +10,8 @@ require 'rfm-core'
 #require 'saxchange/config'
 require 'saxchange'
 
-# this is the code needed to get template from grammar:
-#   options[:grammar].to_s.downcase.to_sym
-
-
-# class Rfm::SaxParser
-# 
-#   # TODO: This should not be a global setting.
-#   # This should be specified when SaxParser or Connection object is instanciated by rfm-model.
-#   parser_defaults = {
-#     :default_class => Rfm::CaseInsensitiveHash,
-#     :template_prefix => File.join(File.dirname(__FILE__), 'sax/'),
-#     :templates => {
-#       :fmpxmllayout => 'fmpxmllayout.yml',
-#       :fmresultset => 'fmresultset.yml',
-#       :fmpxmlresult => 'fmpxmlresult.yml',
-#       :none => nil
-#     }
-#   }
-#   
-#   if const_defined?(:PARSER_DEFAULTS)
-#     PARSER_DEFAULTS.merge! parser_defaults
-#   else
-#     PARSER_DEFAULTS = parser_defaults
-#   end
-#   
-# end
+# This is needed to serve the proc below, which is inserted into the parser defaults.
+SaxChange::AllowableOptions << 'grammar'
 
 SaxChange::Config.defaults.merge!( {
   :default_class => Rfm::CaseInsensitiveHash,

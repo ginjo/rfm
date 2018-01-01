@@ -91,6 +91,7 @@ require 'saxchange/config'
 module SaxChange
 
   class Parser
+    using Refinements
   
     attr_accessor :templates
   
@@ -109,12 +110,14 @@ module SaxChange
     }
         
     def initialize(_templates=nil, **options)
-      config(**options)
+      # This is already handled invisibly by the Config module
+      #config(**options)
       config[:templates] = _templates if _templates
       @templates = config[:templates].dup || Hash.new
     end
 
     def build_handler(_template=nil, _initial_object=nil, _parser_backend=nil, **options)
+      options = options.filter(AllowableOptions)
       config_merge_options = config.merge(options)
       #(SaxChange.log.info "SaxChange::Parser#build_handler config_merge_options:") if config_merge_options[:log_parser]
       #(SaxChange.log.info config_merge_options.to_yaml) if config_merge_options[:log_parser]
@@ -122,7 +125,7 @@ module SaxChange
       handler_class = get_backend(parser_backend)
 
       #template_prefix = config_merge_options[:template_prefix]
-      _template = _template || config_merge_options[:template]  #|| config_merge_options[:grammar].to_s.downcase.to_sym # This doesn't belong here.
+      _template = _template || config_merge_options[:template]
       template_object = get_template(_template, **config_merge_options)
       initial_object = _initial_object || config_merge_options[:initial_object]      
       handler = handler_class.new(template_object, initial_object, **options)
@@ -136,8 +139,9 @@ module SaxChange
     end
     
     def call(io='', _template=nil, _initial_object=nil, _parser_backend=nil, **options)
+      options = options.filter(AllowableOptions)
       handler = build_handler(_template=nil, _initial_object=nil, _parser_backend=nil, **options)
-      (SaxChange.log.info "SaxChange::Parser#call with #{handler} and template: #{handler.template}") if config.merge(options)[:log_parser]
+      #(SaxChange.log.info "SaxChange::Parser#call with #{handler} and template: #{handler.template}") if config.merge(options)[:log_parser]
       handler.run_parser(io)
       handler
     end # base.build
@@ -173,6 +177,7 @@ module SaxChange
 
     # Takes string, symbol, or hash, and returns a (possibly cached) parsing template.
     def get_template(_template, _template_prefix=nil, **options)  #_template_prefix=config[:template_prefix])
+      options = options.filter(AllowableOptions)
       _template_prefix = _template_prefix || options[:template_prefix] || config[:template_prefix]
       return _template if !['String', 'Symbol', 'Proc'].include?(_template.class.name)
       

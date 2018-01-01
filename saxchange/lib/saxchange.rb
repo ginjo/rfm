@@ -2,13 +2,57 @@ module SaxChange
   PATH = File.expand_path(File.dirname(__FILE__))
   $LOAD_PATH.unshift(PATH) unless $LOAD_PATH.include?(PATH)
 
-  require 'saxchange/config'
   require 'logger'
+  
+  # These are the same refinements as in rfm-core (under Rfm module).
+  # Not all of these refinements may be used yet in saxchange.
+  module Refinements
+    refine Hash do
+    	# Extract key-value pairs from self, given list of objects.
+    	# Pulled from SplashRails project.
+    	# If last object given is hash, it will be the collector for the extracted pairs.
+    	# Extracted pairs are deleted from the original hash (self).
+    	# Returns the extracted pairs as a hash or as the supplied collector hash.
+    	# Attempts to ignore case.
+    	def extract(*keys, **recipient)
+    		#other_hash = args.last.is_a?(Hash) ? args.pop : {}
+    		recipient = recipient.empty? ? Hash.new : recipient
+    		recipient.tap do |other|
+    			self.delete_if {|k,v| (keys.include?(k) || keys.include?(k.to_s) || keys.include?(k.to_s.downcase) || keys.include?(k.to_sym)) || keys.include?(k.to_s.downcase.to_sym) ? recipient[k]=v : nil}
+    		end
+    	end
+    	
+    	def filter(*keepers)
+        select {|k,v| keepers.flatten.include?(k.to_s)}
+      end
+      
+    	def filter!(*keepers)
+        select! {|k,v| keepers.flatten.include?(k.to_s)}
+      end
+    end
+  end
+  
+  # This has to go after Refinements are defined, because it uses the refinements.
+  require 'saxchange/config'
 
   RUBY_VERSION_NUM = RUBY_VERSION[0,3].to_f
 
   singleton_class.extend Forwardable
   singleton_class.def_delegators :'SaxChange::Config', :defaults, :'defaults='
+  
+  AllowableOptions = %w(
+    backend
+    default_class
+    initial_object
+    logger
+    log_parser
+    text_label
+    tag_translation
+    shared_variable_name
+    template
+    templates
+    template_prefix
+  )
     
   # These defaults can be set here or in any ancestor/enclosing module or class,
   # as long as the defaults or their constants can be seen from this POV.

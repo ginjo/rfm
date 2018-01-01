@@ -6,6 +6,8 @@ Module.module_eval do
 end
 
 module Rfm
+  # These refinements are also defined in saxchange gem under SaxChange module.
+  # TODO: Is there a way to DRY up this Refinements module (and also the SaxChange::Config module)?
   module Refinements
     refine Hash do
     	# Extract key-value pairs from self, given list of objects.
@@ -20,7 +22,15 @@ module Rfm
     		recipient.tap do |other|
     			self.delete_if {|k,v| (keys.include?(k) || keys.include?(k.to_s) || keys.include?(k.to_s.downcase) || keys.include?(k.to_sym)) || keys.include?(k.to_s.downcase.to_sym) ? recipient[k]=v : nil}
     		end
-    	end  
+    	end
+    	
+    	def filter(*keepers)
+        select {|k,v| keepers.flatten.include?(k.to_s)}
+      end
+      
+    	def filter!(*keepers)
+        select! {|k,v| keepers.flatten.include?(k.to_s)}
+      end
     end
   end
 end # 

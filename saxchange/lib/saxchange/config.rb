@@ -2,6 +2,7 @@ require 'forwardable'
 
 module SaxChange
   module Config
+    using Refinements
     
     ###  CLASS LEVEL  ###
     
@@ -52,6 +53,7 @@ module SaxChange
     def initialize(*args, **opts) #(opts={caller:self})
       #opts.merge!({caller:_caller})
       #puts "#{self.class.name}#initialize, opts: #{opts}"
+      opts = opts.filter(AllowableOptions)
       @config ||= {}
       config(**opts)
       if method(__callee__).super_method.arity != 0
