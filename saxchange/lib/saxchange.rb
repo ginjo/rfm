@@ -3,6 +3,7 @@ module SaxChange
   $LOAD_PATH.unshift(PATH) unless $LOAD_PATH.include?(PATH)
 
   require 'saxchange/config'
+  require 'logger'
 
   RUBY_VERSION_NUM = RUBY_VERSION[0,3].to_f
 
