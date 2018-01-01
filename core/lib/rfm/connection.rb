@@ -221,11 +221,15 @@ module Rfm
 
     def get_records(action, params = {}, _options = {})
       #options[:template] ||= state[:template] # Dont decide template here!  #|| select_grammar('', options).to_s.downcase.to_sym
-      options = state(**_options)
-      puts "Connection#get_records action: #{action}, params: #{params}, options: #{options}"
       
-      options[:grammar] ||= 'fmresultset'  #select_grammar(post, request_options)
-      params, options = prepare_params(params, options)
+      
+      _options[:grammar] ||= 'fmresultset'  #select_grammar(post, request_options)
+      params, _options = prepare_params(params, _options)
+      
+      # This has to be done after prepare_params, or database & layout options
+      # get sent to 'connect' every time, which breaks 'databases', 'layouts', and 'scripts' commands.
+      
+      options = state(**_options)
       
       # Note the capture_resultset_meta call from rfm v3.
       #capture_resultset_meta(rslt) unless resultset_meta_valid? #(@resultset_meta && @resultset_meta.error != '401')
@@ -238,6 +242,8 @@ module Rfm
       # but it will wait until thread is done, so it defeats the purpose of streaming to the io object.
       
       _formatter = formatter(options)
+      
+      puts "Connection#get_records calling 'connect' with action: #{action}, params: #{params}, options: #{options}"
       
       if block_given?
         connect(action, params, options) do |io, connection_thread|
