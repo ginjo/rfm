@@ -127,8 +127,9 @@ module SaxChange
       #template_prefix = config_merge_options[:template_prefix]
       _template = _template || config_merge_options[:template]
       template_object = get_template(_template, **config_merge_options)
-      initial_object = _initial_object || config_merge_options[:initial_object]      
-      handler = handler_class.new(template_object, initial_object, **config_merge_options)   #**options)
+      initial_object = _initial_object || config_merge_options[:initial_object]   
+      # You don't need to send merged options here, since the handler will merge them when necessary.
+      handler = handler_class.new(template_object, initial_object, **options)
       
       # I don't think I need this after all!
       #handler.parser = self

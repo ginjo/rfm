@@ -36,8 +36,12 @@ module Rfm
       # Set default parser
       
       if Kernel.const_defined?(:SaxChange)
-        # Do we really want to pass connection options to parser?
-        @defaults[:parser] = SaxChange::Parser.new(**@defaults)   #.merge({template:{'compact'=>true}})
+        # Do we really want to pass connection options to parser? Most are probably dropped by filter anyway.
+        @defaults[:parser] = SaxChange::Parser.new(@defaults)
+      end
+      
+      if @defaults[:parser]
+        @defaults[:formatter] = ->(io, opts){opts[:parser].call(io, opts).result}
       end
 
     end
@@ -83,19 +87,19 @@ module Rfm
       @field_mapping ||= load_field_mapping(state[:field_mapping])
     end
     
-    # A formatter is any object that responds to call(io, options).
-    def formatter(**_options)
-      options = state.merge(_options)
-      case
-        # This allows nil formatter, which results in raw http response.
-        when options.has_key?(:formatter); options[:formatter]
-        # If no formatter defined, but a parser is, create default formatter.
-        when options[:parser];
-          # Note that this formatter is built on every call to the db.
-          # The better way to do it is set the parser/formatter when Connection is instanciated.
-          -> *args {options[:parser].call(*args).result}
-      end
-    end
+#     # A formatter is any object that responds to call(io, options).
+#     def formatter(**_options)
+#       options = state.merge(_options)
+#       case
+#         # This allows nil formatter, which results in raw http response.
+#         when options.has_key?(:formatter); options[:formatter]
+#         # If no formatter defined, but a parser is, create default formatter.
+#         when options[:parser];
+#           # Note that this formatter is built upon every call to the db.
+#           # The better way to do it is set the parser/formatter when Connection is instanciated.
+#           -> *args {options[:parser].call(*args).result}
+#       end
+#     end
 
 
     ###  COMMANDS  ###
@@ -235,7 +239,7 @@ module Rfm
       # This has to be done after prepare_params, or database & layout options
       # get sent to 'connect' every time, which breaks 'databases', 'layouts', and 'scripts' commands.
       
-      full_options = state(runtime_options)
+      full_options = state(runtime_options).merge({connection:self})
       
       # Note the capture_resultset_meta call from rfm v3.
       #capture_resultset_meta(rslt) unless resultset_meta_valid? #(@resultset_meta && @resultset_meta.error != '401')
@@ -247,7 +251,7 @@ module Rfm
       # If you call connection_thread.value, you will get the finished connection response object,
       # but it will wait until thread is done, so it defeats the purpose of streaming to the io object.
       
-      _formatter = formatter(full_options)
+      _formatter = full_options[:formatter]     #formatter(full_options)
       
       #puts "Connection#get_records calling 'connect' with action: #{action}, params: #{params}, options: #{connection_options}"
       
