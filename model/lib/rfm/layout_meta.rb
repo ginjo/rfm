@@ -1,9 +1,12 @@
 module Rfm
   module Metadata
     class LayoutMeta < CaseInsensitiveHash
+      #attr_accessor :name, :meta
 
-      def initialize(layout)
-        @layout = layout
+      def initialize(**options)
+        #@layout = layout
+        @options = options
+        #@name = options[:layout]
       end
 
       def field_controls
@@ -35,7 +38,8 @@ module Rfm
 
       # Should this be in FieldControl object?
       def get_mapped_name(name)
-        (@layout.field_mapping[name]) || name
+        #(@layout.field_mapping[name]) || name
+        (@options[:field_mapping] ||{})[name] || name
       end
 
     end

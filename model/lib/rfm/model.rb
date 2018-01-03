@@ -11,7 +11,7 @@ require 'rfm-core'
 require 'saxchange'
 
 # This is needed to serve the proc below, which is inserted into the parser defaults.
-SaxChange::AllowableOptions.push 'grammar', 'field_mapping', 'decimal_separator'
+SaxChange::AllowableOptions.push 'grammar', 'field_mapping', 'decimal_separator', 'layout'
 
 SaxChange::Config.defaults.merge!( {
   :default_class => Rfm::CaseInsensitiveHash,
@@ -31,7 +31,7 @@ module Rfm
 
   autoload :Server,       'rfm/server'
   autoload :Database,     'rfm/database'
-  autoload :Layout,       'rfm/layout'
+  #autoload :Layout,       'rfm/layout'
   autoload :Resultset,    'rfm/resultset'
   autoload :Record,       'rfm/record'
   autoload :Base,         'rfm/base'

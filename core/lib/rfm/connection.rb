@@ -93,7 +93,7 @@ module Rfm
         when options[:parser];
           # Note that this formatter is built on every call to the db.
           # The better way to do it is set the parser/formatter when Connection is instanciated.
-          -> *args {puts "FORMATTER#call args: #{args}"; options[:parser].call(*args).result}
+          -> *args {options[:parser].call(*args).result}
       end
     end
 

@@ -4,9 +4,12 @@
 ---
 # This first function doesn't work anymore, since config[:layout] is not available in the parser environment.
 #initial_object: "Rfm::Layout.new(config[:layout])"
-initial_object: "Rfm::Layout.new('temp_name_until_Rfm_Layout_class_is_fixed_and_layout_name_is_generated_from_xml_data')"
-attach_elements: _meta
-attach_attributes: _meta
+#initial_object: "Rfm::Layout.new('temp_name_until_Rfm_Layout_class_is_fixed_and_layout_name_is_generated_from_xml_data')"
+#initial_object: "Rfm::Layout.new(**options)"
+initial_object: "Rfm::Metadata::LayoutMeta.new(**options)"
+attach_elements: hash  #_meta
+attach_attributes: hash  #_meta
+create_accessors: all
 elements:
 - name: doctype
   attach: none
@@ -17,7 +20,8 @@ elements:
   attach: none
 - name: errorcode
   attach: none
-  before_close: :check_for_errors
+  # Disabled by wbr for v4.
+  #before_close: :check_for_errors
   attributes:
   - name: text
     as_name: error
@@ -35,7 +39,9 @@ elements:
   - cursor
   - Rfm::Metadata::FieldControl
   - :new
-  - ivg(:meta)
+  #- ivg(:meta)
+  - top.object
+  delimiter: name
   # Must use before_close handler to attach, since field_mapping must be applied to value-list key name.
   before_close: [object, ':element_close_handler']
   # # Used to be 'object.meta', but that required sloppy 'loaded' indicator handling (or infinite loop),
@@ -44,7 +50,6 @@ elements:
   # handler: [object.instance_variable_get('@meta'), handle_new_field_control, _attributes]
   # # attach_attributes isn't doing anything when used with new-element-handler.
   attach_attributes: private
-  delimiter: name
   elements:
   # This config doesn't use the creation handler, so it should work with ox.
   - name: style
@@ -60,7 +65,8 @@ elements:
   attach: none
 - name: valuelist
   #class: Array
-  attach: [_meta, Array, ':new']
+  #attach: [_meta, Array, ':new']
+  attach: [hash, Array, ':new']
   as_name: value_lists
   delimiter: name
   elements:
