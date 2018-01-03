@@ -83,23 +83,31 @@ module Rfm
     end
     
     # Field mapping is really a layout concern. Where should it go?
+    # It is not a connection attribute, I don't think.
+    # def field_mapping
+    #   @field_mapping ||= load_field_mapping(state[:field_mapping])
+    # end
     def field_mapping
-      @field_mapping ||= load_field_mapping(state[:field_mapping])
+      load_field_mapping(state[:field_mapping])
     end
+
     
-#     # A formatter is any object that responds to call(io, options).
-#     def formatter(**_options)
-#       options = state.merge(_options)
-#       case
-#         # This allows nil formatter, which results in raw http response.
-#         when options.has_key?(:formatter); options[:formatter]
-#         # If no formatter defined, but a parser is, create default formatter.
-#         when options[:parser];
-#           # Note that this formatter is built upon every call to the db.
-#           # The better way to do it is set the parser/formatter when Connection is instanciated.
-#           -> *args {options[:parser].call(*args).result}
-#       end
-#     end
+    # # This works well, but I put the default formatter declaration in the connection defaults,
+    # # and that works just as well, plus is more flexible and user-friendly.
+    #
+    #     # A formatter is any object that responds to call(io, options).
+    #     def formatter(**_options)
+    #       options = state.merge(_options)
+    #       case
+    #         # This allows nil formatter, which results in raw http response.
+    #         when options.has_key?(:formatter); options[:formatter]
+    #         # If no formatter defined, but a parser is, create default formatter.
+    #         when options[:parser];
+    #           # Note that this formatter is built upon every call to the db.
+    #           # The better way to do it is set the parser/formatter when Connection is instanciated.
+    #           -> *args {options[:parser].call(*args).result}
+    #       end
+    #     end
 
 
     ###  COMMANDS  ###
@@ -251,7 +259,7 @@ module Rfm
       # If you call connection_thread.value, you will get the finished connection response object,
       # but it will wait until thread is done, so it defeats the purpose of streaming to the io object.
       
-      _formatter = full_options[:formatter]     #formatter(full_options)
+      _formatter = full_options[:formatter]     #formatter(full_options)  # The formatter method has been removed in favor of @defaults[:formatter]
       
       #puts "Connection#get_records calling 'connect' with action: #{action}, params: #{params}, options: #{connection_options}"
       
@@ -450,7 +458,8 @@ module Rfm
 
     def expand_options(options)
       result = {}
-      field_mapping = options.delete(:field_mapping) || {}
+      #field_mapping = options.delete(:field_mapping) || {}
+      _field_mapping = options.delete(:field_mapping) || {}
       options.each do |key,value|
         case key.to_sym
         when :max_portal_rows
@@ -466,9 +475,9 @@ module Rfm
         when :sort_field
           if value.kind_of? Array
             raise Rfm::ParameterError.new(":sort_field can have at most 9 fields, but you passed an array with #{value.size} elements.") if value.size > 9
-            value.each_index { |i| result["-sortfield.#{i+1}"] = field_mapping[value[i]] || value[i] }
+            value.each_index { |i| result["-sortfield.#{i+1}"] = _field_mapping[value[i]] || value[i] }
           else
-            result["-sortfield.1"] = field_mapping[value] || value
+            result["-sortfield.1"] = _field_mapping[value] || value
           end
         when :sort_order
           if value.kind_of? Array

@@ -21,7 +21,7 @@ module SaxChange
     using Refinements
     prepend Config
   
-    attr_accessor :stack, :template, :initial_object, :stack_debug    #, :parser # I don't think :parser is needed after-all.
+    attr_accessor :stack, :template, :initial_object, :stack_debug
       
     def self.included(base)
       base.send :prepend, Config

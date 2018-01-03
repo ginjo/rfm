@@ -131,9 +131,6 @@ module SaxChange
       # You don't need to send merged options here, since the handler will merge them when necessary.
       handler = handler_class.new(template_object, initial_object, **options)
       
-      # I don't think I need this after all!
-      #handler.parser = self
-      
       (SaxChange.log.info "SaxChange::Parser#build_handler with #{handler_class} and template: #{_template}") if config_merge_options[:log_parser]
       
       handler

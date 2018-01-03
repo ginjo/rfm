@@ -30,17 +30,17 @@ SaxChange::Config.defaults.merge!( {
 module Rfm
 
   autoload :Server,       'rfm/server'
-  autoload :Database,     'rfm/database'
+  #autoload :Database,     'rfm/database'
   #autoload :Layout,       'rfm/layout'
   autoload :Resultset,    'rfm/resultset'
   autoload :Record,       'rfm/record'
   autoload :Base,         'rfm/base'
-  autoload :SaxParser,    'rfm/parsers/sax'
-  autoload :Config,       'rfm/config'
-  autoload :Factory,      'rfm/factory'
-  autoload :CompoundQuery,'rfm/compound_query'
-  autoload :VERSION,      'rfm/version'
-  autoload :Scope,        'rfm/scope.rb'
+  #autoload :SaxParser,    'rfm/parsers/sax'
+  #autoload :Config,       'rfm/config'
+  #autoload :Factory,      'rfm/factory'
+  #autoload :CompoundQuery,'rfm/compound_query'
+  #autoload :VERSION,      'rfm/version'
+  #autoload :Scope,        'rfm/scope.rb'
 
   module Metadata
     autoload :Script,         'rfm/script'
@@ -52,17 +52,22 @@ module Rfm
     autoload :LayoutMeta,     'rfm/layout_meta'
   end
 
-  def_delegators 'Rfm::Factory', :servers, :server, :db, :database, :layout
-  def_delegators 'Rfm::Config', :config, :get_config, :config_clear
+  # Disabled by wbr for v4.
+  #
+  #   def_delegators 'Rfm::Factory', :servers, :server, :db, :database, :layout
+  #   def_delegators 'Rfm::Config', :config, :get_config, :config_clear
+  
   def_delegators 'Rfm::Resultset', :load_data
 
-  def models(*args)
-    Rfm::Factory.models(*args)
-  end
-
-  def modelize(*args)
-    Rfm::Factory.modelize(*args)
-  end
+  # Disabled by wbr for v4.
+  #
+  #   def models(*args)
+  #     Rfm::Factory.models(*args)
+  #   end
+  # 
+  #   def modelize(*args)
+  #     Rfm::Factory.modelize(*args)
+  #   end
   
   extend self
 
