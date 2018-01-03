@@ -93,7 +93,7 @@ module Rfm
         when options[:parser];
           # Note that this formatter is built on every call to the db.
           # The better way to do it is set the parser/formatter when Connection is instanciated.
-          -> *args {options[:parser].call(*args).result}
+          -> *args {puts "FORMATTER#call args: #{args}"; options[:parser].call(*args).result}
       end
     end
 
@@ -225,17 +225,17 @@ module Rfm
     ###  END COMMANDS  ###
 
 
-    def get_records(action, params = {}, _options = {})
+    def get_records(action, params = {}, runtime_options = {})
       #options[:template] ||= state[:template] # Dont decide template here!  #|| select_grammar('', options).to_s.downcase.to_sym
       
+      runtime_options[:grammar] ||= 'fmresultset'  #select_grammar(post, request_options)      
       
-      _options[:grammar] ||= 'fmresultset'  #select_grammar(post, request_options)
-      params, _options = prepare_params(params, _options)
+      params, connection_options = prepare_params(params, runtime_options)
       
       # This has to be done after prepare_params, or database & layout options
       # get sent to 'connect' every time, which breaks 'databases', 'layouts', and 'scripts' commands.
       
-      options = state(**_options)
+      full_options = state(runtime_options)
       
       # Note the capture_resultset_meta call from rfm v3.
       #capture_resultset_meta(rslt) unless resultset_meta_valid? #(@resultset_meta && @resultset_meta.error != '401')
@@ -247,20 +247,20 @@ module Rfm
       # If you call connection_thread.value, you will get the finished connection response object,
       # but it will wait until thread is done, so it defeats the purpose of streaming to the io object.
       
-      _formatter = formatter(options)
+      _formatter = formatter(full_options)
       
-      #puts "Connection#get_records calling 'connect' with action: #{action}, params: #{params}, options: #{options}"
+      #puts "Connection#get_records calling 'connect' with action: #{action}, params: #{params}, options: #{connection_options}"
       
       if block_given?
-        connect(action, params, options) do |io, connection_thread|
-          yield(io, options.merge({connection_thread:connection_thread}))
+        connect(action, params, connection_options) do |io, connection_thread|
+          yield(io, full_options.merge({connection_thread:connection_thread}))
         end
       elsif _formatter
-        connect(action, params, options) do |io, connection_thread|
-          _formatter.call(io, options.merge({connection_thread:connection_thread}))
+        connect(action, params, connection_options) do |io, connection_thread|
+          _formatter.call(io, full_options.merge({connection_thread:connection_thread}))
         end
       else
-        connect(action, params, options)
+        connect(action, params, connection_options)
       end
       
       # As a side note, here's a way to pretty-print raw xml in ruby:
@@ -400,20 +400,22 @@ module Rfm
     # Clean up passed params & options.
     # This method does not fill in missing FMS api params or options,
     # but it may fill in Rfm params and options... Hmmm, it really should not.
-    def prepare_params(keyvalues={}, options={})
+    def prepare_params(params={}, options={})
+      params, options = params.dup, options.dup
       _database = options[:database] #options.delete(:database)
       _layout   = options[:layout]   #options.delete(:layout)
-      if keyvalues.is_a?(String)
-        keyvalues = Hash[URI.decode_www_form(keyvalues)]
+      if params.is_a?(String)
+        params = Hash[URI.decode_www_form(params)]
       end
-      keyvalues['-db'] = _database if _database
-      keyvalues['-lay'] = _layout if _layout
+      params['-db'] = _database if _database
+      params['-lay'] = _layout if _layout
       
       #options[:field_mapping] = field_mapping.invert if field_mapping && !options[:field_mapping]
-      mapping = options.extract(:field_mapping) || field_mapping
-      apply_field_mapping!(keyvalues, mapping.invert) if mapping.is_a?(Hash)
+      #mapping = options.extract(:field_mapping) || field_mapping
+      mapping = options[:field_mapping] || field_mapping
+      apply_field_mapping!(params, mapping.invert) if mapping.is_a?(Hash)
       
-      [keyvalues, options]
+      [params, options]
     end
     
     def apply_field_mapping!(params, mapping)

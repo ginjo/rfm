@@ -11,7 +11,7 @@ require 'rfm-core'
 require 'saxchange'
 
 # This is needed to serve the proc below, which is inserted into the parser defaults.
-SaxChange::AllowableOptions << 'grammar'
+SaxChange::AllowableOptions.push 'grammar', 'field_mapping', 'decimal_separator'
 
 SaxChange::Config.defaults.merge!( {
   :default_class => Rfm::CaseInsensitiveHash,

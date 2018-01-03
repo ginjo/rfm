@@ -63,7 +63,13 @@ module Rfm
 
       attr_reader :name, :result, :type, :max_repeats, :global
       meta_attr_accessor :resultset_meta
-      def_delegator :resultset_meta, :layout_object, :layout_object
+      # Disabled by wbr for v4.
+      #def_delegator :resultset_meta, :layout_object, :layout_object
+      
+      # Added by wbr for v4
+      #attr_accessor :field_mapping, :decimal_separator
+      meta_attr_accessor :resultset
+      
       # Initializes a field object. You'll never need to do this. Instead, get your Field objects from
       # Resultset::field_meta
       def initialize(attributes)
@@ -92,7 +98,8 @@ module Rfm
           # FileMaker uses local number format of the server. It stores input as text.
           # So on european servers a number value of '1.200,50' is considered valid and interpreted as 1200.5
           # To support this, :decimal_separator can be configured and any other characters than digits and the separator are ignored
-          sep = layout_object.state[:decimal_separator] || '.'
+          #sep = layout_object.state[:decimal_separator] || '.'
+          sep = resultset.options[:decimal_separator] || '.'
           BigDecimal.new(value.to_s.gsub(/[^-^\d#{Regexp.quote(sep)}]/,'').tr(sep,'.'))
         when "date"      then Date.strptime(value, resultset_meta.date_format)
         when "time"      then DateTime.strptime("1/1/-4712 #{value}", "%m/%d/%Y #{resultset_meta.time_format}")
@@ -106,21 +113,28 @@ module Rfm
           end
         else nil
         end
-      rescue
-        puts("ERROR in Field#coerce:", name, value, result, resultset_meta.timestamp_format, $!)
-        nil
+#       rescue
+#         puts("ERROR in Field#coerce:", [name, value, result, resultset_meta.timestamp_format, $!])
+#         nil
       end
 
       def get_mapped_name
         #(resultset_meta && resultset_meta.layout && resultset_meta.layout.field_mapping[name]) || name
-        layout_object.field_mapping[name] || name
+        #layout_object.field_mapping[name] || name
+        #puts "FIELD#get_mapped_name '#{name}', with '#{(resultset.options[:field_mapping] || {})[name]}'"
+        (resultset.options[:field_mapping] || {})[name] || name
       end
 
       def field_definition_element_close_callback(cursor)
         #self.resultset = cursor.top.object
         #resultset_meta = resultset.instance_variable_get(:@meta)
         self.resultset_meta = cursor.top.object.instance_variable_get(:@meta)
-        #puts ["\nFIELD#field_definition_element_close_callback", resultset_meta]
+        # Added by wbr for v4.
+        #self.field_mapping = cursor.top.object.options[:field_mapping] || {}
+        #self.decimal_separator = cursor.top.object.options[:decimal_separator] || '.'
+        self.resultset = cursor.top.object
+        
+        #puts ["\nFIELD#field_definition_element_close_callback", resultset.to_yaml]
         resultset_meta.field_meta[get_mapped_name.to_s.downcase] = self
       end
 

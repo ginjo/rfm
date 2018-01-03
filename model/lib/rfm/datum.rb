@@ -6,7 +6,8 @@ module Rfm
 
       def get_mapped_name(name, resultset)
         #puts ["\nDATUM#get_mapped_name", "name: #{name}", "mapping: #{resultset.layout.field_mapping.to_yaml}"]
-        (resultset && resultset.layout && resultset.layout.field_mapping[name]) || name
+        #(resultset && resultset.layout && resultset.layout.field_mapping[name]) || name
+        (resultset.options[:field_mapping] || {})[name] || name
       end
 
       # NOT sure what this method is for. Can't find a reference to it.

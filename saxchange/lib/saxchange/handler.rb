@@ -31,6 +31,7 @@ module SaxChange
     ###  Instance Methods  ###
   
     def initialize(_template=nil, _initial_object=nil, **options)
+      #puts "HANDLER#initialize options: #{options}"
       # This is already handled invisibly by Config module.
       #config options
     
@@ -40,12 +41,13 @@ module SaxChange
       #config[:initial_object] ||= _initial_object || @template[:initial_object]
       _initial_object ||= config[:initial_object] || (@template && @template['initial_object'])
       
-      puts "#{self} _initial_object: '#{_initial_object}'"
+      #puts "#{self} _initial_object: '#{_initial_object}'"
+      
       @initial_object = case
         when _initial_object.nil?; config[:default_class].new
-        when _initial_object.is_a?(Class); _initial_object.new
+        when _initial_object.is_a?(Class); _initial_object.new(**config) # added by wbr for v4
         when _initial_object.is_a?(String); eval(_initial_object)
-        when _initial_object.is_a?(Symbol); self.class.const_get(_initial_object).new
+        when _initial_object.is_a?(Symbol); self.class.const_get(_initial_object).new(**config) # added by wbr for v4
         when _initial_object.is_a?(Proc); _initial_object.call(self)
         else _initial_object
       end

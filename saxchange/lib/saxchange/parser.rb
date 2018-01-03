@@ -128,7 +128,7 @@ module SaxChange
       _template = _template || config_merge_options[:template]
       template_object = get_template(_template, **config_merge_options)
       initial_object = _initial_object || config_merge_options[:initial_object]      
-      handler = handler_class.new(template_object, initial_object, **options)
+      handler = handler_class.new(template_object, initial_object, **config_merge_options)   #**options)
       
       # I don't think I need this after all!
       #handler.parser = self

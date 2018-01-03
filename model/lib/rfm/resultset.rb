@@ -39,6 +39,8 @@ module Rfm
 #     include Config
 
     attr_reader :layout, :meta, :calling_object
+    attr_accessor :options
+    
     #     attr_reader :layout, :database, :server, :calling_object, :doc
     #     attr_reader :field_meta, :portal_meta, :include_portals, :datasource
     #     attr_reader :date_format, :time_format, :timestamp_format
@@ -76,7 +78,8 @@ module Rfm
     #   after, you want to look at the Record object.
     def initialize(*args, **opts) # parent, layout
 #       config(*args)
-      @layout = args[0] || opts[:layout]
+#       @layout = args[0] || opts[:layout]
+        @options = opts
       self.meta
     end # initialize
 
@@ -89,33 +92,33 @@ module Rfm
 #       end
 #     end
 
-    # This method was added for situations where a layout was not provided at resultset instantiation,
-    # such as when loading a resultset from an xml file.
-    def layout
-      @layout ||= (Layout.new(meta.layout, self) if meta.respond_to? :layout)
-    end
-
-    def database
-      layout.database
-    end
-
-    alias_method :db, :database
-
-    def server
-      database.server
-    end
+#     # This method was added for situations where a layout was not provided at resultset instantiation,
+#     # such as when loading a resultset from an xml file.
+#     def layout
+#       @layout ||= (Layout.new(meta.layout, self) if meta.respond_to? :layout)
+#     end
+# 
+#     def database
+#       layout.database
+#     end
+# 
+#     alias_method :db, :database
+# 
+#     def server
+#       database.server
+#     end
 
     def meta
       # Access the meta inst var here.
       @meta ||= Metadata::ResultsetMeta.new
     end
 
-    # Deprecated on 7/29/2014. Stop using.
-    def handle_new_record(attributes)
-      r = Rfm::Record.new(self, attributes, {})
-      self << r
-      r
-    end
+#     # Deprecated on 7/29/2014. Stop using.
+#     def handle_new_record(attributes)
+#       r = Rfm::Record.new(self, attributes, {})
+#       self << r
+#       r
+#     end
 
     def end_datasource_element_callback(cursor)
       %w(date_format time_format timestamp_format).each{|f| convert_date_time_format(send(f))}
