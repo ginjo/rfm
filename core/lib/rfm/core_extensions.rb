@@ -68,6 +68,7 @@ class Object
     self.is_a?(Array) ? self : [self]
   end
 
+  # NOT USED
   # Just testing this functionality
   def rfm_local_methods
     self.methods - self.class.superclass.methods
@@ -75,6 +76,7 @@ class Object
 
   private
 
+  # Not used outside this module/class, should be private?
   # Like singleton_method or 'metaclass' from ActiveSupport.
   def rfm_metaclass
     class << self
@@ -82,6 +84,7 @@ class Object
     end
   end
 
+  # NOT USED
   # Get the superclass object of self.
   def rfm_super
     SuperProxy.new(self)
@@ -96,6 +99,7 @@ class Array
     last.is_a?(::Hash) ? pop : {}
   end
 
+  # NOT USED 2018-01-02
   # These methods allow dynamic extension of array members with other modules.
   # These methods also carry the @root object for reference, when you don't have the
   # root object explicity referenced anywhere.
@@ -131,6 +135,7 @@ class Array
     self
   end
 
+  # TODO: Make private.
   def rfm_extend_member(member, extension, i=nil)
     if member and extension
       unless member.instance_variable_get(:@root)
@@ -149,11 +154,13 @@ end # Array
 
 class Hash
 
+  # NOT USED 2018-01-02
   # TODO: Possibly deprecated, delete if not used.
   def rfm_only(*keepers)
     self.dup.each_key {|k| self.delete(k) if !keepers.include?(k)}
   end
 
+  # Used only in rfm Factory.
   def rfm_filter(*args)
     options = args.rfm_extract_options!
     delete = options[:delete]
@@ -162,6 +169,7 @@ class Hash
     end
   end
 
+  # Used in Connection
   # Convert hash to Rfm::CaseInsensitiveHash
   def to_cih
     new = Rfm::CaseInsensitiveHash.new
@@ -170,6 +178,7 @@ class Hash
   end
 end # Hash
 
+# Not used outside this file.
 # Allows access to superclass object
 class SuperProxy
   def initialize(obj)
@@ -183,6 +192,8 @@ end # SuperProxy
 
 
 class Time
+
+  # NOT USED
   # Returns array of [date,time] in format suitable for FMP.
   def to_fm_components(reset_time_if_before_today=false)
     d = self.strftime('%m/%d/%Y')
@@ -196,6 +207,8 @@ class Time
 end # Time
 
 class String
+
+  # NOT USED
   def title_case
     self.gsub(/\w+/) do |word|
       word.capitalize
