@@ -55,6 +55,7 @@ module SaxChange
 
 end # SaxChange
 
+require 'saxchange/object_merge_refinements'
 require 'saxchange/parser'
 require 'saxchange/cursor'
 require 'saxchange/handler'

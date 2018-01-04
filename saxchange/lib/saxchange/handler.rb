@@ -36,9 +36,7 @@ module SaxChange
       #config options
     
       @template = _template || config[:template]
-      
-      puts "HANDLER#initialize default_class: #{config[:default_class]}"
-      
+            
       #_initial_object = _initial_object || config[:initial_object] || @template['initial_object']
       #config[:initial_object] ||= _initial_object || @template[:initial_object]
       _initial_object ||= config[:initial_object] || (@template && @template['initial_object'])

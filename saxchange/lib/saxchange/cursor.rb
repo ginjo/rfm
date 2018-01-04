@@ -13,6 +13,7 @@ module SaxChange
   # a framework of tools that accompany each element's build process.
   class Cursor
     using Refinements
+    using ObjectMergeRefinements
     extend Forwardable
     prepend Config
 
@@ -28,34 +29,31 @@ module SaxChange
 
     def_delegators :handler, :top, :stack
 
-    # TOFIX:
-    # TODO: This is broken: 'config' at the class level could be stale,
-    #       compared to runtime that calls this. Should this be at instance level?
-    #
+
     # Main get-constant method
-    def self.get_constant(klass)
+    def self.get_constant(klass, options=config)
       #puts "Getting constant '#{klass.to_s}'"
 
       case
       when klass.is_a?(Class); klass
         #when (klass=klass.to_s) == ''; DEFAULT_CLASS
-      when klass.nil?; config[:default_class]
-      when klass == ''; config[:default_class]
+      when klass.nil?; options[:default_class]
+      when klass == ''; options[:default_class]
       when klass[/::/]; eval(klass)
       when defined?(klass); const_get(klass)  ## == 'constant'; const_get(klass)
         #when defined?(klass); eval(klass) # This was for 'element_handler' pattern.
       else
         SaxChange.log.warn "Could not find constant '#{klass}'"
-        config[:default_class]
+        options[:default_class]
       end
     end
 
     def initialize(_tag, _handler, _parent=nil, _initial_attributes=nil, **opts) #, caller_binding=nil)
-      puts "CURSOR#initialize before config-merge:"
-      puts self.to_yaml
+      #puts "CURSOR#initialize before config-merge:"
+      #puts self.to_yaml
       config(**opts)
-      puts "CURSOR#initialize after config-merge:"
-      puts self.to_yaml
+      #puts "CURSOR#initialize after config-merge:"
+      #puts self.to_yaml
     
       #def initialize(_model, _obj, _tag, _handler)
       @tag     =  _tag
@@ -94,7 +92,7 @@ module SaxChange
 
     def receive_start_element(_tag, _attributes)
       #puts ["\nRECEIVE_START '#{_tag}'", "current_object: #{@object.class}", "current_model: #{@model['name']}", "attributes #{_attributes}"]
-      new_cursor = Cursor.new(_tag, @handler, self, _attributes) #, binding)
+      new_cursor = Cursor.new(_tag, @handler, self, _attributes, **@config) #, binding)
       new_cursor.process_new_element(binding)
       new_cursor
     end # receive_start_element
@@ -374,7 +372,7 @@ module SaxChange
       # end
 
 
-      #puts ["\nATTACH_NEW_ELEMENT 1", "new_object: #{new_object}", "parent_object: #{@parent.object}", "label: #{label}", "delimiter: #{delimiter?(@local_model)}", "prefs: #{prefs}", "shared_var_name: #{shared_var_name}", "create_accessors: #{create_accessors}"]
+      #puts ["\nATTACH_NEW_ELEMENT 1", "new_object: #{new_object}", "parent_object: #{@parent.object}", "label: #{label}", "delimiter: #{delimiter?(@local_model)}", "prefs: #{prefs}", "shared_var_name: #{shared_var_name}", "create_accessors: #{create_accessors}", "default_class: #{config[:default_class]}"]
       @parent.object._attach_object!(new_object, label, delimiter?(@local_model), prefs, 'element', :default_class=>config[:default_class], :shared_variable_name=>shared_var_name, :create_accessors=>create_accessors)
       # if type == 'attribute'
       #   puts ["\nATTACH_ATTR", "name: #{name}", "label: #{label}", "new_object: #{new_object.class rescue ''}", "base_object: #{base_object.class rescue ''}", "base_model: #{base_model['name'] rescue ''}", "new_model: #{new_model['name'] rescue ''}", "prefs: #{prefs}"]
@@ -399,7 +397,7 @@ module SaxChange
     #####  UTILITY  #####
 
     def get_constant(klass)
-      self.class.get_constant(klass)
+      self.class.get_constant(klass, config)
     end
 
     # Methods for current _model
