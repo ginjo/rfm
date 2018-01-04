@@ -11,20 +11,21 @@ require 'rfm-core'
 require 'saxchange'
 
 # This is needed to serve the proc below, which is inserted into the parser defaults.
-SaxChange::AllowableOptions.push %w(grammar field_mapping decimal_separator layout connection default_object)
+SaxChange::AllowableOptions.push %w(
+  grammar
+  field_mapping
+  decimal_separator
+  layout
+  connection
+)
 
-SaxChange::Config.defaults.merge!( {
+SaxChange::Config.defaults.merge!({
   :default_class => Rfm::CaseInsensitiveHash,
   #:initial_object => proc { Rfm::Resultset.new(Rfm::Layout.new('test'), Rfm::Layout.new('test')) },
   :template_prefix => File.join(File.dirname(__FILE__), 'saxchange/'),
   :template => ->(options, env_binding){ options[:grammar].to_s.downcase + '.yml' },
-  # :templates => {
-  #   :fmpxmllayout => 'fmpxmllayout.yml',
-  #   :fmresultset => 'fmresultset.yml',
-  #   #:fmpxmlresult => 'fmpxmlresult.yml',
-  #   :none => nil
-  # }
-} )
+
+})
 
 
 module Rfm

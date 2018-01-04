@@ -28,7 +28,7 @@ module SaxChange
     template
     templates
     template_prefix
-  )
+  ).compact.uniq
     
   # These defaults can be set here or in any ancestor/enclosing module or class,
   # as long as the defaults or their constants can be seen from this POV.
@@ -44,7 +44,7 @@ module SaxChange
     :text_label => 'text',
     :tag_translation => lambda {|txt| txt.gsub(/\-/, '_').downcase},
     :shared_variable_name => 'attributes',
-    :templates => nil,
+    #:templates => nil,
     :template_prefix => nil,
     :logger => Logger.new($stdout),
   }

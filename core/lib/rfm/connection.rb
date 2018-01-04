@@ -6,46 +6,28 @@ require 'rfm/compound_query'
 
 module Rfm
   class Connection
-    #include Config
     using Refinements
+    prepend Config
     
-    attr_accessor :defaults
 
-    def initialize(host='localhost', **opts)     #(action, params, request_options={},  *args)
-      #config(**opts)
+    def initialize(host=nil, **opts)     #(action, params, request_options={},  *args)      
+      host && config(host:host)
 
-      @defaults = {
-        :host => host,
-        :port => nil,
-        :proxy=>false,  # array of (p_addr, p_port = nil, p_user = nil, p_pass = nil)
-        :ssl => true,
-        :root_cert => true,
-        :root_cert_name => '',
-        :root_cert_path => '/',
-        :account_name => '',
-        :password => '',
-        :log_actions => false,
-        :warn_on_redirect => true,
-        :raise_on_401 => false,
-        :timeout => 60,
-        #:ignore_bad_data => false,
-        #:template => nil,
-        #:grammar => 'fmresultset',
-        :raise_invalid_option => true
-      } .merge!(opts)
-      
-      # Set default parser
-      
       if Kernel.const_defined?(:SaxChange)
         # Do we really want to pass connection options to parser? Most are probably dropped by filter anyway.
-        @defaults[:parser] = SaxChange::Parser.new(@defaults)
+        #@defaults[:parser] = SaxChange::Parser.new(@defaults)
+        config parser: SaxChange::Parser.new(config)
       end
       
-      if @defaults[:parser]
-        @defaults[:formatter] = ->(io, opts){opts[:parser].call(io, opts).result}
+      # if @defaults[:parser]
+      #   @defaults[:formatter] = ->(io, opts){opts[:parser].call(io, opts).result}
+      # end
+      
+      if config[:parser]
+        config formatter: ->(io, opts){config[:parser].call(io, opts).result}
       end
 
-    end
+    end # initialize
     
     def log
       Rfm.log
@@ -53,7 +35,8 @@ module Rfm
 
     def state(**opts)
       #@defaults.merge(super(**opts))
-      @defaults.merge(**opts)
+      #@defaults.merge(**opts)
+      config.merge(**opts)
     end
 
 

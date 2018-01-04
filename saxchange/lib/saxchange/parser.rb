@@ -94,7 +94,9 @@ module SaxChange
     using Refinements
     using ObjectMergeRefinements
   
-    attr_accessor :templates
+    # Initialize template cache in singleton-class of Parser,
+    # to hide data from casual onlookers.
+    meta_attr_accessor :templates
   
     extend Forwardable
     prepend Config
@@ -116,8 +118,8 @@ module SaxChange
     def initialize(_templates=nil, **options)
       # This is already handled invisibly by the Config module
       #config(**options)
-      config[:templates] = _templates if _templates
-      @templates = config[:templates].dup || Hash.new
+      #config[:templates] = _templates if _templates
+      self.templates = _templates.dup || config.delete(:templates).dup || Hash.new
     end
 
     def build_handler(_template=nil, _initial_object=nil, _parser_backend=nil, **options)
@@ -197,7 +199,7 @@ module SaxChange
     def load_template(name, _template_prefix=nil, **options)  #, **options)
       #puts "LOAD_TEMPLATE name: '#{name}', prefix: '#{_template_prefix}'"
       #_template_prefix = _template_prefix || options[:template_prefix] || config[:template_prefix]
-      @templates[name] ||= case
+      self.templates[name] ||= case
         when name.to_s[/\.y.?ml$/i]; (YAML.load_file(File.join(*[_template_prefix, name].compact)))
          # This line might cause an infinite loop.
         when name.to_s[/\.xml$/i]; self.class.build(File.join(*[_template_prefix, name].compact), nil, {'compact'=>true})
