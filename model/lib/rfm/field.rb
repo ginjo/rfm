@@ -60,6 +60,7 @@ module Rfm
     # The code above makes sure the control is always an array. Typically, though, you'll know up front
     # if the control is an array or not, and you can code accordingly.
     class Field
+      using Refinements
 
       attr_reader :name, :result, :type, :max_repeats, :global
       meta_attr_accessor :resultset_meta

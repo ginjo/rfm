@@ -1,3 +1,5 @@
+require 'forwardable'
+
 module Rfm
   # The Record object represents a single FileMaker record. You typically get them from ResultSet objects.
   # For example, you might use a Layout object to find some records:
@@ -107,6 +109,8 @@ module Rfm
   #   changes so you can tell if the Record object you're looking at is up-to-date as compared to another
   #   copy of the same record
   class Record < Rfm::CaseInsensitiveHash
+    extend Forwardable
+    using Refinements
 
     attr_accessor :layout #, :resultset
     attr_reader :record_id, :mod_id, :portals
@@ -136,7 +140,7 @@ module Rfm
     def initialize(*args) # resultset, attributes
       @mods            ||= {}
       @portals        ||= Rfm::CaseInsensitiveHash.new
-      options = args.rfm_extract_options!
+      options = args.extract_options!
       if args[0].is_a?(Resultset)
         @layout = args[0].layout
       elsif self.is_a?(Base)

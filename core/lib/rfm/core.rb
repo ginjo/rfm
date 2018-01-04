@@ -9,6 +9,7 @@ module Rfm
   def self.log
     @logger
   end
+  eval(File.read(File.join(File.dirname(__FILE__), '../refinements/refinements.rb')))
 end
 
 # PARSER_DEFAULTS = {
@@ -22,8 +23,8 @@ end
 #   }
 # }
 
-require 'rfm/core_extensions'
-require 'rfm/config'
+#require 'rfm/core_extensions'
+#require 'rfm/config'
 require 'rfm/error'
 require 'rfm/compound_query'
 require 'rfm/connection'

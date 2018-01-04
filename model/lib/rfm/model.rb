@@ -1,4 +1,4 @@
-
+require 'forwardable'
 
 # This is required because rfm-core does not specifically require it.
 # This is a rfm-model feature.
@@ -28,6 +28,7 @@ SaxChange::Config.defaults.merge!( {
 
 
 module Rfm
+  extend Forwardable
 
   autoload :Server,       'rfm/server'
   #autoload :Database,     'rfm/database'

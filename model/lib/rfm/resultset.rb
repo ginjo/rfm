@@ -7,6 +7,7 @@
 # License::   See MIT-LICENSE for details
 
 require 'bigdecimal'
+require 'forwardable'
 require 'rfm/record'
 
 module Rfm
@@ -36,7 +37,7 @@ module Rfm
   #   it provides metadata about the portals in the ResultSet and the Fields on those portals
 
   class Resultset < Array
-#     include Config
+    extend Forwardable
 
     attr_reader :layout, :meta, :calling_object
     attr_accessor :options
