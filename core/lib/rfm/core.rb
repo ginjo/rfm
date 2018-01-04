@@ -1,7 +1,4 @@
-# require all core files here.
-
 require 'logger'
-#require 'saxchange'
 
 # TODO: This should maybe to somewhere else
 module Rfm
@@ -9,24 +6,13 @@ module Rfm
   def self.log
     @logger
   end
+  
+  # Dynamically load generic Refinements & Config under the above module.
   eval(File.read(File.join(File.dirname(__FILE__), '../refinements/refinements.rb')))
+  eval(File.read(File.join(File.dirname(__FILE__), '../config/config.rb')))
 end
 
-# PARSER_DEFAULTS = {
-#   :default_class => Hash,  #CaseInsensitiveHash,
-#   :template_prefix => File.join(File.dirname(__FILE__), 'sax_templates/'),
-#   :templates => {
-#     :fmpxmllayout => 'fmpxmllayout.yml',
-#     :fmresultset => 'fmresultset.yml',
-#     :fmpxmlresult => 'fmpxmlresult.yml',
-#     :none => nil
-#   }
-# }
-
-#require 'rfm/core_extensions'
-#require 'rfm/config'
 require 'rfm/error'
 require 'rfm/compound_query'
 require 'rfm/connection'
-#require 'rfm/parsers/sax'
 

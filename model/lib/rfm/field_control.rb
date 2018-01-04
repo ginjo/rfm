@@ -22,6 +22,8 @@ module Rfm
     # * *value_list* is an array of strings representing the value list items, or nil
     #   if this field has no attached value list
     class FieldControl
+      using Refinements
+      
       attr_reader :name, :style, :value_list_name
       meta_attr_accessor :layout_meta
 

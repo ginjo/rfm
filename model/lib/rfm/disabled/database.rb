@@ -58,6 +58,7 @@ module Rfm
   # * *name* is the name of this database
   # * *state* is a hash of all server options used to initialize this server
   class Database
+    using Refinements
     include Config
 
     # Initialize a database object. You never really need to do this. Instead, just do this:

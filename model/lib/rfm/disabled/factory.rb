@@ -9,6 +9,8 @@
 module Rfm
 
   module Factory
+    using Refinements
+    
     # Acquired from Rfm::Base
     @models ||= []
 

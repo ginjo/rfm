@@ -66,6 +66,7 @@ module Refinements
 
   refine Object do
     # TODO: Find a better way to do this without patching Object.
+    #
     # Wrap an object in Array, if not already an Array,
     # since XmlMini doesn't know which will be returnd for any particular element.
     # See Rfm Layout & Record where this is used.

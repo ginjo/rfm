@@ -4,41 +4,17 @@ module SaxChange
 
   require 'logger'
   
-  # These are the same refinements as in rfm-core (under Rfm module).
-  # Not all of these refinements may be used yet in saxchange.
-  module Refinements
-    refine Hash do
-    	# Extract key-value pairs from self, given list of objects.
-    	# Pulled from SplashRails project.
-    	# If last object given is hash, it will be the collector for the extracted pairs.
-    	# Extracted pairs are deleted from the original hash (self).
-    	# Returns the extracted pairs as a hash or as the supplied collector hash.
-    	# Attempts to ignore case.
-    	def extract(*keys, **recipient)
-    		#other_hash = args.last.is_a?(Hash) ? args.pop : {}
-    		recipient = recipient.empty? ? Hash.new : recipient
-    		recipient.tap do |other|
-    			self.delete_if {|k,v| (keys.include?(k) || keys.include?(k.to_s) || keys.include?(k.to_s.downcase) || keys.include?(k.to_sym)) || keys.include?(k.to_s.downcase.to_sym) ? recipient[k]=v : nil}
-    		end
-    	end
-    	
-    	def filter(*keepers)
-        select {|k,v| keepers.flatten.include?(k.to_s)}
-      end
-      
-    	def filter!(*keepers)
-        select! {|k,v| keepers.flatten.include?(k.to_s)}
-      end
-    end
-  end
-  
-  # This has to go after Refinements are defined, because it uses the refinements.
-  require 'saxchange/config'
+  # TODO: Use submodules to pull gist of Refinements down to each gem within rfm repo.
+  # TODO: Also use submidules to pull in generic Config class in both saxchange and rfm-core.
+  #
+  # Dynamically load generic Refinements and Config under the above module.
+  eval(File.read(File.join(File.dirname(__FILE__), './refinements/refinements.rb'))) 
+  eval(File.read(File.join(File.dirname(__FILE__), './config/config.rb'))) 
 
   RUBY_VERSION_NUM = RUBY_VERSION[0,3].to_f
 
   singleton_class.extend Forwardable
-  singleton_class.def_delegators :'SaxChange::Config', :defaults, :'defaults='
+  singleton_class.def_delegators Config, :defaults, :'defaults='
   
   AllowableOptions = %w(
     backend

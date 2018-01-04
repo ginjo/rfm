@@ -9,6 +9,8 @@ module Rfm
     #
     # If you want to _run_ a script, see the Layout object instead.
     class Script
+      using Refinements
+      
       def initialize(name, db_obj)
         @name = name
         self.db = db_obj

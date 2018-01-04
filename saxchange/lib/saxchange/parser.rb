@@ -83,7 +83,7 @@
 require 'yaml'
 require 'forwardable'
 require 'logger'
-require 'saxchange/config'
+# require 'saxchange/config'
 # require 'saxchange/cursor'
 # require 'saxchange/handler'
 # require 'saxchange/handler/handlers'

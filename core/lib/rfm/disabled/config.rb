@@ -6,6 +6,8 @@ module Rfm
   # See CONFIG_KEYS for defined config parameters.
   #
   module Config
+    using Refinements
+    
     require 'yaml'
     require 'erb'
 

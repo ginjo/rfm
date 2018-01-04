@@ -1,5 +1,6 @@
 require 'net/https'
 require 'cgi'
+require 'rfm/compound_query'
 #require 'rfm/config'
 #require 'logger'
 

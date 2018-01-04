@@ -6,6 +6,7 @@ module Rfm
   # or create multiple find requests.
   # Also allow find requests to be :omit.
   class CompoundQuery < Array
+    using Refinements
 
     attr_accessor :original_input, :query_type, :key_values, :key_arrays, :key_map, :key_map_string, :key_counter, :field_mapping
 
