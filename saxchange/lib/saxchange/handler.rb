@@ -21,7 +21,7 @@ module SaxChange
     using Refinements
     prepend Config
   
-    attr_accessor :stack, :template, :initial_object, :stack_debug
+    attr_accessor :stack, :template, :initial_object, :stack_debug, :default_class
       
     def self.included(base)
       base.send :prepend, Config
@@ -36,6 +36,8 @@ module SaxChange
       #config options
     
       @template = _template || config[:template]
+      
+      puts "HANDLER#initialize default_class: #{config[:default_class]}"
       
       #_initial_object = _initial_object || config[:initial_object] || @template['initial_object']
       #config[:initial_object] ||= _initial_object || @template[:initial_object]
@@ -56,7 +58,7 @@ module SaxChange
 
       #puts "NEW HANDLER #{self}"
       #puts self.to_yaml
-      set_cursor Cursor.new('__TOP__', self).process_new_element
+      set_cursor Cursor.new('__TOP__', self, **options).process_new_element
     end
     
     def run_parser(io)

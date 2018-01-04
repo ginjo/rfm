@@ -102,6 +102,9 @@ module SaxChange
     # def_delegator :'SaxChange::Handler', :build, :parse
     # def_delegator :'SaxChange::Handler', :build, :call
 
+
+    # TODO: Make this block of options passable at loadtime/runtime from connection object to parser object,
+    #       because we need ability to pass in the default_class from a client connection instance.
     ::Object::ATTACH_OBJECT_DEFAULT_OPTIONS = {
       :shared_variable_name => Config.defaults[:shared_variable_name],
       :default_class => Config.defaults[:default_class],
@@ -186,18 +189,18 @@ module SaxChange
         else raise "Template '#{_template}' cannot be found."
       end
       
-      load_template(template_string, _template_prefix)  #, **options)
+      load_template(template_string, _template_prefix, options)  #, **options)
     end
 
     # Does the heavy-lifting of template retrieval.
-    def load_template(name, _template_prefix=nil)  #, **options)
+    def load_template(name, _template_prefix=nil, **options)  #, **options)
       #puts "LOAD_TEMPLATE name: '#{name}', prefix: '#{_template_prefix}'"
       #_template_prefix = _template_prefix || options[:template_prefix] || config[:template_prefix]
       @templates[name] ||= case
         when name.to_s[/\.y.?ml$/i]; (YAML.load_file(File.join(*[_template_prefix, name].compact)))
          # This line might cause an infinite loop.
         when name.to_s[/\.xml$/i]; self.class.build(File.join(*[_template_prefix, name].compact), nil, {'compact'=>true})
-        else config[:default_class].new
+        else config.merge(options)[:default_class].new
       end
     rescue #:error
       SaxChange.log.warn "SaxChange::Parser#load_template raised exception: #{$!}"

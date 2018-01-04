@@ -12,6 +12,7 @@ module SaxChange
   # you will always get the last object added to the stack. Think of a cursor as
   # a framework of tools that accompany each element's build process.
   class Cursor
+    using Refinements
     extend Forwardable
     prepend Config
 
@@ -27,6 +28,10 @@ module SaxChange
 
     def_delegators :handler, :top, :stack
 
+    # TOFIX:
+    # TODO: This is broken: 'config' at the class level could be stale,
+    #       compared to runtime that calls this. Should this be at instance level?
+    #
     # Main get-constant method
     def self.get_constant(klass)
       #puts "Getting constant '#{klass.to_s}'"
@@ -46,7 +51,11 @@ module SaxChange
     end
 
     def initialize(_tag, _handler, _parent=nil, _initial_attributes=nil, **opts) #, caller_binding=nil)
+      puts "CURSOR#initialize before config-merge:"
+      puts self.to_yaml
       config(**opts)
+      puts "CURSOR#initialize after config-merge:"
+      puts self.to_yaml
     
       #def initialize(_model, _obj, _tag, _handler)
       @tag     =  _tag
