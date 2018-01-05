@@ -1,5 +1,4 @@
 require 'forwardable'
-
 module Config
   #using Refinements
   

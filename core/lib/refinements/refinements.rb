@@ -43,7 +43,7 @@ module Refinements
 
 
   refine Object.singleton_class do
-    # Adds methods to put instance variables in rfm_metaclass, plus getter/setters
+    # Adds methods to put instance variables in metaclass, plus getter/setters
     # This is useful to hide instance variables in objects that would otherwise show "too much" information.
     def meta_attr_accessor(*names)
       meta_attr_reader(*names)
