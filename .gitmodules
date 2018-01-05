@@ -1,0 +1,6 @@
+[submodule "core/lib/ginjo_tools"]
+	path = core/lib/ginjo_tools
+	url = https://gist.github.com/2134717faa519a913ec9c974e17bbfa5.git
+[submodule "saxchange/lib/ginjo_tools"]
+	path = saxchange/lib/ginjo_tools
+	url = https://gist.github.com/2134717faa519a913ec9c974e17bbfa5.git

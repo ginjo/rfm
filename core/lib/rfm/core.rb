@@ -8,8 +8,8 @@ module Rfm
   end
   
   # Dynamically load generic Refinements & Config under the above module.
-  eval(File.read(File.join(File.dirname(__FILE__), '../refinements/refinements.rb')))
-  eval(File.read(File.join(File.dirname(__FILE__), '../config/config.rb')))
+  eval(File.read(File.join(File.dirname(__FILE__), '../ginjo_tools/refinements.rb')))
+  eval(File.read(File.join(File.dirname(__FILE__), '../ginjo_tools/config.rb')))
   
   AllowableOptions = %w(
     #RFM-CORE
