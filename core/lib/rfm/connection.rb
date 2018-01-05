@@ -8,7 +8,7 @@ module Rfm
   class Connection
     using Refinements
     prepend Config
-    
+        
 
     def initialize(host=nil, **opts)     #(action, params, request_options={},  *args)      
       host && config(host:host)
@@ -23,8 +23,20 @@ module Rfm
       #   @defaults[:formatter] = ->(io, opts){opts[:parser].call(io, opts).result}
       # end
       
-      if config[:parser]
-        config formatter: ->(io, opts){config[:parser].call(io, opts).result}
+      if config[:parser] && !config[:formatter]
+        #config formatter: ->(io, opts){config[:parser].call(io, opts).result}
+        #config formatter: ->(io, opts){config[:parser].call(io, opts).result.tap(){|r| check_for_errors(r.meta['error'] || 0)}}
+        
+        # TODO:
+        # This formatter should probably be plugged in from rfm-model,
+        # since it requires parsing before check_for_errors can be called.
+        # Keep the error-checking in rfm-core though, since it is a universal FMS thing.
+        config formatter: ->(io, opts) do
+          config[:parser].call(io, opts).result.tap do |r|
+            error = r.respond_to?(:error) && r.error
+            check_for_errors(error || 0).to_i
+          end
+        end
       end
 
     end # initialize
@@ -253,7 +265,8 @@ module Rfm
         end
       elsif _formatter
         connect(action, params, connection_options) do |io, connection_thread|
-          _formatter.call(io, full_options.merge({connection_thread:connection_thread}))
+          #_formatter.call(io, full_options.merge({connection_thread:connection_thread}))
+          _formatter.call(io, full_options)
         end
       else
         connect(action, params, connection_options)
@@ -321,20 +334,34 @@ module Rfm
         #puts "Connection#http_fetch (with block)"
         #pipe_reader, pipe_writer = IO.pipe
         IO.pipe do |pipe_reader, pipe_writer|
+          #@io_object = [pipe_reader, pipe_writer]
           thread = Thread.new do
             #pipe_reader.close # close the unused reader if forking.
-            connection.request request do |response|
-              check_for_http_errors response
-  
-              # This is NET::HTTP's way of streaming the response body.
-              # Note that the response object already has the header information at this point.
-              response.read_body do |chunk|
-                pipe_writer.write chunk
+            # I don't think we need the Thread.handle_interrupt,
+            # the thread.abort_on_exception seems to work well.
+            #Thread.handle_interrupt(Exception => :immediate) do
+              begin
+                connection.request request do |response|
+                  check_for_http_errors response
+      
+                  # This is NET::HTTP's way of streaming the response body.
+                  # Note that the response object already has the header information at this point.
+                  response.read_body do |chunk|
+                    if chunk.size > 0
+                      bytes = pipe_writer.write(chunk) 
+                      Rfm.log.info("#{self} wrote #{bytes} bytes to IO pipe.") if state[:log_responses]
+                    end
+                  end
+                  
+                  #pipe_writer.close # close writer here if using Thread.
+                end # connection.request
+              ensure
+                Rfm.log.info("#{self} ensurring IO-writer is closed.") if state[:log_responses]
+                pipe_writer.close
               end
-              
-              pipe_writer.close # close writer here if using Thread.
-            end # request
+            #end # Thread.interrupt
           end # Thread
+          thread.abort_on_exception = true
           #pipe_writer.close # close unused writer if using Fork.
           
           # Hand over the reader IO and thread to the block.
@@ -352,7 +379,7 @@ module Rfm
     end # http_fetch
     
     def check_for_http_errors(response)
-      if state[:log_responses] == true
+      if nil && state[:log_responses] == true
         response.to_hash.each { |key, value| log.info "#{key}: #{value}" }
         # TODO: Move this to http connection block.
         #log.info response.body
@@ -369,7 +396,7 @@ module Rfm
         newloc = URI.parse(response['location'])
         http_fetch(newloc.host, newloc.port, newloc.request_uri, account_name, password, post_data, limit - 1)
       when Net::HTTPUnauthorized
-        msg = "The account name (#{account_name}) or password provided is not correct (or the account doesn't have the fmxml extended privilege)."
+        msg = "The account name or password provided is not correct (or the account doesn't have the fmxml extended privilege)."
         raise Rfm::AuthenticationError.new(msg)
       when Net::HTTPNotFound
         msg = "Could not talk to FileMaker because the Web Publishing Engine is not responding (server returned 404)."
@@ -380,7 +407,9 @@ module Rfm
       end
     end
     
-    def check_for_errors(code=@meta['error'].to_i, raise_401=state[:raise_401])
+    #def check_for_errors(code=@meta['error'].to_i, raise_401=state[:raise_401])
+    def check_for_errors(code=0, raise_401=state[:raise_401])
+      code = (code || 0).to_i
       #puts ["\nRESULTSET#check_for_errors", code, raise_401]
       raise Rfm::Error.getError(code) if code != 0 && (code != 401 || raise_401)
     end

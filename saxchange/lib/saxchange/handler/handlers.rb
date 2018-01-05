@@ -74,7 +74,7 @@ module SaxChange
           # when io.to_s[/^</]; StringIO.open(io){|f| Ox.sax_parse self, f, options}
           # else File.open(io){|f| Ox.sax_parse self, f, options}
           # end
-          Ox.sax_parse self, io, options
+          Ox.sax_parse(self, io, options)
         end
     
         alias_method :start_element, :_start_element

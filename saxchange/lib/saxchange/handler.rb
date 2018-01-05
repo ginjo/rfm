@@ -61,7 +61,11 @@ module SaxChange
     
     def run_parser(io)
       #(SaxChange.log.info "SaxChange handler using backend parser: '#{self.class}' with template: '#{template}'") if config[:log_parser]
-      super
+      if io.is_a?(IO) && (io.closed? || io.eof?)
+        raise "#{self} was not able to execute 'run_parser'. The io object is closed or eof: #{io}"
+      else
+        super
+      end
     end
 
   
