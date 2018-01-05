@@ -20,7 +20,8 @@ Gem::Specification.new do |s|
   s.homepage = "https://github.com/ginjo/saxchange"
   
   s.require_paths = ["lib"]
-  s.files = Dir['lib/**/*.rb', 'lib/**/handler/*', 'lib/**/VERSION',  '.yardopts']
+  #s.files = Dir['lib/**/*.rb', 'lib/**/handler/*.rb', 'lib/**/VERSION',  '.yardopts']
+  s.files = Dir['lib/**/*']
   
   s.rdoc_options = ["--line-numbers", "--main", "README.md"]
   s.extra_rdoc_files = [
@@ -28,23 +29,6 @@ Gem::Specification.new do |s|
     #"README.md",
     #"lib/rfm/VERSION"
   ]
-  
-  # This should be a standalone gem.
-  # Don't make it depend on rfm-anything.
-
-  #   # s.add_runtime_dependency('activesupport', '>= 2.3.5')
-  #   s.add_development_dependency(%q<activemodel>, [">= 0"])
-  #   s.add_development_dependency(%q<rake>, [">= 0"])
-  #   s.add_development_dependency(%q<rdoc>, [">= 0"])
-  #   s.add_development_dependency(%q<rspec>, [">= 2"])
-  #   s.add_development_dependency(%q<minitest>, [">= 0"])
-  #   s.add_development_dependency(%q<diff-lcs>, [">= 0"])
-  #   s.add_development_dependency(%q<yard>, [">= 0"])
-  #   s.add_development_dependency(%q<redcarpet>, [">= 0"])
-  #   s.add_development_dependency(%q<ruby-prof>, [">= 0"])
-  #   s.add_development_dependency(%q<libxml-ruby>, [">= 0"]) unless RUBY_PLATFORM == 'java'
-  #   s.add_development_dependency(%q<ox>, [">= 0"])
-  #   s.add_development_dependency(%q<nokogiri>, [">= 0"])
   
 end # Gem::Specification.new
 
