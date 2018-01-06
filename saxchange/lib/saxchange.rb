@@ -58,5 +58,10 @@ require 'saxchange/object_merge_refinements'
 require 'saxchange/parser'
 require 'saxchange/cursor'
 require 'saxchange/handler'
-require 'saxchange/handler/handlers'
+
+# Require multiple files in a dir.
+multiple_dirs = Dir[File.join(File.dirname(__FILE__), "saxchange/handler/*_handler.rb")]
+multiple_dirs.each do |f|
+  require f
+end
 

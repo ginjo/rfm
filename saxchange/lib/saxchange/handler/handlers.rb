@@ -10,6 +10,32 @@ module SaxChange
     
     const_defined?(:PARSERS) || PARSERS = {}
     
+    PARSERS[:ox] = {:file=>'ox', :proc => proc do
+      require 'ox'
+      class OxHandler < ::Ox::Sax
+        include Handler
+    
+        def run_parser(io)
+          super
+          options={:convert_special=>true}
+          # case
+          # when (io.is_a?(File) || io.is_a?(StringIO)); Ox.sax_parse self, io, options
+          # when io.to_s[/^</]; StringIO.open(io){|f| Ox.sax_parse self, f, options}
+          # else File.open(io){|f| Ox.sax_parse self, f, options}
+          # end
+          # I had to put the eof? here, since it prevents connection thread exceptions
+          # from mucking up Ox's parser. None of the other parsers have this issue.
+          Ox.sax_parse(self, io, options)
+        end
+    
+        alias_method :start_element, :_start_element
+        alias_method :end_element, :_end_element
+        alias_method :attr, :_attribute
+        alias_method :text, :_text    
+        alias_method :doctype, :_doctype  
+      end # OxFmpSax
+    end}
+    
     PARSERS[:libxml] = {:file=>'libxml-ruby', :proc => proc do
       require 'libxml'
       class LibxmlHandler
@@ -18,6 +44,7 @@ module SaxChange
         include Handler
     
         def run_parser(io)
+          super
           # parser = case
           #   when (io.is_a?(File) || io.is_a?(StringIO))
           #    XML::Parser.io(io)
@@ -44,6 +71,7 @@ module SaxChange
         include Handler
     
         def run_parser(io)
+          super
           parser = Nokogiri::XML::SAX::Parser.new(self)
           # parser.parse case
           #   when (io.is_a?(File) || io.is_a?(StringIO))
@@ -62,29 +90,6 @@ module SaxChange
       end # NokogiriSax
     end}
     
-    PARSERS[:ox] = {:file=>'ox', :proc => proc do
-      require 'ox'
-      class OxHandler < ::Ox::Sax
-        include Handler
-    
-        def run_parser(io)
-          options={:convert_special=>true}
-          # case
-          # when (io.is_a?(File) || io.is_a?(StringIO)); Ox.sax_parse self, io, options
-          # when io.to_s[/^</]; StringIO.open(io){|f| Ox.sax_parse self, f, options}
-          # else File.open(io){|f| Ox.sax_parse self, f, options}
-          # end
-          Ox.sax_parse(self, io, options)
-        end
-    
-        alias_method :start_element, :_start_element
-        alias_method :end_element, :_end_element
-        alias_method :attr, :_attribute
-        alias_method :text, :_text    
-        alias_method :doctype, :_doctype  
-      end # OxFmpSax
-    end}
-    
     PARSERS[:rexml] = {:file=>'rexml/document', :proc => proc do
       require 'rexml/document'
       require 'rexml/streamlistener'
@@ -93,6 +98,7 @@ module SaxChange
         include Handler
     
         def run_parser(io)
+          super
           parser = REXML::Document
           #puts "#{self.class.name}#run_parser io object is a: #{io.class.ancestors}"
           parser.parse_stream(io, self)

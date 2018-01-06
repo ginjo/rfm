@@ -19,9 +19,9 @@ module SaxChange
   module Handler
   
     using Refinements
-    prepend Config
+    #prepend Config
   
-    attr_accessor :stack, :template, :initial_object, :stack_debug, :default_class
+    attr_accessor :stack, :template, :initial_object, :stack_debug, :default_class, :backend
       
     def self.included(base)
       base.send :prepend, Config
@@ -30,11 +30,18 @@ module SaxChange
 
     ###  Instance Methods  ###
   
-    def initialize(_template=nil, _initial_object=nil, **options)
+    # TEMP: _template={} is experimental and maybe breaking. The default is _template=nil.
+    def initialize(_template={}, _initial_object=nil, **options)
       #puts "HANDLER#initialize options: #{options}"
       # This is already handled invisibly by Config module.
       #config options
-    
+      
+      puts "I AM Handler#initialize (#{self}) pre-delegation, with _template: #{_template}, _initial_object: #{_initial_object}, options: #{options},"
+      
+      super(@backend.new)
+      
+      puts "I AM Handler#initialize (#{self}) post-delegation."
+          
       @template = _template || config[:template]
             
       #_initial_object = _initial_object || config[:initial_object] || @template['initial_object']
@@ -59,15 +66,18 @@ module SaxChange
       set_cursor Cursor.new('__TOP__', self, **options).process_new_element
     end
     
-    def run_parser(io)
-      #(SaxChange.log.info "SaxChange handler using backend parser: '#{self.class}' with template: '#{template}'") if config[:log_parser]
+    # Call this from each backend 'run_parser' method.
+    # The io.eof? method somehow causes exceptions within
+    # the connection hread to bubble up properly.
+    # Without the eof? method nokogiri & ox mishandle the io
+    # when the thread raises an exception.
+    #def run_parser(io)
+    def raise_if_bad_io(io)
+      #(SaxChange.log.info "#{self}.run_parser using backend parser: '#{self.class}' with template: '#{template}' and io: '#{io}'") if config[:log_parser]
       if io.is_a?(IO) && (io.closed? || io.eof?)
         raise "#{self} was not able to execute 'run_parser'. The io object is closed or eof: #{io}"
-      else
-        super
       end
     end
-
   
     def result
       stack[0].object if stack[0].is_a? Cursor
