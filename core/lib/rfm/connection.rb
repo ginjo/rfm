@@ -24,8 +24,11 @@ module Rfm
       # end
       
       if config[:parser] && !config[:formatter]
+        # Simple formatter returns handler instance.
+        #config formatter: ->(io, opts){config[:parser].call(io, opts)}
+        
+        # Simple formatter returns result.
         #config formatter: ->(io, opts){config[:parser].call(io, opts).result}
-        #config formatter: ->(io, opts){config[:parser].call(io, opts).result.tap(){|r| check_for_errors(r.meta['error'] || 0)}}
         
         # TODO:
         # This formatter should probably be plugged in from rfm-model,
@@ -265,8 +268,8 @@ module Rfm
         end
       elsif _formatter
         connect(action, params, connection_options) do |io, connection_thread|
-          #_formatter.call(io, full_options.merge({connection_thread:connection_thread}))
-          _formatter.call(io, full_options)
+          _formatter.call(io, full_options.merge({connection_thread:connection_thread, bind:binding}))
+          #_formatter.call(io, full_options)
         end
       else
         connect(action, params, connection_options)
