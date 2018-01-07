@@ -4,7 +4,7 @@
 ### or will this clash with 
 
 module SaxChange
-  module Handler
+  class Handler
   
     #####  SAX PARSER BACKEND HANDLERS  #####
     

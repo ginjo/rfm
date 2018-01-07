@@ -17,7 +17,26 @@ module SaxChange
   # At the end of the parsing run the handler instance, along with it's newly parsed object,
   # is returned to the object that originally called for the parsing run (your script/app/whatever).
   # Remember: The template hash keys must be Strings, not Symbols.
-  module Handler
+  class Handler < SimpleDelegator
+  
+    # We stick these methods in front of the specific handler class,
+    # so they run before their namesake's in the Handler class.
+    # TODO: Find a better place for this module, maybe its own file?
+    module PrependMethods
+    
+      # We want this 'run_parser' to go before the specific handler's run_parser.
+      def run_parser(io)
+        raise_if_bad_io(io)
+        super # calls run_parser in backend-specific handler instance.
+      end
+      
+      # We want user to be able to SaxChange::Handler::SpecificParser.new.
+      # By hijacking the 'self.new' method in front of the specific handler,
+      # self.new won't get in a loop with Handler.new.
+      def self.prepended(other)
+        other.singleton_class.send :alias_method, :new, :allocate_and_initialize
+      end
+    end
   
     using Refinements
     #prepend Config
@@ -27,15 +46,25 @@ module SaxChange
     def_delegators :'self.class', :label, :file, :backend_parser_class
       
     def self.included(base)
+      base.send :prepend, PrependMethods
       base.send :prepend, Config
       base.singleton_class.send :attr_accessor, :label, :file, :backend_parser_class
     end
     def self.prepended(base); included(base); end
+    def self.inherited(base); included(base); end
     
     def self.new(_backend=nil, _template=nil, _initial_object=nil,  **options)
       backend_handler_class = get_backend(_backend)
       #puts "#{self}.new with _backend:'#{_backend}', _template:'#{_template}', _initial_object:'#{_initial_object}', options:'#{options}'"
-      backend_handler_class.new(_template, _initial_object, **options)
+      #backend_handler_class.new(_template, _initial_object, **options)
+      backend_handler_class.allocate.tap do |h|
+        #puts "#{self}.new backend_handler_class: #{h}"
+        h.send :initialize, _template, _initial_object, **options
+      end
+    end
+    
+    def self.allocate_and_initialize(*args)
+      self.allocate.tap {|h| h.send :initialize, *args}
     end
       
     
@@ -104,10 +133,10 @@ module SaxChange
       set_cursor Cursor.new('__TOP__', self, **options).process_new_element
     end
     
-    def run_parser(io)
-      raise_if_bad_io(io)
-      super # calls run_parser in backend-specific saxchange handler instance.
-    end
+    #   def run_parser(io)
+    #     raise_if_bad_io(io)
+    #     super # calls run_parser in backend-specific saxchange handler instance.
+    #   end
     
     # Call this from each backend 'run_parser' method.
     # The io.eof? method somehow causes exceptions within
@@ -116,7 +145,7 @@ module SaxChange
     # when the thread raises an exception. Try disabling this and see.
     #def run_parser(io)
     def raise_if_bad_io(io)
-      #(SaxChange.log.info "#{self}.run_parser using backend parser: '#{self.class}' with template: '#{template}' and io: '#{io}'") if config[:log_parser]
+      #(SaxChange.log.info "#{self}.raise_if_bad_io using backend parser: '#{self.class}' with template: '#{template}' and io: '#{io}'") if config[:log_parser]
       if io.is_a?(IO) && (io.closed? || io.eof?)
         raise "#{self} was not able to execute 'run_parser'. The io object is closed or eof: #{io}"
       end

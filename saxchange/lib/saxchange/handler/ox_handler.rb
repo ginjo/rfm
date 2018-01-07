@@ -1,10 +1,10 @@
 require 'delegate'
 
 module SaxChange
-  module Handler
+  class Handler
     #PARSERS[:ox] = {:file=>'ox', :proc => proc do
       
-    class OxHandler < DelegateHandler
+    class OxHandler < Handler
       
       @label = :ox
       @file = 'ox'
