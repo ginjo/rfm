@@ -43,12 +43,12 @@ module SaxChange
     extend Forwardable
   
     attr_accessor :stack, :template, :initial_object, :stack_debug, :default_class, :backend
-    def_delegators :'self.class', :label, :file, :backend_parser_class
+    def_delegators :'self.class', :label, :file
       
     def self.included(base)
       base.send :prepend, PrependMethods
       base.send :prepend, Config
-      base.singleton_class.send :attr_accessor, :label, :file, :backend_parser_class
+      base.singleton_class.send :attr_accessor, :label, :file
     end
     def self.prepended(base); included(base); end
     def self.inherited(base); included(base); end
@@ -100,16 +100,15 @@ module SaxChange
     ###  Instance Methods  ###
   
     # TEMP: _template={} is experimental and maybe breaking. The default is _template=nil.
-    def initialize(_template=nil, _initial_object=nil, **options)
-      #puts "HANDLER#initialize options: #{options}"
-      # This is already handled invisibly by Config module.
-      #config options
+    def initialize(_template=nil, _initial_object=nil, **options)      
+      puts "I AM Handler#initialize (#{self}) pre-delegation, with _template: #{_template}, _initial_object: #{_initial_object}, options: #{options},"
+      #require file
+      #super(eval parser_instance) if parser_instance
+      parser_instance = self.class.setup
+      super(parser_instance) if parser_instance
       
-      #puts "I AM Handler#initialize (#{self}) pre-delegation, with _template: #{_template}, _initial_object: #{_initial_object}, options: #{options},"
-      require file
-      super(eval(backend_parser_class).new)
       @template = _template || config[:template]      
-      #puts "I AM Handler#initialize (#{self}) post-delegation, with template: '#{@template}'"
+      puts "I AM Handler#initialize (#{self}) post-delegation, with template: '#{@template}'"
             
       #_initial_object = _initial_object || config[:initial_object] || @template['initial_object']
       #config[:initial_object] ||= _initial_object || @template[:initial_object]

@@ -132,12 +132,11 @@ module SaxChange
       _template = _template || config_merge_options[:template]
       template_object = get_template(_template, **config_merge_options)
       initial_object = _initial_object || config_merge_options[:initial_object]   
-      #puts "#{self}#build_handler backend: '#{backend}', _template: '#{_template}', template_object: '#{template_object}', initial_object: '#{initial_object}'"
       # You don't need to send merged options here, since the handler will merge them when necessary.
       #handler = handler_class.new(template_object, initial_object, **options)
       handler = Handler.new(backend, template_object, initial_object, **options)
       
-      #(SaxChange.log.info "SaxChange::Parser#build_handler with #{handler_class} and template: #{_template}") if config_merge_options[:log_parser]
+      (SaxChange.log.info "#{self}#build_handler with '#{backend}' and '#{_template}'") if config_merge_options[:log_parser]
       
       handler
     end
