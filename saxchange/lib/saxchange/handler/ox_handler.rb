@@ -4,24 +4,15 @@ module SaxChange
   module Handler
     #PARSERS[:ox] = {:file=>'ox', :proc => proc do
       
-    class OxHandler < SimpleDelegator #::Ox::Sax
-      puts "Inside OxHandler, I am #{self}"
-      include Handler
-      singleton_class.send :attr_accessor, :label, :file
+    class OxHandler < DelegateHandler
       
       @label = :ox
       @file = 'ox'
-      
-      def initialize(*args)
-        puts "I AM OxHandler#initialize with class: #{self.class}, label: #{self.class.label}, args: #{args}, and config: #{config}"
-        require 'ox'
-        @backend = Ox::Sax
-        super
-      end
-  
+      @backend_parser_class = 'Ox::Sax'
+        
       def run_parser(io)
         #super
-        raise_if_bad_io(io) # was 'super'
+        #raise_if_bad_io(io) # was 'super'
         
         options={:convert_special=>true}
         # case

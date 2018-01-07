@@ -122,62 +122,35 @@ module SaxChange
       self.templates = _templates.dup || config.delete(:templates).dup || Hash.new
     end
 
-    def build_handler(_template=nil, _initial_object=nil, _parser_backend=nil, **options)
+    def build_handler(_template=nil, _initial_object=nil, _backend=nil, **options)
       options = options.filter(AllowableOptions)
       config_merge_options = config.merge(options)
       #(SaxChange.log.info "SaxChange::Parser#build_handler config_merge_options:") if config_merge_options[:log_parser]
       #(SaxChange.log.info config_merge_options.to_yaml) if config_merge_options[:log_parser]
-      parser_backend = _parser_backend || config_merge_options[:backend]
-      handler_class = get_backend(parser_backend)
+      backend = _backend || config_merge_options[:backend]
 
-      #template_prefix = config_merge_options[:template_prefix]
       _template = _template || config_merge_options[:template]
       template_object = get_template(_template, **config_merge_options)
       initial_object = _initial_object || config_merge_options[:initial_object]   
+      #puts "#{self}#build_handler backend: '#{backend}', _template: '#{_template}', template_object: '#{template_object}', initial_object: '#{initial_object}'"
       # You don't need to send merged options here, since the handler will merge them when necessary.
-      handler = handler_class.new(template_object, initial_object, **options)
+      #handler = handler_class.new(template_object, initial_object, **options)
+      handler = Handler.new(backend, template_object, initial_object, **options)
       
-      (SaxChange.log.info "SaxChange::Parser#build_handler with #{handler_class} and template: #{_template}") if config_merge_options[:log_parser]
+      #(SaxChange.log.info "SaxChange::Parser#build_handler with #{handler_class} and template: #{_template}") if config_merge_options[:log_parser]
       
       handler
     end
     
-    def call(io='', _template=nil, _initial_object=nil, _parser_backend=nil, **options)
+    def call(io='', _template=nil, _initial_object=nil, _backend=nil, **options)
       options = options.filter(AllowableOptions)
-      handler = build_handler(_template=nil, _initial_object=nil, _parser_backend=nil, **options)
+      handler = build_handler(_template=nil, _initial_object=nil, _backend=nil, **options)
       #(SaxChange.log.info "SaxChange::Parser#call with #{handler} and template: #{handler.template}") if config.merge(options)[:log_parser]
       handler.run_parser(io)
       handler
     end # base.build
 
-    alias_method :parse, :call
-  
-    # Takes backend symbol and returns custom Handler class for specified backend.
-    # TODO: Should this be private? Should it accept options?
-    #def self.get_backend(parser_backend = config[:backend])
-    def get_backend(parser_backend = config[:backend])
-      (parser_backend = decide_backend) unless parser_backend
-      #puts "Handler.get_backend parser_backend: #{parser_backend}"
-      if parser_backend.is_a?(String) || parser_backend.is_a?(Symbol)
-        parser_proc = Handler::PARSERS[parser_backend.to_sym][:proc]
-        parser_proc.call unless parser_proc.nil? || Handler.const_defined?((parser_backend.to_s.capitalize + 'Handler').to_sym)
-        Handler.const_get(parser_backend.to_s.capitalize + "Handler")
-      end
-    rescue
-      raise "Could not load the backend parser '#{parser_backend}': #{$!}"
-    end
-  
-    # Finds a loadable backend and returns its symbol.
-    # TODO: Should this be private? Take options?
-    #def self.decide_backend
-    def decide_backend
-      #BACKENDS.find{|b| !Gem::Specification::find_all_by_name(b[1]).empty? || b[0]==:rexml}[0]
-      Handler::PARSERS.find{|k,v| !Gem::Specification::find_all_by_name(v[:file]).empty? || k == :rexml}[0]
-    rescue
-      #puts "Handler.decide_backend raising #{$!}"
-      raise "The xml parser could not find a loadable backend library: #{$!}"
-    end
-    
+    alias_method :parse, :call  
 
     # Takes string, symbol, or hash, and returns a (possibly cached) parsing template.
     def get_template(_template, _template_prefix=nil, **options)  #_template_prefix=config[:template_prefix])

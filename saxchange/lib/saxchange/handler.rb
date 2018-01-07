@@ -1,3 +1,4 @@
+require 'forwardable'
 module SaxChange
   
   #####  SAX HANDLER  #####
@@ -20,29 +21,66 @@ module SaxChange
   
     using Refinements
     #prepend Config
+    extend Forwardable
   
     attr_accessor :stack, :template, :initial_object, :stack_debug, :default_class, :backend
+    def_delegators :'self.class', :label, :file, :backend_parser_class
       
     def self.included(base)
       base.send :prepend, Config
+      base.singleton_class.send :attr_accessor, :label, :file, :backend_parser_class
     end
+    def self.prepended(base); included(base); end
+    
+    def self.new(_backend=nil, _template=nil, _initial_object=nil,  **options)
+      backend_handler_class = get_backend(_backend)
+      #puts "#{self}.new with _backend:'#{_backend}', _template:'#{_template}', _initial_object:'#{_initial_object}', options:'#{options}'"
+      backend_handler_class.new(_template, _initial_object, **options)
+    end
+      
+    
+    # Takes backend symbol and returns custom Handler class for specified backend.
+    # TODO: Should this be private? Should it accept options?
+    #def self.get_backend(parser_backend = config[:backend])
+    def self.get_backend(_backend = nil)
+      (_backend = decide_backend) unless _backend
+      #puts "Handler.get_backend parser_backend: #{parser_backend}"
+      if _backend.is_a?(String) || _backend.is_a?(Symbol)
+        parser_proc = Handler::PARSERS[_backend.to_sym][:proc]
+        parser_proc.call unless parser_proc.nil? || Handler.const_defined?((_backend.to_s.capitalize + 'Handler').to_sym)
+        Handler.const_get(_backend.to_s.capitalize + "Handler")
+      end
+    rescue
+      raise "Could not load the backend parser '#{parser_backend}': #{$!}"
+    end
+  
+    # Finds a loadable backend and returns its symbol.
+    # TODO: Should this be private? Take options?
+    #def self.decide_backend
+    def self.decide_backend
+      #BACKENDS.find{|b| !Gem::Specification::find_all_by_name(b[1]).empty? || b[0]==:rexml}[0]
+      Handler::PARSERS.find{|k,v| !Gem::Specification::find_all_by_name(v[:file]).empty? || k == :rexml}[0]
+    rescue
+      #puts "Handler.decide_backend raising #{$!}"
+      raise "The xml parser could not find a loadable backend library: #{$!}"
+    end
+    
+    
    
 
     ###  Instance Methods  ###
   
     # TEMP: _template={} is experimental and maybe breaking. The default is _template=nil.
-    def initialize(_template={}, _initial_object=nil, **options)
+    def initialize(_template=nil, _initial_object=nil, **options)
       #puts "HANDLER#initialize options: #{options}"
       # This is already handled invisibly by Config module.
       #config options
       
-      puts "I AM Handler#initialize (#{self}) pre-delegation, with _template: #{_template}, _initial_object: #{_initial_object}, options: #{options},"
-      
-      super(@backend.new)
-      
-      puts "I AM Handler#initialize (#{self}) post-delegation."
-          
-      @template = _template || config[:template]
+      #puts "I AM Handler#initialize (#{self}) pre-delegation, with _template: #{_template}, _initial_object: #{_initial_object}, options: #{options},"
+      require file
+      super(eval(backend_parser_class).new)
+      @template = _template || config[:template]      
+      #puts "I AM Handler#initialize (#{self}) post-delegation, with template: '#{@template}'"
             
       #_initial_object = _initial_object || config[:initial_object] || @template['initial_object']
       #config[:initial_object] ||= _initial_object || @template[:initial_object]
@@ -66,11 +104,16 @@ module SaxChange
       set_cursor Cursor.new('__TOP__', self, **options).process_new_element
     end
     
+    def run_parser(io)
+      raise_if_bad_io(io)
+      super # calls run_parser in backend-specific saxchange handler instance.
+    end
+    
     # Call this from each backend 'run_parser' method.
     # The io.eof? method somehow causes exceptions within
-    # the connection hread to bubble up properly.
-    # Without the eof? method nokogiri & ox mishandle the io
-    # when the thread raises an exception.
+    # the connection thread to bubble up properly.
+    # Without the eof? method, nokogiri & ox mishandle the io
+    # when the thread raises an exception. Try disabling this and see.
     #def run_parser(io)
     def raise_if_bad_io(io)
       #(SaxChange.log.info "#{self}.run_parser using backend parser: '#{self.class}' with template: '#{template}' and io: '#{io}'") if config[:log_parser]

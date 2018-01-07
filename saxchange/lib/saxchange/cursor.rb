@@ -53,7 +53,8 @@ module SaxChange
     def initialize(_tag, _handler, _parent=nil, _initial_attributes=nil, **opts) #, caller_binding=nil)
       #puts "CURSOR#initialize before config-merge:"
       #puts self.to_yaml
-      config(**opts)
+      # This shouldn't be here, since prepended Config already handles this.
+      #config(**opts)
       #puts "CURSOR#initialize after config-merge:"
       #puts self.to_yaml
     
