@@ -26,6 +26,7 @@ module SaxChange
     
       # We want this 'run_parser' to go before the specific handler's run_parser.
       def run_parser(io)
+        SaxChange.log.info("#{self}#run_parser with:'#{io}'") if config[:log_parser]
         raise_if_bad_io(io)
         super # calls run_parser in backend-specific handler instance.
       end
@@ -104,7 +105,7 @@ module SaxChange
     def self.list_handlers
       @handlers ||= self.constants.collect do |c|
         h = SaxChange::Handler.const_get(c)
-        puts h.label rescue nil
+        #puts h.label rescue nil
         h.respond_to?(:label) && h || nil
       end.compact
     end
@@ -145,9 +146,8 @@ module SaxChange
     # the connection thread to bubble up properly.
     # Without the eof? method, nokogiri & ox mishandle the io
     # when the thread raises an exception. Try disabling this and see.
-    #def run_parser(io)
     def raise_if_bad_io(io)
-      #(SaxChange.log.info "#{self}.raise_if_bad_io using backend parser: '#{self.class}' with template: '#{template}' and io: '#{io}'") if config[:log_parser]
+      #SaxChange.log.info("#{self}.raise_if_bad_io status-of-io: '#{io.status}'") if config[:log_parser]
       if io.is_a?(IO) && (io.closed? || io.eof?)
         raise "#{self} was not able to execute 'run_parser'. The io object is closed or eof: #{io}"
       end
@@ -184,7 +184,7 @@ module SaxChange
   
     # Add a node to an existing element.
     def _start_element(tag, attributes=nil, *args)
-      #puts ["_START_ELEMENT", tag, attributes, args].to_yaml # if tag.to_s.downcase=='fmrestulset'
+      puts ["_START_ELEMENT", tag, attributes, args].to_yaml # if tag.to_s.downcase=='fmrestulset'
       tag = transform tag
       if attributes
         # This crazy thing transforms attribute keys to underscore (or whatever).
@@ -199,14 +199,14 @@ module SaxChange
   
     # Add attribute to existing element.
     def _attribute(name, value, *args)
-      #puts "Receiving attribute '#{name}' with value '#{value}'"
+      puts "Receiving attribute '#{name}' with value '#{value}'"
       name = transform name
       cursor.receive_attribute(name, value)
     end
   
     # Add 'content' attribute to existing element.
     def _text(value, *args)
-      #puts "Receiving text '#{value}'"
+      puts "Receiving text '#{value}'"
       #puts RUBY_VERSION_NUM
       if RUBY_VERSION_NUM > 1.8 && value.is_a?(String)
         #puts "Forcing utf-8"
@@ -220,11 +220,12 @@ module SaxChange
     # Close out an existing element.
     def _end_element(tag, *args)
       tag = transform tag
-      #puts "Receiving end_element '#{tag}'"
+      puts "Receiving end_element '#{tag}'"
       cursor.receive_end_element(tag) and dump_cursor
     end
   
     def _doctype(*args)
+      puts "Receiving doctype '#{args}'"
       (args = args[0].gsub(/"/, '').split) if args.size ==1
       _start_element('doctype', :value=>args)
       _end_element('doctype')

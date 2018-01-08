@@ -30,18 +30,12 @@ SaxChange::Config.defaults.merge!({
 module Rfm
   extend Forwardable
 
-  autoload :Server,       'rfm/server'
+  #autoload :Server,       'rfm/server'
   #autoload :Database,     'rfm/database'
   #autoload :Layout,       'rfm/layout'
   autoload :Resultset,    'rfm/resultset'
   autoload :Record,       'rfm/record'
   autoload :Base,         'rfm/base'
-  #autoload :SaxParser,    'rfm/parsers/sax'
-  #autoload :Config,       'rfm/config'
-  #autoload :Factory,      'rfm/factory'
-  #autoload :CompoundQuery,'rfm/compound_query'
-  #autoload :VERSION,      'rfm/version'
-  #autoload :Scope,        'rfm/scope.rb'
 
   module Metadata
     autoload :Script,         'rfm/script'
@@ -52,11 +46,6 @@ module Rfm
     autoload :ResultsetMeta,  'rfm/resultset_meta'
     autoload :LayoutMeta,     'rfm/layout_meta'
   end
-
-  # Disabled by wbr for v4.
-  #
-  #   def_delegators 'Rfm::Factory', :servers, :server, :db, :database, :layout
-  #   def_delegators 'Rfm::Config', :config, :get_config, :config_clear
   
   def_delegators 'Rfm::Resultset', :load_data
 
@@ -73,3 +62,4 @@ module Rfm
   extend self
 
 end # Rfm
+

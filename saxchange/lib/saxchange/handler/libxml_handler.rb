@@ -1,17 +1,16 @@
 module SaxChange
   class Handler
       class LibxmlHandler < Handler
-
         @label = :libxml
         @file  = 'libxml-ruby'
         @setup = proc do
           require 'libxml'
           include LibXML
-          include LibXML::XML::SaxParser::Callbacks        
+          include XML::SaxParser::Callbacks        
         end
     
         def run_parser(io)
-          parser = LibXML::XML::Parser.io(io)
+          parser = XML::SaxParser.io(io)
           parser.callbacks = self
           parser.parse
         end
@@ -20,8 +19,7 @@ module SaxChange
         alias_method :on_end_element, :_end_element
         alias_method :on_characters, :_text
         alias_method :on_internal_subset, :_doctype
-      end # LibxmlSax
-
+      end # LibxmlHandler
   end
 end
 
