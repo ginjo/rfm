@@ -24,7 +24,6 @@ SaxChange::Config.defaults.merge!({
   #:initial_object => proc { Rfm::Resultset.new(Rfm::Layout.new('test'), Rfm::Layout.new('test')) },
   :template_prefix => File.join(File.dirname(__FILE__), 'saxchange/'),
   :template => ->(options, env_binding){ options[:grammar].to_s.downcase + '.yml' },
-
 })
 
 
