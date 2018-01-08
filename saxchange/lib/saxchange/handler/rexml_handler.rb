@@ -1,18 +1,15 @@
 module SaxChange
   class Handler
-
     class RexmlHandler < Handler
     
       @label = :rexml
       @file  = 'rexml/document'
-    
-      def self.setup
+      @setup = proc do
         require 'rexml/document'
         require 'rexml/streamlistener'
         include REXML::StreamListener
-        nil
       end
-    
+
       def run_parser(io)
         REXML::Document.parse_stream(io, self)
       end

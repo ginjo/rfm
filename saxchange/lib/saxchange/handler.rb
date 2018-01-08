@@ -34,40 +34,40 @@ module SaxChange
       # By hijacking the 'self.new' method in front of the specific handler,
       # self.new won't get in a loop with Handler.new.
       def self.prepended(other)
-        other.singleton_class.send :alias_method, :new, :allocate_and_initialize
+        #other.singleton_class.send :alias_method, :new, :allocate_and_initialize
+        other.define_singleton_method(:new) do |*args|
+          allocate.tap {|h| h.send :initialize, *args}
+        end
       end
-    end
+    end # PrependMethods
   
     using Refinements
     #prepend Config
     extend Forwardable
   
     attr_accessor :stack, :template, :initial_object, :stack_debug, :default_class, :backend
-    def_delegators :'self.class', :label, :file
+    def_delegators :'self.class', :label, :file, :setup, :backend_instance, :loaded
       
-    def self.included(base)
+    def self.inherited(base)
       base.send :prepend, PrependMethods
       base.send :prepend, Config
-      base.singleton_class.send :attr_accessor, :label, :file
+      base.singleton_class.send :attr_accessor, :label, :file, :setup, :backend_instance, :loaded
     end
-    def self.prepended(base); included(base); end
-    def self.inherited(base); included(base); end
     
     def self.new(_backend=nil, _template=nil, _initial_object=nil,  **options)
       backend_handler_class = get_backend(_backend)
       #puts "#{self}.new with _backend:'#{_backend}', _template:'#{_template}', _initial_object:'#{_initial_object}', options:'#{options}'"
-      #backend_handler_class.new(_template, _initial_object, **options)
-      backend_handler_class.allocate.tap do |h|
-        #puts "#{self}.new backend_handler_class: #{h}"
-        h.send :initialize, _template, _initial_object, **options
-      end
+      backend_handler_class.new(_template, _initial_object, **options)
+      # backend_handler_class.allocate.tap do |h|
+      #   #puts "#{self}.new backend_handler_class: #{h}"
+      #   h.send :initialize, _template, _initial_object, **options
+      # end
     end
     
-    def self.allocate_and_initialize(*args)
-      self.allocate.tap {|h| h.send :initialize, *args}
-    end
+    # def self.allocate_and_initialize(*args)
+    #   self.allocate.tap {|h| h.send :initialize, *args}
+    # end
       
-    
     # Takes backend symbol and returns custom Handler class for specified backend.
     # TODO: Should this be private? Should it accept options?
     #def self.get_backend(parser_backend = config[:backend])
@@ -75,12 +75,25 @@ module SaxChange
       (_backend = decide_backend) unless _backend
       #puts "Handler.get_backend parser_backend: #{parser_backend}"
       if _backend.is_a?(String) || _backend.is_a?(Symbol)
-        parser_proc = Handler::PARSERS[_backend.to_sym][:proc]
-        parser_proc.call unless parser_proc.nil? || Handler.const_defined?((_backend.to_s.capitalize + 'Handler').to_sym)
-        Handler.const_get(_backend.to_s.capitalize + "Handler")
+        # parser_proc = Handler::PARSERS[_backend.to_sym][:proc]
+        # parser_proc.call unless parser_proc.nil? || Handler.const_defined?((_backend.to_s.capitalize + 'Handler').to_sym)
+        # Handler.const_get(_backend.to_s.capitalize + "Handler")
+        backend_handler_class = list_handlers.find {|h| h.label.to_s == _backend.to_s}
+      else
+        backend_handler_class = _backend
       end
+      
+      if ! backend_handler_class.loaded 
+        case
+          when backend_handler_class.setup.is_a?(Proc); backend_handler_class.setup.call
+          when backend_handler_class.setup.is_a?(String); backend_handler_class.eval(backend_handler_class.setup)
+        end
+        backend_handler_class.loaded = true
+      end
+      
+      backend_handler_class
     rescue
-      raise "Could not load the backend parser '#{parser_backend}': #{$!}"
+      raise "Could not load the backend parser '#{_backend}': #{$!}"
     end
   
     # Finds a loadable backend and returns its symbol.
@@ -88,13 +101,20 @@ module SaxChange
     #def self.decide_backend
     def self.decide_backend
       #BACKENDS.find{|b| !Gem::Specification::find_all_by_name(b[1]).empty? || b[0]==:rexml}[0]
-      Handler::PARSERS.find{|k,v| !Gem::Specification::find_all_by_name(v[:file]).empty? || k == :rexml}[0]
+      #Handler::PARSERS.find{|k,v| !Gem::Specification::find_all_by_name(v[:file]).empty? || k == :rexml}[0]
+      list_handlers.find{|h| !Gem::Specification::find_all_by_name(h.file).empty? || h.file.to_s == 'rexml'}
     rescue
       #puts "Handler.decide_backend raising #{$!}"
       raise "The xml parser could not find a loadable backend library: #{$!}"
     end
     
-    
+    def self.list_handlers
+      @handlers ||= self.constants.collect do |c|
+        h = SaxChange::Handler.const_get(c)
+        puts h.label rescue nil
+        h.respond_to?(:label) && h || nil
+      end.compact
+    end
    
 
     ###  Instance Methods  ###
@@ -104,8 +124,11 @@ module SaxChange
       puts "I AM Handler#initialize (#{self}) pre-delegation, with _template: #{_template}, _initial_object: #{_initial_object}, options: #{options},"
       #require file
       #super(eval parser_instance) if parser_instance
-      parser_instance = self.class.setup
-      super(parser_instance) if parser_instance
+      backend_parser_instance = case
+        when backend_instance.is_a?(Proc); backend_instance.call
+        when backend_instance.is_a?(String); eval(backend_instance)
+      end
+      __setobj__(backend_parser_instance) if backend_parser_instance
       
       @template = _template || config[:template]      
       puts "I AM Handler#initialize (#{self}) post-delegation, with template: '#{@template}'"

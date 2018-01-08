@@ -1,19 +1,14 @@
-require 'delegate'
-
 module SaxChange
   class Handler
-    #PARSERS[:ox] = {:file=>'ox', :proc => proc do
-      
     class OxHandler < Handler
       
       @label = :ox
       @file = 'ox'
-      
-      def self.setup
+      @setup = proc do
         require 'ox'
-        Ox::Sax.new
       end
-        
+      @backend_instance = 'Ox::Sax.new'
+
       def run_parser(io)        
         options={:convert_special=>true}
         Ox.sax_parse(self, io, options)
