@@ -17,7 +17,7 @@ module SaxChange
   # At the end of the parsing run the handler instance, along with it's newly parsed object,
   # is returned to the object that originally called for the parsing run (your script/app/whatever).
   # Remember: The template hash keys must be Strings, not Symbols.
-  class Handler < SimpleDelegator
+  module Handler
   
     # We stick these methods in front of the specific handler class,
     # so they run before their namesake's in the Handler class.
@@ -34,11 +34,11 @@ module SaxChange
       # We want SaxChange::Handler::SpecificParser.new to not hit the generic Handler.new.
       # By hijacking the 'self.new' method in front of the specific handler,
       # self.new won't get in a loop with Handler.new.
-      def self.prepended(other)
-        other.define_singleton_method(:new) do |*args|
-          allocate.tap {|h| h.send :initialize, *args}
-        end
-      end
+#       def self.prepended(other)
+#         other.define_singleton_method(:new) do |*args|
+#           allocate.tap {|h| h.send :initialize, *args}
+#         end
+#       end
     end # PrependMethods
   
     using Refinements
@@ -50,15 +50,15 @@ module SaxChange
     extend Forwardable
   
     attr_accessor :stack, :template, :initial_object, :stack_debug, :default_class, :backend
-    def_delegators :'self.class', :label, :file, :setup, :backend_instance, :loaded
+    #def_delegators :'self.class', :label, :file, :setup, :backend_instance, :loaded
       
-    def self.inherited(base)
+    def self.included(base)
       base.send :prepend, PrependMethods
       
       # Currently, this is done just in the main Handler class, and it seems to work.
       #base.send :prepend, Config
       
-      base.singleton_class.send :attr_accessor, :label, :file, :setup, :backend_instance, :loaded
+      #base.singleton_class.send :attr_accessor, :label, :file, :setup, :backend_instance, :loaded
     end
     
     def self.new(_backend=nil, _template=nil, _initial_object=nil,  **options)
@@ -74,53 +74,65 @@ module SaxChange
       (_backend = decide_backend) unless _backend
       #puts "Handler.get_backend parser_backend: #{parser_backend}"
       if _backend.is_a?(String) || _backend.is_a?(Symbol)
-        backend_handler_class = list_handlers.find {|h| h.label.to_s == _backend.to_s}
+        _backend = _backend.to_s
+        #backend_handler_class = list_handlers.find {|h| h.label.to_s == _backend.to_s}
+        class_name = _backend.split(/[\-_]/).map{|i| i.capitalize}.join.to_s + "Handler"
+        puts "CLASS_NAME: #{class_name}"
+        const_defined?(class_name) || require("saxchange/handler/#{_backend}_handler.rb")
+        backend_handler_class = const_get(class_name)
       else
         backend_handler_class = _backend
       end
       
-      if ! backend_handler_class.loaded 
-        case
-          when backend_handler_class.setup.is_a?(Proc); backend_handler_class.setup.call
-          when backend_handler_class.setup.is_a?(String); backend_handler_class.eval(backend_handler_class.setup)
-        end
-        backend_handler_class.loaded = true
-      end
+#       if ! backend_handler_class.loaded 
+#         case
+#           when backend_handler_class.setup.is_a?(Proc); backend_handler_class.setup.call
+#           when backend_handler_class.setup.is_a?(String); backend_handler_class.eval(backend_handler_class.setup)
+#         end
+#         backend_handler_class.loaded = true
+#       end
       
       backend_handler_class
-    rescue
-      raise "Could not load the backend parser '#{_backend}': #{$!}"
+#     rescue
+#       raise "Could not load the backend parser '#{_backend}': #{$!}"
     end
   
     # Finds a loadable backend and returns its symbol.
     # TODO: Should this be private? Take options?
     #def self.decide_backend
     def self.decide_backend
-      list_handlers.find{|h| !Gem::Specification::find_all_by_name(h.file).empty? || h.file.to_s == 'rexml'}
-    rescue
-      #puts "Handler.decide_backend raising #{$!}"
-      raise "The xml parser could not find a loadable backend library: #{$!}"
+      list_handlers.find do |fname|
+        name = fname.gsub(/_handler\.rb/, '')
+        Gem::Specification::find_all_by_name(name).any? || name == 'rexml'
+      end
+#     rescue
+#       #puts "Handler.decide_backend raising #{$!}"
+#       raise "The xml parser could not find a loadable backend library: #{$!}"
     end
     
     def self.list_handlers
-      @handlers ||= self.constants.collect do |c|
-        h = SaxChange::Handler.const_get(c)
-        #puts h.label rescue nil
-        h.respond_to?(:label) && h || nil
-      end.compact
+      @handlers ||= Dir.entries(File.join(File.dirname(__FILE__), "handler/")).delete_if(){|f| !f[/[a-zA-Z0-9]/]}
     end
+    
+#     def self.list_handlers
+#       @handlers ||= self.constants.collect do |c|
+#         h = SaxChange::Handler.const_get(c)
+#         #puts h.label rescue nil
+#         h.respond_to?(:label) && h || nil
+#       end.compact
+#     end
    
 
     ###  Instance Methods  ###
   
     # TEMP: _template={} is experimental and maybe breaking. The default is _template=nil.
     def initialize(_template=nil, _initial_object=nil, **options)      
-      #puts "I AM Handler#initialize (#{self}) pre-delegation, with _template: #{_template}, _initial_object: #{_initial_object}, options: #{options},"
-      backend_parser_instance = case
-        when backend_instance.is_a?(Proc); backend_instance.call
-        when backend_instance.is_a?(String); eval(backend_instance)
-      end
-      __setobj__(backend_parser_instance) if backend_parser_instance
+#       #puts "I AM Handler#initialize (#{self}) pre-delegation, with _template: #{_template}, _initial_object: #{_initial_object}, options: #{options},"
+#       backend_parser_instance = case
+#         when backend_instance.is_a?(Proc); backend_instance.call
+#         when backend_instance.is_a?(String); eval(backend_instance)
+#       end
+#       __setobj__(backend_parser_instance) if backend_parser_instance
       
       @template = _template || config[:template]      
       #puts "I AM Handler#initialize (#{self}) post-delegation, with template: '#{@template}'"

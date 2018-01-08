@@ -1,13 +1,15 @@
+require 'nokogiri'
 module SaxChange
-  class Handler
-    class NokogiriHandler < Handler
-      @label = :nokogiri
-      @file  = 'nokogiri'
-      @setup = proc do
-        require 'nokogiri'
+  module Handler
+    class NokogiriHandler < Nokogiri::XML::SAX::Document
+      include Handler
+      #@label = :nokogiri
+      #@file  = 'nokogiri'
+      #@setup = proc do
+        
         #Nokogiri::XML::SAX::Document.send :inherited, self
-      end
-      @backend_instance = 'Nokogiri::XML::SAX::Document.new'
+      #end
+      #@backend_instance = 'Nokogiri::XML::SAX::Document.new'
 
       def run_parser(io)
         Nokogiri::XML::SAX::Parser.new(self).parse(io)  #, 'UTF-8')

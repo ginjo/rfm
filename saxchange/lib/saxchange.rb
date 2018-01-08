@@ -59,9 +59,9 @@ require 'saxchange/parser'
 require 'saxchange/cursor'
 require 'saxchange/handler'
 
-# Require multiple files in a dir.
-multiple_dirs = Dir[File.join(File.dirname(__FILE__), "saxchange/handler/*")]
-multiple_dirs.each do |f|
-  require f
-end
+# # Require multiple files in a dir.
+# multiple_dirs = Dir[File.join(File.dirname(__FILE__), "saxchange/handler/*")]
+# multiple_dirs.each do |f|
+#   require f
+# end
 
