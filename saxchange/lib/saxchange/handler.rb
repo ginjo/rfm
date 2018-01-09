@@ -18,27 +18,16 @@ module SaxChange
   # is returned to the object that originally called for the parsing run (your script/app/whatever).
   # Remember: The template hash keys must be Strings, not Symbols.
   module Handler
-  
     # We stick these methods in front of the specific handler class,
     # so they run before their namesake's in the Handler class.
     # TODO: Find a better place for this module, maybe its own file?
     module PrependMethods
-    
       # We want this 'run_parser' to go before the specific handler's run_parser.
       def run_parser(io)
         SaxChange.log.info("#{self}#run_parser with:'#{io}'") if config[:log_parser]
         raise_if_bad_io(io)
         super # calls run_parser in backend-specific handler instance.
       end
-      
-      # We want SaxChange::Handler::SpecificParser.new to not hit the generic Handler.new.
-      # By hijacking the 'self.new' method in front of the specific handler,
-      # self.new won't get in a loop with Handler.new.
-#       def self.prepended(other)
-#         other.define_singleton_method(:new) do |*args|
-#           allocate.tap {|h| h.send :initialize, *args}
-#         end
-#       end
     end # PrependMethods
   
     using Refinements
@@ -50,7 +39,6 @@ module SaxChange
     extend Forwardable
   
     attr_accessor :stack, :template, :initial_object, :stack_debug, :default_class, :backend
-    #def_delegators :'self.class', :label, :file, :setup, :backend_instance, :loaded
       
     def self.included(base)
       base.send :prepend, PrependMethods
@@ -74,71 +62,42 @@ module SaxChange
       (_backend = decide_backend) unless _backend
       #puts "Handler.get_backend parser_backend: #{parser_backend}"
       if _backend.is_a?(String) || _backend.is_a?(Symbol)
-        _backend = _backend.to_s
-        #backend_handler_class = list_handlers.find {|h| h.label.to_s == _backend.to_s}
+        _backend = extract_handler_name_from_filename _backend
         class_name = _backend.split(/[\-_]/).map{|i| i.capitalize}.join.to_s + "Handler"
-        puts "CLASS_NAME: #{class_name}"
         const_defined?(class_name) || require("saxchange/handler/#{_backend}_handler.rb")
         backend_handler_class = const_get(class_name)
       else
         backend_handler_class = _backend
       end
-      
-#       if ! backend_handler_class.loaded 
-#         case
-#           when backend_handler_class.setup.is_a?(Proc); backend_handler_class.setup.call
-#           when backend_handler_class.setup.is_a?(String); backend_handler_class.eval(backend_handler_class.setup)
-#         end
-#         backend_handler_class.loaded = true
-#       end
-      
       backend_handler_class
-#     rescue
-#       raise "Could not load the backend parser '#{_backend}': #{$!}"
     end
   
-    # Finds a loadable backend and returns its symbol.
+    # Finds a loadable backend and returns its name.
+    # Search is alphebetical.
     # TODO: Should this be private? Take options?
-    #def self.decide_backend
     def self.decide_backend
       list_handlers.find do |fname|
-        name = fname.gsub(/_handler\.rb/, '')
-        Gem::Specification::find_all_by_name(name).any? || name == 'rexml'
-      end
-#     rescue
-#       #puts "Handler.decide_backend raising #{$!}"
-#       raise "The xml parser could not find a loadable backend library: #{$!}"
+        name = extract_handler_name_from_filename fname
+        Gem::Specification::find_all_by_name(name).any?
+      end || 'rexml'
+    end
+    
+    def self.extract_handler_name_from_filename(filename=nil)
+      regex = /_handler\.rb/
+      filename ? filename.to_s.gsub(regex, '') : regex
     end
     
     def self.list_handlers
       @handlers ||= Dir.entries(File.join(File.dirname(__FILE__), "handler/")).delete_if(){|f| !f[/[a-zA-Z0-9]/]}
     end
-    
-#     def self.list_handlers
-#       @handlers ||= self.constants.collect do |c|
-#         h = SaxChange::Handler.const_get(c)
-#         #puts h.label rescue nil
-#         h.respond_to?(:label) && h || nil
-#       end.compact
-#     end
-   
+
 
     ###  Instance Methods  ###
   
     # TEMP: _template={} is experimental and maybe breaking. The default is _template=nil.
     def initialize(_template=nil, _initial_object=nil, **options)      
-#       #puts "I AM Handler#initialize (#{self}) pre-delegation, with _template: #{_template}, _initial_object: #{_initial_object}, options: #{options},"
-#       backend_parser_instance = case
-#         when backend_instance.is_a?(Proc); backend_instance.call
-#         when backend_instance.is_a?(String); eval(backend_instance)
-#       end
-#       __setobj__(backend_parser_instance) if backend_parser_instance
-      
       @template = _template || config[:template]      
-      #puts "I AM Handler#initialize (#{self}) post-delegation, with template: '#{@template}'"
-
       _initial_object ||= config[:initial_object] || (@template && @template['initial_object'])
-      
       @initial_object = case
         when _initial_object.nil?; config[:default_class].new
         when _initial_object.is_a?(Class); _initial_object.new(**config) # added by wbr for v4
@@ -196,7 +155,7 @@ module SaxChange
   
     # Add a node to an existing element.
     def _start_element(tag, attributes=nil, *args)
-      puts ["_START_ELEMENT", tag, attributes, args].to_yaml # if tag.to_s.downcase=='fmrestulset'
+      #puts ["_START_ELEMENT", tag, attributes, args].to_yaml # if tag.to_s.downcase=='fmrestulset'
       tag = transform tag
       if attributes
         # This crazy thing transforms attribute keys to underscore (or whatever).
@@ -211,14 +170,14 @@ module SaxChange
   
     # Add attribute to existing element.
     def _attribute(name, value, *args)
-      puts "Receiving attribute '#{name}' with value '#{value}'"
+      #puts "Receiving attribute '#{name}' with value '#{value}'"
       name = transform name
       cursor.receive_attribute(name, value)
     end
   
     # Add 'content' attribute to existing element.
     def _text(value, *args)
-      puts "Receiving text '#{value}'"
+      #puts "Receiving text '#{value}'"
       #puts RUBY_VERSION_NUM
       if RUBY_VERSION_NUM > 1.8 && value.is_a?(String)
         #puts "Forcing utf-8"
@@ -232,12 +191,12 @@ module SaxChange
     # Close out an existing element.
     def _end_element(tag, *args)
       tag = transform tag
-      puts "Receiving end_element '#{tag}'"
+      #puts "Receiving end_element '#{tag}'"
       cursor.receive_end_element(tag) and dump_cursor
     end
   
     def _doctype(*args)
-      puts "Receiving doctype '#{args}'"
+      #puts "Receiving doctype '#{args}'"
       (args = args[0].gsub(/"/, '').split) if args.size ==1
       _start_element('doctype', :value=>args)
       _end_element('doctype')

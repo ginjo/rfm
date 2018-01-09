@@ -1,13 +1,8 @@
+require 'ox'
 module SaxChange
-  class Handler
-    class OxHandler < Handler
-      
-      @label = :ox
-      @file = 'ox'
-      @setup = proc do
-        require 'ox'
-      end
-      @backend_instance = 'Ox::Sax.new'
+  module Handler
+    class OxHandler < Ox::Sax
+      include Handler
 
       def run_parser(io)        
         options={:convert_special=>true}
@@ -19,7 +14,6 @@ module SaxChange
       alias_method :attr, :_attribute
       alias_method :text, :_text    
       alias_method :doctype, :_doctype  
-      
     end # OxHandler
   end
 end
