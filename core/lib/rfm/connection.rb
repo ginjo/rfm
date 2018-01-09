@@ -268,7 +268,10 @@ module Rfm
         end
       elsif _formatter
         connect(action, params, connection_options) do |io, connection_thread|
-          _formatter.call(io, full_options.merge({connection_thread:connection_thread, bind:binding}))
+          #_formatter.call(io, full_options.merge({connection_thread:connection_thread, bind:binding}))
+          # Experimental
+          full_options.merge!({connection_thread:connection_thread, bind:binding})
+          _formatter.call(binding)
           #_formatter.call(io, full_options)
         end
       else
