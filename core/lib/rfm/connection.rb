@@ -41,11 +41,16 @@ module Rfm
           config formatter: ->(io, _binding, opts) do
             _binding[:config][:parser].call(io, opts).result.tap do |r|
               error = r.respond_to?(:error) && r.error
-              _binding[:check_for_errors, error || 0].to_i
+              #_binding[:check_for_errors, (error || 0)].to_i
+              check_for_errors(error || 0).to_i
             end
           end
-        when config[:parser]
-          config formatter: ->(io, _binding, opts){config[:parser].call(io, opts)}
+        # Should this be done in the parser instead?
+        when !config[:parser] && !config[:formatter]
+          require 'rexml/document'
+          #config formatter: ->(io, _binding, opts){config[:parser].call(io, opts)}
+          config formatter: proc {|io| !io.eof? && REXML::Document.new(io)}
+          #config formatter: proc {|io| out=''; REXML::Document.new(io).write(out, 2); out}
         #else
       end
 
@@ -277,7 +282,7 @@ module Rfm
         connect(action, params, connection_options) do |io, connection_thread|
           #_formatter.call(io, full_options.merge({connection_thread:connection_thread, bind:binding}))
           # Experimental
-          full_options.merge({connection_thread:connection_thread})
+          #full_options.merge({connection_thread:connection_thread})
           _formatter.call(io, binding, full_options.merge({connection_thread:connection_thread}))
           #_formatter.call(io, full_options)
         end
