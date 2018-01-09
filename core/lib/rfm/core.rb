@@ -42,6 +42,7 @@ module Rfm
     capture_strings_with
     logger
     decimal_separator
+    formatter
     
     #SAXCHANGE
     backend

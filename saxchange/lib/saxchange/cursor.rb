@@ -15,7 +15,6 @@ module SaxChange
     using Refinements
     using ObjectMergeRefinements
     extend Forwardable
-    #prepend Config
 
     # model - currently active model (rename to current_model)
     # local_model - model of this cursor's tag (rename to local_model)
@@ -24,13 +23,14 @@ module SaxChange
     # level - cursor depth
     attr_accessor :model, :local_model, :object, :tag, :handler, :parent, :level, :element_attachment_prefs, :new_element_callback, :initial_attributes, :config  #, :newtag
 
-
-    #Parser.install_defaults(self)
-
     def_delegators :handler, :top, :stack
 
-    singleton_class.extend Forwardable
-    singleton_class.def_delegators Config, :config, :defaults
+    #singleton_class.extend Forwardable
+    #singleton_class.def_delegators Config, :config, :defaults
+    
+    def self.config
+      @config ||= Config.config
+    end
 
     # Main get-constant method
     def self.get_constant(klass, options=config)

@@ -108,6 +108,9 @@ module SaxChange
       end
       @stack = []
       @stack_debug=[]
+      
+      # Experimental cache config
+      @config_cache = config
 
       set_cursor Cursor.new('__TOP__', self, **options).process_new_element
     end
