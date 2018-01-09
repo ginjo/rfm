@@ -8,15 +8,20 @@ module Rfm
   class Connection
     using Refinements
     prepend Config
-        
+    
+    # TODO: Make this autoload.
+    require 'rexml/document'
 
     def initialize(host=nil, **opts)     #(action, params, request_options={},  *args)      
       host && config(host:host)
-
-      if Kernel.const_defined?(:SaxChange)
+      
+      case
+      when Kernel.const_defined?(:SaxChange) && !config.has_key?(:parser)
         # Do we really want to pass connection options to parser? Most are probably dropped by filter anyway.
         #@defaults[:parser] = SaxChange::Parser.new(@defaults)
         config parser: SaxChange::Parser.new(config)
+      when !config.has_key?(:parser)
+        config parser: REXML::Document.method(:new).curry
       end
       
       # if @defaults[:parser]
@@ -24,7 +29,7 @@ module Rfm
       # end
       
       case
-        when config[:parser] && !config[:formatter]
+        when config[:parser].class.name == 'SaxChange::Parser' && !config.has_key?(:formatter)
           # Simple formatter returns handler instance.
           #config formatter: ->(io, opts){config[:parser].call(io, opts)}
           
@@ -38,15 +43,21 @@ module Rfm
           #
           # The formatter is called during the connection phase, when data is returned.
           # The formatter takes args: (io, binding within get_records method, options_hash)
-          config formatter: ->(io, _binding, opts) do
-            _binding[:config][:parser].call(io, opts).result.tap do |r|
+          config formatter: ->(io, _binding, options) do
+            _parser = options[:parser] || SaxChange::Parser.new(options)
+            _parser.call(io, options).result.tap do |r|
               error = r.respond_to?(:error) && r.error
               #_binding[:check_for_errors, (error || 0)].to_i
               check_for_errors(error || 0).to_i
             end
           end
-        # Should this be done in the parser instead?
-        when !config[:parser] && !config[:formatter]
+        when config[:parser] && !config.has_key?(:formatter)
+          config formatter: proc do |io, _binding, options|
+            _parser = options[:parser] || REXML::Document.method(:new).curry
+            _parser.call(io)
+          end
+        when !config[:parser] && !config.has_key?(:formatter)
+          # TODO: Should this be done in the parser instead?
           require 'rexml/document'
           #config formatter: ->(io, _binding, opts){config[:parser].call(io, opts)}
           config formatter: proc {|io| !io.eof? && REXML::Document.new(io)}
