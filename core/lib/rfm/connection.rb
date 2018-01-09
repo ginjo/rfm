@@ -23,23 +23,30 @@ module Rfm
       #   @defaults[:formatter] = ->(io, opts){opts[:parser].call(io, opts).result}
       # end
       
-      if config[:parser] && !config[:formatter]
-        # Simple formatter returns handler instance.
-        #config formatter: ->(io, opts){config[:parser].call(io, opts)}
-        
-        # Simple formatter returns result.
-        #config formatter: ->(io, opts){config[:parser].call(io, opts).result}
-        
-        # TODO:
-        # This formatter should probably be plugged in from rfm-model,
-        # since it requires parsing before check_for_errors can be called.
-        # Keep the error-checking in rfm-core though, since it is a universal FMS thing.
-        config formatter: ->(io, opts) do
-          config[:parser].call(io, opts).result.tap do |r|
-            error = r.respond_to?(:error) && r.error
-            check_for_errors(error || 0).to_i
+      case
+        when config[:parser] && !config[:formatter]
+          # Simple formatter returns handler instance.
+          #config formatter: ->(io, opts){config[:parser].call(io, opts)}
+          
+          # Simple formatter returns result.
+          #config formatter: ->(io, opts){config[:parser].call(io, opts).result}
+          
+          # TODO:
+          # This formatter should probably be plugged in from rfm-model,
+          # since it requires parsing before check_for_errors can be called.
+          # Keep the error-checking in rfm-core though, since it is a universal FMS thing.
+          #
+          # The formatter is called during the connection phase, when data is returned.
+          # The formatter takes args: (io, binding within get_records method, options_hash)
+          config formatter: ->(io, _binding, opts) do
+            _binding[:config][:parser].call(io, opts).result.tap do |r|
+              error = r.respond_to?(:error) && r.error
+              _binding[:check_for_errors, error || 0].to_i
+            end
           end
-        end
+        when config[:parser]
+          config formatter: ->(io, _binding, opts){config[:parser].call(io, opts)}
+        #else
       end
 
     end # initialize
@@ -264,14 +271,14 @@ module Rfm
       
       if block_given?
         connect(action, params, connection_options) do |io, connection_thread|
-          yield(io, full_options.merge({connection_thread:connection_thread}))
+          yield(io, binding, full_options.merge({connection_thread:connection_thread}))
         end
       elsif _formatter
         connect(action, params, connection_options) do |io, connection_thread|
           #_formatter.call(io, full_options.merge({connection_thread:connection_thread, bind:binding}))
           # Experimental
-          full_options.merge!({connection_thread:connection_thread, bind:binding})
-          _formatter.call(binding)
+          full_options.merge({connection_thread:connection_thread})
+          _formatter.call(io, binding, full_options.merge({connection_thread:connection_thread}))
           #_formatter.call(io, full_options)
         end
       else
