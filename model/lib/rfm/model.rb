@@ -36,10 +36,10 @@ module Rfm
       
     defaults.merge!({
       parser: SaxChange::Parser.new,
-      formatter: ->(io, _binding, options) do
+      formatter: ->(io, options) do
         options[:parser].call(io, options).tap do |r|
           error = r.respond_to?(:error) && r.error
-          _binding[:check_for_errors, error]
+          options[:local_env][:check_for_errors, error]
         end
       end
     })

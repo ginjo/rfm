@@ -21,25 +21,16 @@ module Rfm
         case 
         when Kernel.const_defined?(:SaxChange)
           config parser: SaxChange::Parser.new(config)  # unless config[:parser]  ???
-          config formatter: ->(io, _binding, options) do
+          config formatter: ->(io, options) do
             options[:parser].call(io, options)
           end          
         else 
-          config formatter: REXML::Document.method(:new).curry
+          config formatter: ->(io, options){ REXML::Document.new(io) }
         end
       end
       
     end # initialize
     
-    def get_binding
-      binding
-    end
-    
-    def test_binding(arg='no-arg-given')
-      b = get_binding
-      b[:config][:database]
-    end
-      
 
     def log
       Rfm.log
@@ -243,15 +234,11 @@ module Rfm
       
       if block_given?
         connect(action, params, connection_options) do |io, connection_thread|
-          yield(io, binding, full_options.merge({connection_thread:connection_thread}))
+          yield(io, full_options.merge({http_thread:connection_thread, local_env:binding}))
         end
       elsif _formatter
         connect(action, params, connection_options) do |io, connection_thread|
-          #_formatter.call(io, full_options.merge({connection_thread:connection_thread, bind:binding}))
-          # Experimental
-          #full_options.merge({connection_thread:connection_thread})
-          _formatter.call(io, binding, full_options.merge({connection_thread:connection_thread}))
-          #_formatter.call(io, full_options)
+          _formatter.call(io, full_options.merge({http_thread:connection_thread, local_env:binding}))
         end
       else
         connect(action, params, connection_options)
