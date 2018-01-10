@@ -19,16 +19,31 @@ SaxChange::AllowableOptions.push %w(
   connection
 )
 
-SaxChange::Config.defaults.merge!({
+SaxChange::Config.defaults.merge!(
   :default_class => Rfm::CaseInsensitiveHash,
   #:initial_object => proc { Rfm::Resultset.new(Rfm::Layout.new('test'), Rfm::Layout.new('test')) },
   :template_prefix => File.join(File.dirname(__FILE__), 'saxchange/'),
   :template => ->(options, env_binding){ options[:grammar].to_s.downcase + '.yml' },
-})
+)
 
 
 module Rfm
   extend Forwardable
+
+  # Set default parser/formatter for Rfm (this is at the Rfm::Config class-level)
+  module Config
+    using Refinements
+      
+    defaults.merge!({
+      parser: SaxChange::Parser.new,
+      formatter: ->(io, _binding, options) do
+        options[:parser].call(io, options).tap do |r|
+          error = r.respond_to?(:error) && r.error
+          _binding[:check_for_errors, error]
+        end
+      end
+    })
+  end # Config
 
   #autoload :Server,       'rfm/server'
   #autoload :Database,     'rfm/database'
@@ -45,21 +60,11 @@ module Rfm
     autoload :Datum,          'rfm/datum'
     autoload :ResultsetMeta,  'rfm/resultset_meta'
     autoload :LayoutMeta,     'rfm/layout_meta'
-  end
+  end # Metadata
   
   def_delegators 'Rfm::Resultset', :load_data
-
-  # Disabled by wbr for v4.
-  #
-  #   def models(*args)
-  #     Rfm::Factory.models(*args)
-  #   end
-  # 
-  #   def modelize(*args)
-  #     Rfm::Factory.modelize(*args)
-  #   end
   
-  extend self
+  #extend self
 
 end # Rfm
 

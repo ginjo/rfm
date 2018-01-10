@@ -138,15 +138,17 @@ module SaxChange
       handler
     end
     
-    def call(io='', _template=nil, _initial_object=nil, _backend=nil, **options)
+    def parse(io='', _template=nil, _initial_object=nil, _backend=nil, **options)
       options = options.filter(AllowableOptions)
       handler = build_handler(_template=nil, _initial_object=nil, _backend=nil, **options)
       #SaxChange.log.info("SaxChange::Parser#call with #{handler} and template: #{handler.template}") if config.merge(options)[:log_parser]
       handler.run_parser(io)
       handler
-    end # base.build
-
-    alias_method :parse, :call  
+    end
+    
+    def call(*args)
+      parse(*args).result
+    end
 
     # Takes string, symbol, or hash, and returns a (possibly cached) parsing template.
     def get_template(_template, _template_prefix=nil, **options)  #_template_prefix=config[:template_prefix])

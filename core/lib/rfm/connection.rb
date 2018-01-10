@@ -15,58 +15,32 @@ module Rfm
     def initialize(host=nil, **opts)     #(action, params, request_options={},  *args)      
       host && config(host:host)
       
-      case
-      when Kernel.const_defined?(:SaxChange) && !config.has_key?(:parser)
-        # Do we really want to pass connection options to parser? Most are probably dropped by filter anyway.
-        #@defaults[:parser] = SaxChange::Parser.new(@defaults)
-        config parser: SaxChange::Parser.new(config)
-      when !config.has_key?(:parser)
-        config parser: REXML::Document.method(:new).curry
-      end
-      
-      # if @defaults[:parser]
-      #   @defaults[:formatter] = ->(io, opts){opts[:parser].call(io, opts).result}
-      # end
-      
-      case
-        when config[:parser].class.name == 'SaxChange::Parser' && !config.has_key?(:formatter)
-          # Simple formatter returns handler instance.
-          #config formatter: ->(io, opts){config[:parser].call(io, opts)}
-          
-          # Simple formatter returns result.
-          #config formatter: ->(io, opts){config[:parser].call(io, opts).result}
-          
-          # TODO:
-          # This formatter should probably be plugged in from rfm-model,
-          # since it requires parsing before check_for_errors can be called.
-          # Keep the error-checking in rfm-core though, since it is a universal FMS thing.
-          #
-          # The formatter is called during the connection phase, when data is returned.
-          # The formatter takes args: (io, binding within get_records method, options_hash)
+      # Set a default formatter if none exits.
+      # Note that if rfm-model is loaded, it will have set the :formatter already at the Rfm::Config class level.
+      if !config.has_key?(:formatter)
+        case 
+        when Kernel.const_defined?(:SaxChange)
+          config parser: SaxChange::Parser.new(config)  # unless config[:parser]  ???
           config formatter: ->(io, _binding, options) do
-            _parser = options[:parser] || SaxChange::Parser.new(options)
-            _parser.call(io, options).result.tap do |r|
-              error = r.respond_to?(:error) && r.error
-              #_binding[:check_for_errors, (error || 0)].to_i
-              check_for_errors(error || 0).to_i
-            end
-          end
-        when config[:parser] && !config.has_key?(:formatter)
-          config formatter: proc do |io, _binding, options|
-            _parser = options[:parser] || REXML::Document.method(:new).curry
-            _parser.call(io)
-          end
-        when !config[:parser] && !config.has_key?(:formatter)
-          # TODO: Should this be done in the parser instead?
-          require 'rexml/document'
-          #config formatter: ->(io, _binding, opts){config[:parser].call(io, opts)}
-          config formatter: proc {|io| !io.eof? && REXML::Document.new(io)}
-          #config formatter: proc {|io| out=''; REXML::Document.new(io).write(out, 2); out}
-        #else
+            options[:parser].call(io, options)
+          end          
+        else 
+          config formatter: REXML::Document.method(:new).curry
+        end
       end
-
+      
     end # initialize
     
+    def get_binding
+      binding
+    end
+    
+    def test_binding(arg='no-arg-given')
+      b = get_binding
+      b[:config][:database]
+    end
+      
+
     def log
       Rfm.log
     end
@@ -112,25 +86,7 @@ module Rfm
     def field_mapping
       load_field_mapping(state[:field_mapping])
     end
-
     
-    # # This works well, but I put the default formatter declaration in the connection defaults,
-    # # and that works just as well, plus is more flexible and user-friendly.
-    #
-    #     # A formatter is any object that responds to call(io, options).
-    #     def formatter(**_options)
-    #       options = state.merge(_options)
-    #       case
-    #         # This allows nil formatter, which results in raw http response.
-    #         when options.has_key?(:formatter); options[:formatter]
-    #         # If no formatter defined, but a parser is, create default formatter.
-    #         when options[:parser];
-    #           # Note that this formatter is built upon every call to the db.
-    #           # The better way to do it is set the parser/formatter when Connection is instanciated.
-    #           -> *args {options[:parser].call(*args).result}
-    #       end
-    #     end
-
 
     ###  COMMANDS  ###
     #
@@ -437,7 +393,8 @@ module Rfm
     end
     
     #def check_for_errors(code=@meta['error'].to_i, raise_401=state[:raise_401])
-    def check_for_errors(code=0, raise_401=state[:raise_401])
+    def check_for_errors(code=nil, raise_401=state[:raise_401])
+      Rfm.log.warn("#{self} No response code given in check_for_errors.") unless code
       code = (code || 0).to_i
       #puts ["\nRESULTSET#check_for_errors", code, raise_401]
       raise Rfm::Error.getError(code) if code != 0 && (code != 401 || raise_401)
