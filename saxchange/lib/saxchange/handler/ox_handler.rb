@@ -6,6 +6,7 @@ module SaxChange
 
       def run_parser(io)        
         options={:convert_special=>true}
+        puts "OX Handler run_parser self: #{self.class.ancestors}, io: #{[io, io.class.ancestors]}"
         Ox.sax_parse(self, io, options)
       end
   

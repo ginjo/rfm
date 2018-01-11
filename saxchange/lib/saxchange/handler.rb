@@ -123,7 +123,8 @@ module SaxChange
     def raise_if_bad_io(io)
       #SaxChange.log.info("#{self}.raise_if_bad_io status-of-io: '#{io.status}'") if config[:log_parser]
       if io.is_a?(IO) && (io.closed? || io.eof?)
-        raise "#{self} was not able to execute 'run_parser'. The io object is closed or eof: #{io}"
+        #raise "#{self} could not execute 'run_parser'. The io object is closed or eof: #{io}"
+        SaxChange.log.warn "#{self} could not execute 'run_parser'. The io object is closed or eof: #{io}"
       end
     end
   

@@ -29,6 +29,9 @@ module Rfm
         end
       end
       
+      # As a side note, here's a way to pretty-print raw xml in ruby:
+      # REXML::Document.new(xml_string).write($stdout, 2)
+      
     end # initialize
     
 
@@ -233,20 +236,20 @@ module Rfm
       #puts "Connection#get_records calling 'connect' with action: #{action}, params: #{params}, options: #{connection_options}"
       
       if block_given?
-        connect(action, params, connection_options) do |io, connection_thread|
-          yield(io, full_options.merge({http_thread:connection_thread, local_env:binding}))
+        connect(action, params, connection_options) do |io, http_thread|
+          rslt = yield(io, full_options.merge({http_thread:http_thread, local_env:binding}))
+          #http_thread.value
+          #rslt
         end
       elsif _formatter
-        connect(action, params, connection_options) do |io, connection_thread|
-          _formatter.call(io, full_options.merge({http_thread:connection_thread, local_env:binding}))
+        connect(action, params, connection_options) do |io, http_thread|
+          rslt = _formatter.call(io, full_options.merge({http_thread:http_thread, local_env:binding}))
+          #http_thread.value
+          #rslt
         end
       else
         connect(action, params, connection_options)
       end
-      
-      # As a side note, here's a way to pretty-print raw xml in ruby:
-      # REXML::Document.new(xml_string).write($stdout, 2)
-
     end # get_records
 
     # TODO: Stop deleting options, just let them fall out of the way by expand_options method.
@@ -314,10 +317,11 @@ module Rfm
             #Thread.handle_interrupt(Exception => :immediate) do
               begin
                 connection.request request do |response|
+                  # Response object already has the header information at this point.
+                  Thread.current[:http_response] = response
                   check_for_http_errors response
       
                   # This is NET::HTTP's way of streaming the response body.
-                  # Note that the response object already has the header information at this point.
                   response.read_body do |chunk|
                     if chunk.size > 0
                       bytes = pipe_writer.write(chunk) 
@@ -327,20 +331,26 @@ module Rfm
                   
                   #pipe_writer.close # close writer here if using Thread.
                 end # connection.request
+              # If you rescue, no exception will bubble up from this thread,
+              # unless you re-raise.
+              rescue Exception => exception
+                Thread.current[:exception] = exception
+                #Thread.main.raise exception
               ensure
                 Rfm.log.info("#{self} ensurring IO-writer is closed.") if state[:log_responses]
                 pipe_writer.close
+                Thread.main.raise exception if defined?(:exception)
               end
-            #end # Thread.interrupt
+            #end # Thread.handle_interrupt
           end # Thread
-          thread.abort_on_exception = true
+          #thread.abort_on_exception = true
           #pipe_writer.close # close unused writer if using Fork.
           
           # Hand over the reader IO and thread to the block.
           # Note that thread.value will give the return value of thread,
           # but only after the thread has closed. So beware how you use 'thread'.
           yield(pipe_reader, thread)
-        end
+        end # IO.pipe
       else
         # Give straight response object, if no block given.
         puts "Connection.http_fetch (without block)"
