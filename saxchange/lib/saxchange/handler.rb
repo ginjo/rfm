@@ -121,7 +121,7 @@ module SaxChange
     # Without the eof? method, nokogiri & ox mishandle the io
     # when the thread raises an exception. Try disabling this and see.
     def raise_if_bad_io(io)
-      #SaxChange.log.info("#{self}.raise_if_bad_io status-of-io: '#{io.status}'") if config[:log_parser]
+      #SaxChange.log.info("Handler#raise_if_bad_io io.closed?: '#{io.closed?}'") #if config[:log_parser]
       if io.is_a?(IO) && (io.closed? || io.eof?)
         #raise "#{self} could not execute 'run_parser'. The io object is closed or eof: #{io}"
         SaxChange.log.warn "#{self} could not execute 'run_parser'. The io object is closed or eof: #{io}"
