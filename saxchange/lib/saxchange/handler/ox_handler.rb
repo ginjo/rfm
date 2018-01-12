@@ -11,7 +11,7 @@ module SaxChange
       
       def run_parser(io)        
         options={:convert_special=>true}
-        #puts "OxHandler#run_parser self: #{self}, io: #{io}, io.stat: #{io.stat.inspect}"
+        #puts "OxHandler#run_parser self: #{self}, io: #{io}, io.stat: #{io.stat.inspect}, io.pos: #{io.pos}"
         Ox.sax_parse(self, io, options)
       end
   

@@ -153,17 +153,6 @@ module Rfm
       options[:layout] = _layout || options[:layout] || layout
       get_records('-view', {}, options)
     end
-
-    # Get the foundset_count only given criteria & options.
-    # TODO: This should probably be abstracted up to the Model layer of Rfm,
-    # since it has no FMServer-specific command.
-    def count(_layout=nil, find_criteria, **options)
-      # foundset_count won't work until xml is parsed (still need to dev the xml parser interface to rfm v4).
-      options[:database] ||= database
-      options[:layout] = _layout || options[:layout] || layout
-      options[:max_records] = 0
-      find(find_criteria, **options).foundset_count   # from basic hash:  ['fmresultset']['resultset']['count'].to_i
-    end
     
     def databases(**options)
       # This from factory.
@@ -206,6 +195,36 @@ module Rfm
       get_records('-scriptnames', {}, options)
     end
     
+    
+    # Get the foundset_count only given criteria & options.
+    # TODO: This should probably be abstracted up to the Model layer of Rfm,
+    # since it has no FMServer-specific command.
+    def count(_layout=nil, find_criteria, **options)
+      # foundset_count won't work until xml is parsed (still need to dev the xml parser interface to rfm v4).
+      options[:database] ||= database
+      options[:layout] = _layout || options[:layout] || layout
+      options[:max_records] = 0
+      find(find_criteria, **options).foundset_count   # from basic hash:  ['fmresultset']['resultset']['count'].to_i
+    end
+    
+    # Retrieves metadata only, with an empty resultset.
+    # TODO: This should not be in rfm-core, should be in rfm-model,
+    # since it depends on parsing to specific objects.
+    require 'saxchange/object_merge_refinements'
+    using ObjectMergeRefinements
+    def meta(_layout=nil, **options)
+      options[:database] ||= database
+      options[:layout] = _layout || options[:layout] || layout
+      t1 = Thread.new {get_records('-view', {}, options)}
+      t2 = Thread.new {get_records('-view', {}, options.merge(grammar:'FMPXMLLAYOUT'))}
+      #t1.value.instance_variable_set(:@layout, t2.value)
+      #t1.value
+      #t2.value[:meta] = t1.value.meta
+      t2.value.merge! t1.value.meta
+      t2.value.keys.each{|k| t2.value._create_accessor(k)}
+      t2.value
+    end
+    
     ###  END COMMANDS  ###
 
 
@@ -237,15 +256,11 @@ module Rfm
       
       if block_given?
         connect(action, params, connection_options) do |io, http_thread|
-          rslt = yield(io, full_options.merge({http_thread:http_thread, local_env:binding}))
-          #http_thread.value
-          #rslt
+          yield(io, full_options.merge({http_thread:http_thread, local_env:binding}))
         end
       elsif _formatter
         connect(action, params, connection_options) do |io, http_thread|
-          rslt = _formatter.call(io, full_options.merge({http_thread:http_thread, local_env:binding}))
-          #http_thread.value
-          #rslt
+          _formatter.call(io, full_options.merge({http_thread:http_thread, local_env:binding}))
         end
       else
         connect(action, params, connection_options)
@@ -333,13 +348,13 @@ module Rfm
                 end # connection.request
               # If you rescue, no exception will bubble up from this thread,
               # unless you re-raise.
-              rescue Exception => exception
-                Thread.current[:exception] = exception
-                #Thread.main.raise exception
+              # rescue Exception => exception
+              #   Thread.current[:exception] = exception
+              #   #Thread.main.raise exception
               ensure
                 Rfm.log.info("#{self} ensurring IO-writer is closed.") if state[:log_responses]
                 pipe_writer.close
-                Thread.main.raise exception if defined?(:exception)
+                #Thread.main.raise exception if defined?(:exception)
               end
             #end # Thread.handle_interrupt
           end # Thread
@@ -349,7 +364,9 @@ module Rfm
           # Hand over the reader IO and thread to the block.
           # Note that thread.value will give the return value of thread,
           # but only after the thread has closed. So beware how you use 'thread'.
-          yield(pipe_reader, thread)
+          rslt = yield(pipe_reader, thread)
+          thread.join
+          rslt
         end # IO.pipe
       else
         # Give straight response object, if no block given.

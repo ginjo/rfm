@@ -26,7 +26,6 @@ module SaxChange
       def run_parser(io)
         SaxChange.log.info("#{self}#run_parser with:'#{io}'") if config[:log_parser]
         raise_if_bad_io(io)
-        io.rewind
         super # calls run_parser in backend-specific handler instance.
       end
     end # PrependMethods
@@ -123,9 +122,12 @@ module SaxChange
     # when the thread raises an exception. Try disabling this and see.
     def raise_if_bad_io(io)
       #SaxChange.log.info("Handler#raise_if_bad_io io.closed?: '#{io.closed?}'") #if config[:log_parser]
-      if io.is_a?(IO) && (io.closed? || io.eof?)
+      if io.is_a?(IO) && ( io.closed? || (io.is_a?(File) && io.eof?) )
         #raise "#{self} could not execute 'run_parser'. The io object is closed or eof: #{io}"
         SaxChange.log.warn "#{self} could not execute 'run_parser'. The io object is closed or eof: #{io}"
+        # This is necessary when ox is parsing file-based io.
+        # Maybe it should go in the ox handler instead of here.
+        io.rewind if io.is_a?(File)
       end
     end
   
