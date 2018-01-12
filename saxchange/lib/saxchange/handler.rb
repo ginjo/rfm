@@ -26,6 +26,7 @@ module SaxChange
       def run_parser(io)
         SaxChange.log.info("#{self}#run_parser with:'#{io}'") if config[:log_parser]
         raise_if_bad_io(io)
+        io.rewind
         super # calls run_parser in backend-specific handler instance.
       end
     end # PrependMethods
