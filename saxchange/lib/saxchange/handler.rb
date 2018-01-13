@@ -31,6 +31,9 @@ module SaxChange
     end # PrependMethods
   
     using Refinements
+    # Was experimental.
+    #using ObjectMergeRefinements
+
     
     # This might have to be done for each specific handler class,
     # but it seems to work just fine doing it once here.
@@ -38,7 +41,7 @@ module SaxChange
     
     extend Forwardable
   
-    attr_accessor :stack, :template, :initial_object, :stack_debug, :default_class, :backend
+    attr_accessor :stack, :template, :initial_object, :stack_debug, :default_class, :backend, :parser
       
     def self.included(base)
       base.send :prepend, PrependMethods
@@ -49,8 +52,8 @@ module SaxChange
       #base.singleton_class.send :attr_accessor, :label, :file, :setup, :backend_instance, :loaded
     end
     
-    def self.new(_backend=nil, _template=nil, _initial_object=nil,  **options)
-      backend_handler_class = get_backend(_backend)
+    def self.new(_template=nil, _initial_object=nil, _backend=nil,  **options)
+      backend_handler_class = get_backend(_backend || config(options)[:backend])
       #puts "#{self}.new with _backend:'#{_backend}', _template:'#{_template}', _initial_object:'#{_initial_object}', options:'#{options}'"
       backend_handler_class.new(_template, _initial_object, **options)
     end
@@ -60,7 +63,7 @@ module SaxChange
     #def self.get_backend(parser_backend = config[:backend])
     def self.get_backend(_backend = nil)
       (_backend = decide_backend) unless _backend
-      #puts "Handler.get_backend parser_backend: #{parser_backend}"
+      #puts "Handler.get_backend _backend: #{_backend}"
       if _backend.is_a?(String) || _backend.is_a?(Symbol)
         _backend = extract_handler_name_from_filename _backend
         class_name = _backend.split(/[\-_]/).map{|i| i.capitalize}.join.to_s + "Handler"
@@ -69,6 +72,7 @@ module SaxChange
       else
         backend_handler_class = _backend
       end
+      #puts "Handler.get_backend backend_handler_class: #{backend_handler_class}"
       backend_handler_class
     end
   
@@ -90,13 +94,16 @@ module SaxChange
     def self.list_handlers
       @handlers ||= Dir.entries(File.join(File.dirname(__FILE__), "handler/")).delete_if(){|f| !f[/[a-zA-Z0-9]/]}
     end
-
+    
 
     ###  Instance Methods  ###
   
-    # TEMP: _template={} is experimental and maybe breaking. The default is _template=nil.
+    # The Handler#initialize is the final say for pushing options to the handler automatically.
+    # After #initialize, one must manually change config or attributes, if they really want to.
+    # The next step expected after #initialize is run_parser.
     def initialize(_template=nil, _initial_object=nil, **options)      
-      @template = _template || config[:template]      
+      _template ||= config[:template]
+      @template = get_template(_template, config)
       _initial_object ||= config[:initial_object] || (@template && @template['initial_object'])
       @initial_object = case
         when _initial_object.nil?; config[:default_class].new
@@ -114,6 +121,47 @@ module SaxChange
 
       set_cursor Cursor.new('__TOP__', self, **options).process_new_element
     end
+        
+    # Takes string, symbol, or hash, and returns a (possibly cached) parsing template.
+    def get_template(_template=nil, _template_prefix=nil, _template_cache=nil, **options)  #_template_prefix=config[:template_prefix])
+      _template ||= options[:template] || config[:template] || {}
+      #puts "#{self}#get_template using _template: #{_template}"
+      return _template unless ['String', 'Symbol', 'Proc'].include?(_template.class.name.split(':').last.to_s)
+      
+      file_name = case
+        when _template.is_a?(Proc); _template.call(options, binding)
+        when _template.to_s[/\.[yx].?ml$/i]; _template.to_s
+        when _template.is_a?(Symbol); _template.to_s + '.yml'
+        else raise "Template '#{_template}' cannot be found."
+      end
+      # Return a template-object (or nil) if proc resolved to anything other than string.
+      return Hash.new unless file_name
+      return file_name unless file_name.is_a?(String)
+      load_template(file_name, _template_prefix, _template_cache, **options)  #, **options)
+    end
+
+    # Does the heavy-lifting of template retrieval.
+    # template_cache is a reference to any cache of templates (a hash),
+    # but it should generally be a Parser#@templates ivar, if possible.
+    def load_template(file_name, _template_prefix=nil, _template_cache=nil, **options)  #, **options)
+      return Hash.new unless file_name.to_s.size > 0
+      #puts "LOAD_TEMPLATE name: '#{file_name}', prefix: '#{_template_prefix}'"
+      _template_prefix ||= options[:template_prefix] || config[:template_prefix]
+      _template_cache ||= (parser && parser.templates) || {}
+      _template_cache[file_name] ||= case
+        when file_name.to_s[/\.y.?ml$/i]; (YAML.load_file(File.join(*[_template_prefix, file_name].compact)))
+         # This line might cause an infinite loop.
+         # TODO: Update this template-selection matcher for rfm v4.
+         #       The 'self.class.build' is leftover from monolithic parser/handler in v3.
+         # when name.to_s[/\.xml$/i]; self.class.build(File.join(*[_template_prefix, name].compact), nil, {'compact'=>true})
+        else config.merge(options)[:default_class].new
+      end
+      #puts "#{self}.load_template loaded: #{_template_cache[file_name]}"
+      _template_cache[file_name]
+    rescue #:error
+      SaxChange.log.warn "SaxChange::Parser#load_template '#{file_name}' raised exception: #{$!}"
+      {}
+    end
     
     # Call this from each backend 'run_parser' method.
     # The io.eof? method somehow causes exceptions within
@@ -123,10 +171,7 @@ module SaxChange
     def raise_if_bad_io(io)
       #SaxChange.log.info("Handler#raise_if_bad_io io.closed?: '#{io.closed?}'") #if config[:log_parser]
       if io.is_a?(IO) && ( io.closed? || (io.is_a?(File) && io.eof?) )
-        #raise "#{self} could not execute 'run_parser'. The io object is closed or eof: #{io}"
         SaxChange.log.warn "#{self} could not execute 'run_parser'. The io object is closed or eof: #{io}"
-        # This is necessary when ox is parsing file-based io.
-        # Maybe it should go in the ox handler instead of here.
         io.rewind if io.is_a?(File)
       end
     end

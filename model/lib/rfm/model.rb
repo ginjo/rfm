@@ -19,11 +19,15 @@ SaxChange::AllowableOptions.push %w(
   connection
 )
 
+# Set SaxChange defaults.
 SaxChange::Config.defaults.merge!(
   :default_class => Rfm::CaseInsensitiveHash,
-  #:initial_object => proc { Rfm::Resultset.new(Rfm::Layout.new('test'), Rfm::Layout.new('test')) },
   :template_prefix => File.join(File.dirname(__FILE__), 'saxchange/'),
-  :template => ->(options, env_binding){ options[:grammar].to_s.downcase + '.yml' },
+  # This lambda-proc should resolve to a filename.
+  :template => ->(options, env_binding){
+      gr_str = options[:grammar].to_s.downcase
+      gr_str.size >0 ? gr_str + '.yml' : nil
+    },
 )
 
 

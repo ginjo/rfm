@@ -81,7 +81,7 @@
 
 
 require 'yaml'
-require 'forwardable'
+#require 'forwardable'
 require 'logger'
 # require 'saxchange/config'
 # require 'saxchange/cursor'
@@ -101,11 +101,14 @@ module SaxChange
     extend Forwardable
     prepend Config
     
-    # def_delegator :'SaxChange::Handler', :build
-    # def_delegator :'SaxChange::Handler', :build, :parse
-    # def_delegator :'SaxChange::Handler', :build, :call
-
-
+    # NOTES ON OPTIONS:
+    # * Don't merge! options into config, let the Config class do that automatically.
+    # * Don't merge options just to pass them on, unless you're passing them to an
+    #   object in a different Config tree.
+    # * Don't resolve args against options, until you are at the place where you actually need them.
+    # * Don't filter options, unless you actually need to at that point in the code.
+    # * Bottom line: Don't mutate config, options, or args unless you need to at that point in the code!
+    
     # TODO: Make this block of options passable at loadtime/runtime from connection object to parser object,
     #       because we need ability to pass in the default_class from a client connection instance.
     ::Object::ATTACH_OBJECT_DEFAULT_OPTIONS = {
@@ -116,69 +119,23 @@ module SaxChange
     }
         
     def initialize(_templates=nil, **options)
-      # This is already handled invisibly by the Config module
-      #config(**options)
-      #config[:templates] = _templates if _templates
       self.templates = _templates.dup || config.delete(:templates).dup || Hash.new
     end
 
     def build_handler(_template=nil, _initial_object=nil, _backend=nil, **options)
-      options = options.filter(AllowableOptions)
-      config_merge_options = config.merge(options)
-
-      backend = _backend || config_merge_options[:backend]
-      _template = _template || config_merge_options[:template]
-      template_object = get_template(_template, **config_merge_options)
-      initial_object = _initial_object || config_merge_options[:initial_object]   
-      # You don't need to send merged options here, since the handler will merge them when necessary.
-      handler = Handler.new(backend, template_object, initial_object, **options)
-      
-      #SaxChange.log.info("#{self}#build_handler with backend:'#{backend}', template:'#{_template}'") if config_merge_options[:log_parser]
-      
-      handler
+      Handler.new(_template, _initial_object, _backend, **options).tap do |h|
+        h.parser = self
+      end
     end
     
     def parse(io='', _template=nil, _initial_object=nil, _backend=nil, **options)
-      options = options.filter(AllowableOptions)
-      handler = build_handler(_template=nil, _initial_object=nil, _backend=nil, **options)
-      #SaxChange.log.info("SaxChange::Parser#call with #{handler} and template: #{handler.template}") if config.merge(options)[:log_parser]
+      handler = build_handler(_template, _initial_object, _backend, **options)
       handler.run_parser(io)
       handler
     end
     
     def call(*args)
       parse(*args).result
-    end
-
-    # Takes string, symbol, or hash, and returns a (possibly cached) parsing template.
-    def get_template(_template, _template_prefix=nil, **options)  #_template_prefix=config[:template_prefix])
-      options = options.filter(AllowableOptions)
-      _template_prefix = _template_prefix || options[:template_prefix] || config[:template_prefix]
-      return _template if !['String', 'Symbol', 'Proc'].include?(_template.class.name)
-      
-      template_string = case
-        when _template.is_a?(Proc); _template.call(options, binding)
-        when _template.to_s[/\.[yx].?ml$/i]; _template.to_s
-        when _template.is_a?(Symbol); _template.to_s + '.yml'
-        else raise "Template '#{_template}' cannot be found."
-      end
-      
-      load_template(template_string, _template_prefix, options)  #, **options)
-    end
-
-    # Does the heavy-lifting of template retrieval.
-    def load_template(name, _template_prefix=nil, **options)  #, **options)
-      #puts "LOAD_TEMPLATE name: '#{name}', prefix: '#{_template_prefix}'"
-      #_template_prefix = _template_prefix || options[:template_prefix] || config[:template_prefix]
-      self.templates[name] ||= case
-        when name.to_s[/\.y.?ml$/i]; (YAML.load_file(File.join(*[_template_prefix, name].compact)))
-         # This line might cause an infinite loop.
-        when name.to_s[/\.xml$/i]; self.class.build(File.join(*[_template_prefix, name].compact), nil, {'compact'=>true})
-        else config.merge(options)[:default_class].new
-      end
-    rescue #:error
-      SaxChange.log.warn "SaxChange::Parser#load_template raised exception: #{$!}"
-      {}
     end
 
   end # Parser
