@@ -20,12 +20,10 @@ module Rfm
       if !config.has_key?(:formatter)
         case 
         when Kernel.const_defined?(:SaxChange)
-          config parser: SaxChange::Parser.new(config)  # unless config[:parser]  ???
-          config formatter: ->(io, options) do
-            options[:parser].call(io, options)
-          end          
+          config parser:     SaxChange::Parser.new(config)  # unless config[:parser]  ???
+          config formatter:  ->(io, options){options[:parser].call(io, options)}
         else 
-          config formatter: ->(io, options){ REXML::Document.new(io) }
+          config formatter:  ->(io, options){ REXML::Document.new(io) }
         end
       end
       
@@ -217,12 +215,12 @@ module Rfm
       options[:layout] = _layout || options[:layout] || layout
       t1 = Thread.new {get_records('-view', {}, options)}
       t2 = Thread.new {get_records('-view', {}, options.merge(grammar:'FMPXMLLAYOUT'))}
-      #t1.value.instance_variable_set(:@layout, t2.value)
-      #t1.value
-      #t2.value[:meta] = t1.value.meta
-      t2.value.merge! t1.value.meta
-      t2.value.keys.each{|k| t2.value._create_accessor(k)}
-      t2.value
+
+      t1v = t1.value
+      t2v = t2.value
+      t2v.merge! t1v.meta
+      t2v.keys.each{|k| t2v._create_accessor(k)}
+      t2v
     end
     
     ###  END COMMANDS  ###
@@ -300,12 +298,15 @@ module Rfm
       request = Net::HTTP::Post.new(path)
       request.basic_auth(account_name, password)
       request.set_form_data(post_data)
-
+      
+      # I tried to reuse this connection as @connection, but I don't think net-http connections
+      # are thread safe. One request would appear to clobber the other.
       if state[:proxy]
         connection = Net::HTTP::Proxy(*state[:proxy]).new(host_name, port)
       else
         connection = Net::HTTP.new(host_name, port)
       end
+      
       #ADDED LONG TIMEOUT TIMOTHY TING 05/12/2011
       connection.open_timeout = connection.read_timeout = state[:timeout]
       if state[:ssl]
@@ -327,8 +328,6 @@ module Rfm
           #@io_object = [pipe_reader, pipe_writer]
           thread = Thread.new do
             #pipe_reader.close # close the unused reader if forking.
-            # I don't think we need the Thread.handle_interrupt,
-            # the thread.abort_on_exception seems to work well.
             #Thread.handle_interrupt(Exception => :immediate) do
               begin
                 connection.request request do |response|
@@ -344,13 +343,12 @@ module Rfm
                     end
                   end
                   
-                  #pipe_writer.close # close writer here if using Thread.
                 end # connection.request
-              # If you rescue, no exception will bubble up from this thread,
-              # unless you re-raise.
-              # rescue Exception => exception
-              #   Thread.current[:exception] = exception
-              #   #Thread.main.raise exception
+                # rescue Exception => exception
+                #   # If you rescue, no exception will bubble up from this thread,
+                #   # unless you re-raise. Note that you can ensure without rescuing.
+                #   Thread.current[:exception] = exception
+                #   #Thread.main.raise exception
               ensure
                 Rfm.log.info("#{self} ensurring IO-writer is closed.") if state[:log_responses]
                 pipe_writer.close

@@ -42,6 +42,8 @@ module Rfm
       parser: SaxChange::Parser.new,
       formatter: ->(io, options) do
         options[:parser].call(io, options).tap do |r|
+          # TODO: Is this the right place to check for errors?
+          #       Or should it be in the template/model? Somewhere else?
           error = r.respond_to?(:error) && r.error
           options[:local_env][:check_for_errors, error]
         end
