@@ -1,3 +1,4 @@
+<!-- Unused and experimental xml-based sax-parsing template -->
 <?xml version="1.0" encoding="UTF-8"?>
 <fmresultset-xml>
   <attach-elements>individual</attach-elements>

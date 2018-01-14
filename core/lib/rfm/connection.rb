@@ -248,7 +248,7 @@ module Rfm
       # If you call connection_thread.value, you will get the finished connection response object,
       # but it will wait until thread is done, so it defeats the purpose of streaming to the io object.
       
-      _formatter = full_options[:formatter]     #formatter(full_options)  # The formatter method has been removed in favor of @defaults[:formatter]
+      _formatter = full_options[:formatter]
       
       #puts "Connection#get_records calling 'connect' with action: #{action}, params: #{params}, options: #{connection_options}"
       
