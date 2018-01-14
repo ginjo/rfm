@@ -45,6 +45,10 @@ module Rfm
 
 
     # Should all of these convenience getters exist?
+    
+    def parser
+      config[:parser]
+    end
 
     def host_name
       state[:host]

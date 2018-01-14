@@ -55,7 +55,12 @@ module SaxChange
     def self.new(_template=nil, _initial_object=nil, _backend=nil,  **options)
       backend_handler_class = get_backend(_backend || config(options)[:backend])
       #puts "#{self}.new with _backend:'#{_backend}', _template:'#{_template}', _initial_object:'#{_initial_object}', options:'#{options}'"
-      backend_handler_class.new(_template, _initial_object, **options)
+      #backend_handler_class.new(_template, _initial_object, **options)
+      _parser = yield(binding)
+      handler_object = backend_handler_class.allocate
+      handler_object.parser = _parser
+      handler_object.send :initialize, _template, _initial_object, **options
+      handler_object
     end
       
     # Takes backend symbol and returns custom Handler class for specified backend.
@@ -148,6 +153,9 @@ module SaxChange
       #puts "LOAD_TEMPLATE name: '#{file_name}', prefix: '#{_template_prefix}'"
       _template_prefix ||= options[:template_prefix] || config[:template_prefix]
       _template_cache ||= (parser && parser.templates) || Hash.new
+      #puts "PARSERID: #{parser.object_id}"
+      #puts "PARSERTEMPLATESID: #{parser.templates.object_id}"
+      #puts "TEMPLATECACHEID: #{_template_cache.object_id}, #{_template_cache}"
       _template_cache[file_name] ||= case
         when file_name.to_s[/\.y.?ml$/i]; (YAML.load_file(File.join(*[_template_prefix, file_name].compact)))
          # This line might cause an infinite loop.

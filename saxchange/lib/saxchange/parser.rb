@@ -111,8 +111,16 @@ module SaxChange
     end
 
     def build_handler(_template=nil, _initial_object=nil, _backend=nil, **options)
-      Handler.new(_template, _initial_object, _backend, **options).tap do |h|
-        h.parser = self
+      # Handler.new(_template, _initial_object, _backend, **options).tap do |h|
+      #   h.parser = self
+      # end
+      #
+      # Handler.allocate.tap do |h|
+      #   h.parser = self
+      #   h.send :initialize, _template, _initial_object, _backend, **options
+      # end
+      Handler.new(_template, _initial_object, _backend, **options) do
+        self
       end
     end
     

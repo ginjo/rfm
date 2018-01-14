@@ -37,7 +37,9 @@ module Rfm
   # Set default parser/formatter for Rfm (this is at the Rfm::Config class-level)
   module Config
     using Refinements
-      
+    
+    # Rewrite this like this: defaults[:parser] ||= ...
+    # Same with formatter.
     defaults.merge!({
       parser: SaxChange::Parser.new,
       formatter: ->(io, options) do
