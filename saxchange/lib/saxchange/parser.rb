@@ -81,12 +81,8 @@
 
 
 require 'yaml'
-#require 'forwardable'
 require 'logger'
-# require 'saxchange/config'
-# require 'saxchange/cursor'
-# require 'saxchange/handler'
-# require 'saxchange/handler/handlers'
+require 'saxchange/handler'
 
 module SaxChange
 
@@ -100,14 +96,6 @@ module SaxChange
   
     extend Forwardable
     prepend Config
-    
-    # NOTES ON OPTIONS:
-    # * Don't merge! options into config, let the Config class do that automatically.
-    # * Don't merge options just to pass them on, unless you're passing them to an
-    #   object in a different Config tree.
-    # * Don't resolve args against options, until you are at the place where you actually need them.
-    # * Don't filter options, unless you actually need to at that point in the code.
-    # * Bottom line: Don't mutate config, options, or args unless you need to at that point in the code!
     
     # TODO: Make this block of options passable at loadtime/runtime from connection object to parser object,
     #       because we need ability to pass in the default_class from a client connection instance.
