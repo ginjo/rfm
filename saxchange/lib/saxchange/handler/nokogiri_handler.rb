@@ -11,7 +11,9 @@ module SaxChange
       alias_method :start_element, :_start_element
       alias_method :end_element, :_end_element
       alias_method :characters, :_text
-      alias_method :xmldecl, :_doctype
+      alias_method :warning, :_error
+      alias_method :error, :_error
+      alias_method :xmldecl, :_xmldecl
     end # NokogiriHandler
   end
 end

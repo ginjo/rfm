@@ -248,11 +248,26 @@ module SaxChange
     end
   
     def _doctype(*args)
-      #puts "Receiving doctype '#{args}'"
+      #puts "_DOCTYPE '#{args}'"
       (args = args[0].gsub(/"/, '').split) if args.size ==1
       _start_element('doctype', :value=>args)
       _end_element('doctype')
     end
+    
+    def _cdata(string)
+      _start_element('cdata', config[:text_label] => string)
+      _end_element('cdata')
+    end
+    
+    def _error(*args)
+      SaxChange.log.warn "#{self}##{__callee__} : #{args}"
+    end
+    
+    def _xmldecl(*args)
+      _start_element('xmldecl', {'version'=>args[0], 'encoding'=>args[1], 'standalone'=>args[2]})
+      _end_element('xmldecl')
+    end
+    
   
   end # Handler
   
