@@ -8,7 +8,9 @@ module SaxChange
   # TODO: Also use submidules to pull in generic Config class in both saxchange and rfm-core.
   #
   # Dynamically load generic Refinements and Config under the above module.
-  eval(File.read(File.join(File.dirname(__FILE__), './ginjo_tools/refinements.rb'))) 
+  eval(File.read(File.join(File.dirname(__FILE__), './ginjo_tools/refinements.rb')))
+  using Refinements
+  
   eval(File.read(File.join(File.dirname(__FILE__), './ginjo_tools/config.rb'))) 
 
   RUBY_VERSION_NUM = RUBY_VERSION[0,3].to_f

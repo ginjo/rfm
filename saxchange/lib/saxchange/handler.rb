@@ -124,7 +124,7 @@ module SaxChange
         
     # Takes string, symbol, or hash, and returns a (possibly cached) parsing template.
     def get_template(_template=nil, _template_prefix=nil, _template_cache=nil, **options)  #_template_prefix=config[:template_prefix])
-      _template ||= options[:template] || config[:template] || {}
+      _template ||= options[:template] || config[:template] || Hash.new
       #puts "#{self}#get_template using _template: #{_template}"
       return _template unless ['String', 'Symbol', 'Proc'].include?(_template.class.name.split(':').last.to_s)
       
@@ -147,7 +147,7 @@ module SaxChange
       return Hash.new unless file_name.to_s.size > 0
       #puts "LOAD_TEMPLATE name: '#{file_name}', prefix: '#{_template_prefix}'"
       _template_prefix ||= options[:template_prefix] || config[:template_prefix]
-      _template_cache ||= (parser && parser.templates) || {}
+      _template_cache ||= (parser && parser.templates) || Hash.new
       _template_cache[file_name] ||= case
         when file_name.to_s[/\.y.?ml$/i]; (YAML.load_file(File.join(*[_template_prefix, file_name].compact)))
          # This line might cause an infinite loop.
@@ -160,7 +160,7 @@ module SaxChange
       _template_cache[file_name]
     rescue #:error
       SaxChange.log.warn "SaxChange::Parser#load_template '#{file_name}' raised exception: #{$!}"
-      {}
+      Hash.new
     end
     
     # Call this from each backend 'run_parser' method.
