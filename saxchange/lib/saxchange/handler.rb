@@ -26,6 +26,7 @@ module SaxChange
       def run_parser(io)
         SaxChange.log.info("#{self}#run_parser with:'#{io}'") if config[:log_parser]
         raise_if_bad_io(io)
+        io = StringIO.new(io) if io.is_a?(String)
         super # calls run_parser in backend-specific handler instance.
         result
       end
@@ -108,7 +109,7 @@ module SaxChange
     # After #initialize, one must manually change config or attributes, if they really want to.
     # The next step expected after #initialize is run_parser.
     def initialize(_template=nil, _initial_object=nil, **options)
-      puts "Handler#initialize with options: #{options}"
+      #puts "Handler#initialize with options: #{options}"
       _template ||= config[:template]
       @template = get_template(_template, config)
       _initial_object ||= config[:initial_object] || (@template && @template['initial_object'])
@@ -127,6 +128,7 @@ module SaxChange
       @config_cache = config
 
       set_cursor Cursor.new('__TOP__', self, **options).process_new_element
+      #puts "Handler#initialize done: #{self.to_yaml}"
     end
     
     def default_template

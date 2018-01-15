@@ -228,6 +228,8 @@ module Rfm
       # get sent to 'connect' every time, which breaks 'databases', 'layouts', and 'scripts' commands.
       
       full_options = state(runtime_options).merge({connection:self})
+      # Nothing helps here to prevent password in resultset options-connection-config tree.
+      full_options[:connection].config[:password] = nil
       
       # Note the capture_resultset_meta call from rfm v3.
       #capture_resultset_meta(rslt) unless resultset_meta_valid? #(@resultset_meta && @resultset_meta.error != '401')
@@ -245,11 +247,12 @@ module Rfm
       
       if block_given?
         connect(action, params, connection_options) do |io, http_thread|
-          yield(io, full_options.merge({http_thread:http_thread, local_env:binding}))
+          yield(io, full_options.merge({http_thread: http_thread, local_env: binding}))
         end
       elsif _formatter
         connect(action, params, connection_options) do |io, http_thread|
-          _formatter.call(io, full_options.merge({http_thread:http_thread, local_env:binding}))
+          
+          _formatter.call(io, full_options.merge({http_thread: http_thread, local_env: binding}))
         end
       else
         connect(action, params, connection_options)

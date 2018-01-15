@@ -6,6 +6,11 @@ module SaxChange
 
       def run_parser(io)        
         options={:convert_special=>true}
+        # Dunno why but need this for ox to parse File io,
+        # but only when using ox with this library (gem).
+        # When Ox.sax_parse is used standalone, or even with this lib's
+        # OxHandler, it works fine.
+        io.respond_to?(:pos) && io.is_a?(File) && io.pos
         Ox.sax_parse(self, io, options)
       end
   

@@ -7,7 +7,10 @@ module SaxChange
         include XML::SaxParser::Callbacks
             
         def run_parser(io)
-          parser = XML::SaxParser.io(io)
+          parser = case
+            when io.is_a?(IO); XML::SaxParser.io(io)
+            when io.is_a?(String); XML::SaxParser.string(io)
+          end
           parser.callbacks = self
           parser.parse
         end
