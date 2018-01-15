@@ -110,7 +110,7 @@ module SaxChange
       self.templates = _templates.dup || config.delete(:templates).dup || Hash.new
     end
 
-    def build_handler(_template=nil, _initial_object=nil, _backend=nil, **options)
+    def build_handler(_backend=nil, _template=nil, _initial_object=nil, **options)
       # Handler.new(_template, _initial_object, _backend, **options).tap do |h|
       #   h.parser = self
       # end
@@ -119,13 +119,13 @@ module SaxChange
       #   h.parser = self
       #   h.send :initialize, _template, _initial_object, _backend, **options
       # end
-      Handler.new(_template, _initial_object, _backend, **options) do
+      Handler.new(_backend, _template, _initial_object, **options) do
         self
       end
     end
     
     def parse(io='', _template=nil, _initial_object=nil, _backend=nil, **options)
-      handler = build_handler(_template, _initial_object, _backend, **options)
+      handler = build_handler(_backend, _template, _initial_object, **options)
       handler.run_parser(io)
       handler
     end

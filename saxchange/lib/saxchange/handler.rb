@@ -52,7 +52,7 @@ module SaxChange
       #base.singleton_class.send :attr_accessor, :label, :file, :setup, :backend_instance, :loaded
     end
     
-    def self.new(_template=nil, _initial_object=nil, _backend=nil,  **options)
+    def self.new(_backend=nil, _template=nil, _initial_object=nil, **options)
       backend_handler_class = get_backend(_backend || config(options)[:backend])
       #puts "#{self}.new with _backend:'#{_backend}', _template:'#{_template}', _initial_object:'#{_initial_object}', options:'#{options}'"
       #backend_handler_class.new(_template, _initial_object, **options)
