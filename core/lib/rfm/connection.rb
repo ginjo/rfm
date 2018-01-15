@@ -4,6 +4,8 @@ require 'rfm/compound_query'
 #require 'rfm/config'
 #require 'logger'
 
+#SaxChange
+
 module Rfm
   class Connection
     using Refinements
@@ -12,27 +14,10 @@ module Rfm
     # TODO: Make this autoload.
     require 'rexml/document'
 
-    def initialize(host=nil, **opts)     #(action, params, request_options={},  *args)      
-      host && config(host:host)
-      
-      # Set a default formatter if none exits.
-      # Note that if rfm-model is loaded, it will have set the :formatter already at the Rfm::Config class level.
-      if !config.has_key?(:formatter)
-        case 
-        when Kernel.const_defined?(:SaxChange)
-          config parser:     SaxChange::Parser.new(config)  # unless config[:parser]  ???
-          config formatter:  ->(io, options){options[:parser].call(io, options)}
-        else 
-          config formatter:  ->(io, options){ REXML::Document.new(io) }
-        end
-      end
-      
-      # As a side note, here's a way to pretty-print raw xml in ruby:
-      # REXML::Document.new(xml_string).write($stdout, 2)
-      
-    end # initialize
+    def initialize(host=nil, **opts) 
+      host && config(host: host)
+    end
     
-
     def log
       Rfm.log
     end
@@ -212,19 +197,21 @@ module Rfm
     # Retrieves metadata only, with an empty resultset.
     # TODO: This should not be in rfm-core, should be in rfm-model,
     # since it depends on parsing to specific objects.
-    require 'saxchange/object_merge_refinements'
-    using ObjectMergeRefinements
-    def meta(_layout=nil, **options)
-      options[:database] ||= database
-      options[:layout] = _layout || options[:layout] || layout
-      t1 = Thread.new {get_records('-view', {}, options)}
-      t2 = Thread.new {get_records('-view', {}, options.merge(grammar:'FMPXMLLAYOUT'))}
-
-      t1v = t1.value
-      t2v = t2.value
-      t2v.merge! t1v.meta
-      t2v.keys.each{|k| t2v._create_accessor(k)}
-      t2v
+    if Gem::Specification.find{|g| g.name == 'rfm-model'}
+      require 'saxchange/object_merge_refinements'
+      using ObjectMergeRefinements
+      def meta(_layout=nil, **options)
+        options[:database] ||= database
+        options[:layout] = _layout || options[:layout] || layout
+        t1 = Thread.new {get_records('-view', {}, options)}
+        t2 = Thread.new {get_records('-view', {}, options.merge(grammar:'FMPXMLLAYOUT'))}
+  
+        t1v = t1.value
+        t2v = t2.value
+        t2v.merge! t1v.meta
+        t2v.keys.each{|k| t2v._create_accessor(k)}
+        t2v
+      end
     end
     
     ###  END COMMANDS  ###

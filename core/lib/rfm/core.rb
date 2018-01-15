@@ -1,5 +1,11 @@
 require 'logger'
 
+# TODO: This can't go here.
+# TODO: Create a top-level method for checking if a gem is registered in the current gemset.
+if Gem::Specification.find{|g| g.name == 'saxchange'}
+  autoload :SaxChange, 'saxchange'
+end
+
 # TODO: This should maybe to somewhere else
 module Rfm
   @logger = Logger.new($stdout)
@@ -56,7 +62,7 @@ module Rfm
     template
     templates
     template_prefix
-  ).compact.uniq
+  ).delete_if(){|x| x[/^\s*\#/]}.compact.uniq
   
   Config.defaults = {
     :host => 'localhost',
@@ -77,9 +83,37 @@ module Rfm
     #:grammar => 'fmresultset',
     :raise_invalid_option => true
   }
-end
+  
+  case 
+    when Kernel.const_defined?(:SaxChange)
+    
+      SaxChange::AllowableOptions.push %w(
+        grammar
+        field_mapping
+        decimal_separator
+        layout
+        connection
+      )
+      
+      # As a side note, here's a way to pretty-print raw xml in ruby:
+      # REXML::Document.new(xml_string).write($stdout, 2)
+      
+      # This can't go here, or it clobbers the template proc set by rfm-model.
+      #SaxChange::Config.defaults[:template] = {'compact'=>true}
+      Config.defaults[:parser] = SaxChange::Parser.new(Config.defaults)
+      #puts "CORE setting formatter"
+      Config.defaults[:formatter] = ->(io, options){options[:parser].call(io, options)}
+    else 
+      Config.defaults[:formatter] = ->(io, options){ REXML::Document.new(io) }
+  end
+end # Rfm
+
 
 require 'rfm/error'
 require 'rfm/compound_query'
 require 'rfm/connection'
+
+
+
+
 

@@ -120,18 +120,26 @@ module SaxChange
       #   h.send :initialize, _template, _initial_object, _backend, **options
       # end
       Handler.new(_backend, _template, _initial_object, **options) do
+        # Block result becomes Handler#@parser to be used for template cache.
         self
       end
     end
     
-    def parse(io='', _template=nil, _initial_object=nil, _backend=nil, **options)
+    def call(io='', _template=nil, _initial_object=nil, _backend=nil, **options)
+      #puts "Parser#call with options: #{options}"
       handler = build_handler(_backend, _template, _initial_object, **options)
       handler.run_parser(io)
       handler
     end
     
-    def call(*args)
-      parse(*args).result
+    # def parse(*args)
+    #   call(*args).result
+    # end
+    
+    def parse(io='', _template=nil, _initial_object=nil, _backend=nil, **options)
+      #puts "Parser#call with options: #{options}"
+      handler = build_handler(_backend, _template, _initial_object, **options)
+      handler.run_parser(io)
     end
 
   end # Parser

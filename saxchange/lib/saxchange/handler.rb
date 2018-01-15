@@ -27,6 +27,7 @@ module SaxChange
         SaxChange.log.info("#{self}#run_parser with:'#{io}'") if config[:log_parser]
         raise_if_bad_io(io)
         super # calls run_parser in backend-specific handler instance.
+        result
       end
     end # PrependMethods
   
@@ -106,7 +107,8 @@ module SaxChange
     # The Handler#initialize is the final say for pushing options to the handler automatically.
     # After #initialize, one must manually change config or attributes, if they really want to.
     # The next step expected after #initialize is run_parser.
-    def initialize(_template=nil, _initial_object=nil, **options)      
+    def initialize(_template=nil, _initial_object=nil, **options)
+      puts "Handler#initialize with options: #{options}"
       _template ||= config[:template]
       @template = get_template(_template, config)
       _initial_object ||= config[:initial_object] || (@template && @template['initial_object'])
@@ -126,10 +128,14 @@ module SaxChange
 
       set_cursor Cursor.new('__TOP__', self, **options).process_new_element
     end
+    
+    def default_template
+      {'compact'=>true}
+    end
         
     # Takes string, symbol, or hash, and returns a (possibly cached) parsing template.
     def get_template(_template=nil, _template_prefix=nil, _template_cache=nil, **options)  #_template_prefix=config[:template_prefix])
-      _template ||= options[:template] || config[:template] || Hash.new
+      _template ||= options[:template] || config[:template] || default_template
       #puts "#{self}#get_template using _template: #{_template}"
       return _template unless ['String', 'Symbol', 'Proc'].include?(_template.class.name.split(':').last.to_s)
       
@@ -140,7 +146,7 @@ module SaxChange
         else raise "Template '#{_template}' cannot be found."
       end
       # Return a template-object (or nil) if proc resolved to anything other than string.
-      return Hash.new unless file_name
+      return default_template unless file_name
       return file_name unless file_name.is_a?(String)
       load_template(file_name, _template_prefix, _template_cache, **options)  #, **options)
     end
@@ -149,10 +155,10 @@ module SaxChange
     # template_cache is a reference to any cache of templates (a hash),
     # but it should generally be a Parser#@templates ivar, if possible.
     def load_template(file_name, _template_prefix=nil, _template_cache=nil, **options)  #, **options)
-      return Hash.new unless file_name.to_s.size > 0
+      return default_template unless file_name.to_s.size > 0
       #puts "LOAD_TEMPLATE name: '#{file_name}', prefix: '#{_template_prefix}'"
       _template_prefix ||= options[:template_prefix] || config[:template_prefix]
-      _template_cache ||= (parser && parser.templates) || Hash.new
+      _template_cache ||= (parser && parser.templates) || default_template
       #puts "PARSERID: #{parser.object_id}"
       #puts "PARSERTEMPLATESID: #{parser.templates.object_id}"
       #puts "TEMPLATECACHEID: #{_template_cache.object_id}, #{_template_cache}"
@@ -168,14 +174,11 @@ module SaxChange
       _template_cache[file_name]
     rescue #:error
       SaxChange.log.warn "SaxChange::Parser#load_template '#{file_name}' raised exception: #{$!}"
-      Hash.new
+      default_template
     end
     
     # Call this from each backend 'run_parser' method.
-    # The io.eof? method somehow causes exceptions within
-    # the connection thread to bubble up properly.
-    # Without the eof? method, nokogiri & ox mishandle the io
-    # when the thread raises an exception. Try disabling this and see.
+    # Be careful - calling io.eof? can raise errors if io is not in proper state.
     def raise_if_bad_io(io)
       #SaxChange.log.info("Handler#raise_if_bad_io io.closed?: '#{io.closed?}'") #if config[:log_parser]
       if io.is_a?(IO) && ( io.closed? || (io.is_a?(File) && io.eof?) )

@@ -11,13 +11,15 @@ require 'rfm-core'
 require 'saxchange'
 
 # This is needed to serve the proc below, which is inserted into the parser defaults.
-SaxChange::AllowableOptions.push %w(
-  grammar
-  field_mapping
-  decimal_separator
-  layout
-  connection
-)
+# Moved to rfm-core, since saxchange might be used without rfm-model.
+# SaxChange::AllowableOptions.push %w(
+#   grammar
+#   field_mapping
+#   decimal_separator
+#   layout
+#   connection
+#   local_env
+# )
 
 # Set SaxChange defaults.
 SaxChange::Config.defaults.merge!(
@@ -40,15 +42,16 @@ module Rfm
     
     # Rewrite this like this: defaults[:parser] ||= ...
     # Same with formatter.
+    #puts "MODEL setting formatter"
     defaults.merge!({
       parser: SaxChange::Parser.new,
       formatter: ->(io, options) do
-        options[:parser].call(io, options).tap do |r|
+        handler = options[:parser].call(io, options)
           # TODO: Is this the right place to check for errors?
           #       Or should it be in the template/model? Somewhere else?
-          error = r.respond_to?(:error) && r.error
-          options[:local_env][:check_for_errors, error]
-        end
+        error = handler.result.respond_to?(:error) && handler.result.error
+        options[:local_env][:check_for_errors, error]
+        handler.result
       end
     })
   end # Config
