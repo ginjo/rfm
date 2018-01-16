@@ -220,7 +220,7 @@ module SaxChange
   
     # Add a node to an existing element.
     def _start_element(tag, attributes=nil, *args)
-      #puts ["_START_ELEMENT", tag, attributes, args].to_yaml # if tag.to_s.downcase=='fmrestulset'
+      puts ["_START_ELEMENT", tag, attributes, args]  #.to_yaml # if tag.to_s.downcase=='fmrestulset'
       tag = transform tag
       if attributes
         # This crazy thing transforms attribute keys to underscore (or whatever).
@@ -235,14 +235,14 @@ module SaxChange
   
     # Add attribute to existing element.
     def _attribute(name, value, *args)
-      #puts "Receiving attribute '#{name}' with value '#{value}'"
+      puts "_ATTRIBUTE '#{name}' with value '#{value}', args '#{args}'"
       name = transform name
       cursor.receive_attribute(name, value)
     end
   
     # Add 'content' attribute to existing element.
     def _text(value, *args)
-      #puts "Receiving text '#{value}'"
+      #puts "_TEXT '#{value}', '#{args}'"
       #puts RUBY_VERSION_NUM
       if RUBY_VERSION_NUM > 1.8 && value.is_a?(String)
         #puts "Forcing utf-8"
@@ -256,28 +256,39 @@ module SaxChange
     # Close out an existing element.
     def _end_element(tag, *args)
       tag = transform tag
-      #puts "Receiving end_element '#{tag}'"
+      puts "_END_ELEMENT '#{tag}', '#{args}'"
       cursor.receive_end_element(tag) and dump_cursor
     end
   
     def _doctype(*args)
-      #puts "_DOCTYPE '#{args}'"
-      (args = args[0].gsub(/"/, '').split) if args.size ==1
-      _start_element('doctype', :value=>args)
+      puts "_DOCTYPE '#{args}'"
+      if args[0].is_a?(Hash)
+        _start_element('doctype', args[0])
+      else
+        (args = args[0].gsub(/"/, '').split) if args.size ==1
+        _start_element('doctype', :values=>args)
+      end
       _end_element('doctype')
     end
     
     def _cdata(string)
+      puts "_CDATA '#{string}'"
       _start_element('cdata', config[:text_label] => string)
       _end_element('cdata')
     end
     
     def _error(*args)
+      #puts "_ERROR '#{args}'"
       SaxChange.log.warn "#{self}##{__callee__} : #{args}"
     end
     
     def _xmldecl(*args)
-      _start_element('xmldecl', {'version'=>args[0], 'encoding'=>args[1], 'standalone'=>args[2]})
+      puts "_XMLDECL '#{args}'"
+      if args[0].is_a?(Hash)
+        _start_element('xmldecl', args[0])
+      else
+        _start_element('xmldecl', {'version'=>args[0], 'encoding'=>args[1], 'standalone'=>args[2]})
+      end
       _end_element('xmldecl')
     end
     

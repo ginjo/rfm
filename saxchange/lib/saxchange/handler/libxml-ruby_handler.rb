@@ -1,3 +1,4 @@
+# http://www.rubydoc.info/gems/libxml-ruby/2.7.0/LibXML/XML/SaxParser/Callbacks
 require 'libxml'
 module SaxChange
   module Handler

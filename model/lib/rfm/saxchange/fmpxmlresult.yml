@@ -7,12 +7,13 @@ attach_elements: _meta
 attach_attributes: _meta
 create_accessors: all
 
-elements:   
-- name: doctype
-  attach: none
-  attributes:
-  - name: value
-    as_name: doctype
+elements:
+# Doctype can be different from different backends.
+# - name: doctype
+#   attach: none
+#   attributes:
+#   - name: value
+#     as_name: doctype
 - name: fmpxmlresult
   attach: none
 - name: product
