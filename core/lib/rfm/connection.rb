@@ -289,8 +289,10 @@ module Rfm
         log.info "#{scheme}://#{host_name}:#{port}#{path}?#{qs_unescaped}"
       end
 
+      pswd = password.is_a?(Symbol) ? ENV[password.to_s] : password
+      
       request = Net::HTTP::Post.new(path)
-      request.basic_auth(account_name, password)
+      request.basic_auth(account_name, pswd)
       request.set_form_data(post_data)
       
       # I tried to reuse this connection as @connection, but I don't think net-http connections
