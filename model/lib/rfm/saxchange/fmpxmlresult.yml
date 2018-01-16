@@ -1,3 +1,4 @@
+#!/usr/bin/env ruby
 # This is a template for parsing 'databases' from FMPXMLRESULT fms response.
 # This also works well for parsing 'layouts' command response.
 # What about scripts?
@@ -8,7 +9,7 @@ attach_attributes: _meta
 create_accessors: all
 
 elements:
-# Doctype can be different from different backends.
+# # Doctype callback is different for different backends.
 # - name: doctype
 #   attach: none
 #   attributes:

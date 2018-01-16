@@ -220,7 +220,7 @@ module SaxChange
   
     # Add a node to an existing element.
     def _start_element(tag, attributes=nil, *args)
-      puts ["_START_ELEMENT", tag, attributes, args]  #.to_yaml # if tag.to_s.downcase=='fmrestulset'
+      #puts ["_START_ELEMENT", tag, attributes, args]  #.to_yaml # if tag.to_s.downcase=='fmrestulset'
       tag = transform tag
       if attributes
         # This crazy thing transforms attribute keys to underscore (or whatever).
@@ -235,7 +235,7 @@ module SaxChange
   
     # Add attribute to existing element.
     def _attribute(name, value, *args)
-      puts "_ATTRIBUTE '#{name}' with value '#{value}', args '#{args}'"
+      #puts "_ATTRIBUTE '#{name}' with value '#{value}', args '#{args}'"
       name = transform name
       cursor.receive_attribute(name, value)
     end
@@ -256,12 +256,12 @@ module SaxChange
     # Close out an existing element.
     def _end_element(tag, *args)
       tag = transform tag
-      puts "_END_ELEMENT '#{tag}', '#{args}'"
-      cursor.receive_end_element(tag) and dump_cursor
+      #puts "_END_ELEMENT '#{tag}', '#{args}'"
+      cursor.receive_end_element(tag) && dump_cursor
     end
   
     def _doctype(*args)
-      puts "_DOCTYPE '#{args}'"
+      #puts "_DOCTYPE '#{args}'"
       if args[0].is_a?(Hash)
         _start_element('doctype', args[0])
       else
@@ -272,7 +272,7 @@ module SaxChange
     end
     
     def _cdata(string)
-      puts "_CDATA '#{string}'"
+      #puts "_CDATA '#{string}'"
       _start_element('cdata', config[:text_label] => string)
       _end_element('cdata')
     end
@@ -283,7 +283,7 @@ module SaxChange
     end
     
     def _xmldecl(*args)
-      puts "_XMLDECL '#{args}'"
+      #puts "_XMLDECL '#{args}'"
       if args[0].is_a?(Hash)
         _start_element('xmldecl', args[0])
       else

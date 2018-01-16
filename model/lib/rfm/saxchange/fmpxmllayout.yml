@@ -11,11 +11,12 @@ attach_elements: hash  #_meta
 attach_attributes: hash  #_meta
 create_accessors: all
 elements:
-- name: doctype
-  attach: none
-  attributes:
-  - name: value
-    as_name: doctype
+# Doctype callback is different for different backends.
+# - name: doctype
+#   attach: none
+#   attributes:
+#   - name: value
+#     as_name: doctype
 - name: fmpxmllayout
   attach: none
 - name: errorcode
