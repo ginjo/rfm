@@ -316,39 +316,6 @@ module SaxChange
       end
     end
 
-    #   def attach_new_object(base_object, new_object, name, base_model, new_model, type)
-    #     label = label_or_tag(name, new_model)
-    #     
-    #     # Was this, which works fine, but not as efficient:
-    #     # prefs = [attachment_prefs(base_model, new_model, type)].flatten(1)[0]
-    #     prefs = if type=='attribute'
-    #       [attachment_prefs(base_model, new_model, type)].flatten(1)[0]
-    #     else
-    #       @element_attachment_prefs
-    #     end
-    #     
-    #     shared_var_name = shared_variable_name(prefs)
-    #     (prefs = "shared") if shared_var_name
-    #     
-    #     # Use local create_accessors prefs first, then more general ones.
-    #     create_accessors = accessor?(new_model)
-    #     (create_accessors = create_accessors?(base_model)) unless create_accessors && create_accessors.any?
-    #     
-    #     # # This is NEW!
-    #     # translator = new_model['translator']
-    #     # if translator
-    #     #   new_object = base_object.send translator, name, new_object
-    #     # end
-    #     
-    #     
-    #     #puts ["\nATTACH_NEW_OBJECT 1", "type: #{type}", "label: #{label}", "base_object: #{base_object.class}", "new_object: #{new_object.class}", "delimiter: #{delimiter?(new_model)}", "prefs: #{prefs}", "shared_var_name: #{shared_var_name}", "create_accessors: #{create_accessors}"]
-    #     base_object._attach_object!(new_object, label, delimiter?(new_model), prefs, type, :default_class=>DEFAULT_CLASS, :shared_variable_name=>shared_var_name, :create_accessors=>create_accessors)
-    #     #puts ["\nATTACH_NEW_OBJECT 2: #{base_object.class} with ", label, delimiter?(new_model), prefs, type, :shared_variable_name=>shared_var_name, :create_accessors=>create_accessors]
-    #     # if type == 'attribute'
-    #     #   puts ["\nATTACH_ATTR", "name: #{name}", "label: #{label}", "new_object: #{new_object.class rescue ''}", "base_object: #{base_object.class rescue ''}", "base_model: #{base_model['name'] rescue ''}", "new_model: #{new_model['name'] rescue ''}", "prefs: #{prefs}"]
-    #     # end
-    #   end
-
     def attach_new_element(name, new_object)   #old params (base_object, new_object, name, base_model, new_model, type)
       label = label_or_tag(name, @local_model)
 
