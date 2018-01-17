@@ -1,42 +1,36 @@
-
-
 module SaxChange
   module Template
-    
+      
     attr_accessor :template
     
     def document(*args)
-      self.template = TemplateHash.new
       puts "#{self}.#{__callee__} #{args}"
-      template = TemplateHash.new
-      template['name'] = args[0]
-      template['elements'] = []
-      template['attributes'] = []
-      template.instance_eval &proc if block_given?
-      self.template = template
+      _template = enhanced_hash(Hash.new)
+      _template['name'] = args[0]
+      _template.instance_eval &proc if block_given?
+      self.template = _template
     end
     
     def element(*args)
       puts "#{self}.#{__callee__} #{args}"
-      new_element = TemplateHash.new.merge!('name' => args[0])
-      new_element['elements'] = []
-      new_element['attributes'] = []
+      new_element = enhanced_hash(Hash.new).merge!('name' => args[0])
       new_element.instance_eval &Proc.new if block_given?
-      self['elements'] << new_element
+      (self['elements'] ||= []) << new_element
     end
     
     def attribute(*args)
       puts "#{self}.#{__callee__} #{args}"
-      new_attr = TemplateHash.new.merge!('name' => args[0])
+      new_attr = enhanced_hash(Hash.new).merge!('name' => args[0])
       new_attr.instance_eval &Proc.new if block_given?
-      self['attributes'] << new_attr
+      (self['attributes'] ||= []) << new_attr
     end
     
     def attach(*args)
       puts "#{self}.#{__callee__} #{args}"
-      self['attach'] = []
-      self['attach'].concat args
-      self['attach'] << Proc.new if block_given?
+      #self['attach'] = []
+      #self['attach'].concat args
+      #self['attach'] << Proc.new if block_given?
+      self['attach'] = args[0]
     end
     
     def attach_elements(*args)
@@ -81,17 +75,15 @@ module SaxChange
     
     def before_close(*args)
       puts "#{self}.#{__callee__} #{args}"
-      self['before_close'] = args
+      self['before_close'] = args[0]
+    end
+    
+    def enhanced_hash(hash)
+      hash.singleton_class.send :include, Template
+      hash
     end
             
   end # Template
-
-
-  class TemplateHash < Hash
-    extend Template
-    include Template
-  end
-  
 end
 
 
