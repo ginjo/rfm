@@ -295,7 +295,8 @@ module SaxChange
     end
     
     def print_stack_debug
-      stack_debug.each{|c| puts (" " * c.level) +  "Cursor '#{c.tag}', model '#{c.model['name']}', logical_parent '#{c.logical_parent.tag}', logical_parent_model '#{c.logical_parent_model&.dig('name')}', attach '#{c&.model.dig('attach')}', object '#{c.object.class}'"}; nil
+      #stack_debug.each{|c| puts (" " * c.level) +  "Cursor '#{c.tag}', model '#{c.model['name']}', logical_parent '#{c.logical_parent.tag}', logical_parent_model '#{c.logical_parent_model&.dig('name')}', attach '#{c&.model.dig('attach')}', object '#{c.object.class}'"}; nil
+      stack_debug.each{|c| puts (" " * c.level) +  "Cursor '#{c.tag}', logical_parent '#{c.logical_parent&.tag}', xml_parent '#{c.xml_parent&.tag}'"}; nil
     end
     
   

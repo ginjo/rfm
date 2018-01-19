@@ -485,6 +485,11 @@ module SaxChange
     ###  New for v4. Note that these methods, while potentially functional,
     ###  may also be very rough around the edges.
     
+
+    
+    ## Logical parent is the first ancestor whose element list has a match for this element.
+    ## If no matching ancestor, the logical parent is the xml parent.
+
     # Find cursor xml ancestors (parent of parent of...)
     def xml_ancestors
       return [self] if level <= 1
@@ -496,74 +501,19 @@ module SaxChange
       return [self] if level <= 1
       [self].concat logical_parent.logical_ancestors
     end
-    
-    ## Logical parent is the first ancestor whose element list has a match for this element.
-    ## If no matching ancestor, the logical parent is the physical parent.
-    
-    # # Find the cursor containing the element array containing the element matching _tag.
-    # # This works!
-    # def logical_parent_search(_tag=@tag, _starting_cursor=self)
-    #   #_starting_cursor.xml_ancestors.find{|c| model_elements?(_tag, c.model)} || parent
-    #   rslt = _starting_cursor.ancestors.map do |c|
-    #     #puts "Logical parent search at #{c} '#{c.tag}', with model '#{c.model&.dig('name')}'"
-    #     rslt = (
-    #     # Ancestor @model with matching :elements
-    #     #c.model&.dig('elements')&.find{|e| e['name'] == _tag} && c ||
-    #     # Ancestor @local_model with matching :elements
-    #     c.model&.dig('elements')&.find{|e| e['name'] == _tag} && c ||
-    #     # Ancestor logical_parent @model with matching :elements
-    #     c.logical_parent&.model&.dig('elements')&.find{|e| e['name'] == _tag} && c.logical_parent #||
-    #     # Ancestor logical_parent @local_model with matching :elements
-    #     #c.logical_parent&.local_model&.dig('elements')&.find{|e| e['name'] == _tag} && c.logical_parent
-    #     )
-    # 
-    #   end.first
-    #   puts "Logical Parent for '#{_tag}' is (raw) '#{rslt&.tag}', (safe) '#{rslt&.tag || xml_parent.tag}'"
-    #   rslt || xml_parent
-    # end
-    
-    # # This also works but runs more than once over the same cursor.
-    # def logical_parent_search(_tag=@tag, _starting_cursor=@xml_parent)
-    #   print("\nLogical parent search for '#{_tag}', with starting cursor '#{_starting_cursor.tag}'")
-    #   rslt = (
-    #   
-    #     # This breaks the recursion here.
-    #     # print_true("\n  checking if '#{_starting_cursor&.tag}' == top") &&
-    #     # (_starting_cursor&.tag == '__TOP__') && _starting_cursor ||
-    #     
-    #     #print("\n  searching cursor '#{_starting_cursor&.tag}'") ||
-    #     _starting_cursor&.model&.dig('elements')&.find{|e| e['name'] == _tag} && _starting_cursor ||
-    #     
-    #     # print_true("\n  searching starting-cursor-xml-parent '#{_starting_cursor&.xml_parent&.tag}'") &&
-    #     # _starting_cursor&.xml_parent&.model&.dig('elements')&.find{|e| e['name'] == _tag} && _starting_cursor.xml_parent ||
-    #     # 
-    #     # print_true("\n  searching starting-cursor-logical-parent '#{_starting_cursor&.logical_parent&.tag}'") &&
-    #     # _starting_cursor&.logical_parent&.model&.dig('elements')&.find{|e| e['name'] == _tag} && _starting_cursor.logical_parent ||
-    #     
-    #     if (_starting_cursor&.tag != '__TOP__')
-    #       _starting_cursor&.logical_parent_search(_tag, _starting_cursor&.xml_parent) ||
-    #       _starting_cursor&.logical_parent_search(_tag, _starting_cursor&.logical_parent)
-    #     end
-    #   )
-    #   
-    #   if tag == _tag
-    #     puts " : with rslt '#{rslt&.tag}'"
-    #     rslt || @xml_parent
-    #   else
-    #     rslt
-    #   end
-    # end
-    
 
-    
-    # This is the most efficient!
-    # It compiles all possible ancestors into a uniq array,
+    # Compiles all possible ancestors into a uniq array,
     # before searching each one for matching elements.
+    # TODO: Might have to order the uniq_ancestors by level,
+    #       which means you would have to track level in this method.
     def logical_parent_search(_tag=@tag, _starting_cursor=@xml_parent)
       ancestors = _starting_cursor.xml_ancestors | _starting_cursor.logical_ancestors
-      uniq_ancestors = ancestors.map{|a| [a, a.xml_parent, a.logical_parent]}.flatten.compact.uniq
+      uniq_ancestors = ancestors.map{|a| [a, a.xml_parent, a.logical_parent]}.flatten.compact.uniq.sort{|a,b| a.level <=> b.level}.reverse
       #puts uniq_ancestors.map{|a| a&.tag}.join(', ')
-      uniq_ancestors.find{|a| a.model&.dig('elements')&.find{|e| e['name'] == _tag} } || xml_parent
+      puts uniq_ancestors.map(&:tag).join(', ')
+      uniq_ancestors.find{|a| a.model&.dig('elements')&.find{|e| e['name'] == _tag} } ||
+      uniq_ancestors.find{|a| a.model&.dig('attach') != 'none'} ||
+      top
     end
     
     # Find the element-model of _tag from the above result.
