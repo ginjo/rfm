@@ -18,10 +18,10 @@ module SaxChange
 
     # model - currently active model (rename to current_model)
     # local_model - model of this cursor's tag (rename to local_model)
-    # newtag - incoming tag of yet-to-be-created cursor. Get rid of this if you can.
     # element_attachment_prefs - local object's attachment prefs based on local_model and current_model.
     # level - cursor depth
-    attr_accessor :model, :local_model, :object, :tag, :handler, :parent, :level, :element_attachment_prefs, :new_element_callback, :initial_attributes, :config, :logical_parent  #, :newtag
+    attr_accessor :model, :object, :tag, :handler, :xml_parent, :level, :element_attachment_prefs, :new_element_callback, :initial_attributes, :config #, :local_model
+    attr_accessor :logical_parent, :logical_parent_model
 
     def_delegators :handler, :top, :stack
 
@@ -57,21 +57,30 @@ module SaxChange
     def initialize(_tag, _handler, _parent=nil, _initial_attributes=nil, **opts)
       #puts "CURSOR#initialize options: #{opts}"
 
+      # TODO: Complete following changes (may already be in progress):
+      #       Change @parent to @xml_parent.
+      #       Remove @local_model (might need to replace with something else eventually).
+      #       Make @model this cursor's matching model.
+
       @tag     =  _tag
       @handler = _handler
       @config = @handler.config.merge(opts)
-      @parent = _parent || self
+      @xml_parent = _parent || self
       @initial_attributes = _initial_attributes
-      @level = @parent.level.to_i + 1
+      @level = @xml_parent.level.to_i + 1
       
       ## Experimental for v4
-      @logical_parent = logical_parent_search(@tag, @parent)
+      # Logical_parent is the cursor that has a list of elements that match this element.
+      # It could the same as the xml_parent, or it could be somewhere else.
+      # The logical_parent may have directives that affect this element or its attributes.
+      @logical_parent = logical_parent_search(@tag, @xml_parent)
+      @logical_parent_model = @logical_parent&.model
 
       ## Experimental for v4.
       ## local_model is whichever one matches this element.
       #@local_model = (model_elements?(@tag, @parent.model) || config[:default_class].new)
       #@local_model = (logical_parent_matching_element_model(@tag, @parent) || config[:default_class].new)
-      @local_model = (@logical_parent&.model&.dig('elements')&.find{|e| e['name'] == _tag} || config[:default_class].new)
+      @model = (@logical_parent_model&.dig('elements')&.find{|e| e['name'] == _tag} || config[:default_class].new)
       
 
 # Disabled for testing.
@@ -127,38 +136,26 @@ module SaxChange
         # when inital cursor, just set model & object.
       when @tag == '__TOP__';
         #puts "__TOP__"
-        @model = @handler.template
+        # Also setting logical_parent_model, since it wasn't set by handler.
+        # Maybe finda  better way to set the logical_parent_model ivar for the __TOP__ cursor.
+        @model = @logical_parent_model = @handler.template
         @object = @handler.initial_object
 
-#       when @element_attachment_prefs == 'none';
-#         #puts "__NONE__"
-# #         @model = @parent.model #nil
-# #         @object = @parent.object #nil
-#         @model = ancestral_element_model
-#         @object = ancestral_cursor_match.object
-# 
-#         if @initial_attributes && @initial_attributes.any? #&& @attribute_attachment_prefs != 'none'
-#           assign_attributes(@initial_attributes) #, @object, @model, @local_model) 
-#         end
-# 
-#       when @element_attachment_prefs == 'cursor';
-#         #puts "__CURSOR__"
-# #         @model = @local_model
-# #         @object = new_element || config[:default_class].allocate
-#         @model = ancestral_element_model
-#         @object = ancestral_cursor_match.object
-# 
-# 
-#         if @initial_attributes && @initial_attributes.any? #&& @attribute_attachment_prefs != 'none'
-#           assign_attributes(@initial_attributes) #, @object, @model, @local_model) 
-#         end
+      when @element_attachment_prefs == 'none';
+        #puts "__NONE__"
+#         @model = @logical_parent.model #nil
+#         @object = @logical_parent.object #nil
+
+#       if @initial_attributes && @initial_attributes.any? #&& @attribute_attachment_prefs != 'none'
+#         assign_attributes(@initial_attributes) #, @object, @model, @local_model) 
+#       end
 
       else
         #puts "__OTHER__"
 #         @model = @local_model
 #         @object = new_element || config[:default_class].allocate
-        @model = @logical_parent.model
-        @object = @logical_parent.object
+#         @model = @local_model
+        @object = new_element || config[:default_class].allocate
 
 
 #         if @initial_attributes && @initial_attributes.any? #&& @attribute_attachment_prefs != 'none'
@@ -488,41 +485,89 @@ module SaxChange
     ###  New for v4. Note that these methods, while potentially functional,
     ###  may also be very rough around the edges.
     
-    # Find cursor ancestors (parent of parent of...)
-    def ancestors
+    # Find cursor xml ancestors (parent of parent of...)
+    def xml_ancestors
       return [self] if level <= 1
-      [self].concat parent.ancestors
+      [self].concat xml_parent.xml_ancestors
+    end
+    
+    # Find cursor logical ancestors (logical_parent of logical_parent of...)
+    def logical_ancestors
+      return [self] if level <= 1
+      [self].concat logical_parent.logical_ancestors
     end
     
     ## Logical parent is the first ancestor whose element list has a match for this element.
     ## If no matching ancestor, the logical parent is the physical parent.
     
-    # Find the cursor containing the element array containing the element matching _tag.
-    def logical_parent_search(_tag=@tag, _starting_cursor=parent)
-      #_starting_cursor.ancestors.find{|c| model_elements?(_tag, c.model)} || parent
-      rslt = _starting_cursor.ancestors.map do |c|
-        rslt = (
-        # Ancestor @model with matching :elements
-        #c.model&.dig('elements')&.find{|e| e['name'] == _tag} && c ||
-        # Ancestor @local_model with matching :elements
-        c.local_model&.dig('elements')&.find{|e| e['name'] == _tag} && c ||
-        # Ancestor logical_parent @model with matching :elements
-        c.logical_parent&.model&.dig('elements')&.find{|e| e['name'] == _tag} && c.logical_parent ||
-        # Ancestor logical_parent @local_model with matching :elements
-        c.logical_parent&.local_model&.dig('elements')&.find{|e| e['name'] == _tag} && c.logical_parent
-        )
-
-      end.first
-      puts "Logical Parent for '#{_tag}' is (raw) '#{rslt&.tag}', (safe) '#{rslt&.tag || parent.tag}'"
-      rslt || parent
-    end
-    
-    # def logical_parent_model(_tag=@tag, _starting_cursor=parent)
-    #   logical_parent_search(_tag, _starting_cursor).local_model
+    # # Find the cursor containing the element array containing the element matching _tag.
+    # # This works!
+    # def logical_parent_search(_tag=@tag, _starting_cursor=self)
+    #   #_starting_cursor.xml_ancestors.find{|c| model_elements?(_tag, c.model)} || parent
+    #   rslt = _starting_cursor.ancestors.map do |c|
+    #     #puts "Logical parent search at #{c} '#{c.tag}', with model '#{c.model&.dig('name')}'"
+    #     rslt = (
+    #     # Ancestor @model with matching :elements
+    #     #c.model&.dig('elements')&.find{|e| e['name'] == _tag} && c ||
+    #     # Ancestor @local_model with matching :elements
+    #     c.model&.dig('elements')&.find{|e| e['name'] == _tag} && c ||
+    #     # Ancestor logical_parent @model with matching :elements
+    #     c.logical_parent&.model&.dig('elements')&.find{|e| e['name'] == _tag} && c.logical_parent #||
+    #     # Ancestor logical_parent @local_model with matching :elements
+    #     #c.logical_parent&.local_model&.dig('elements')&.find{|e| e['name'] == _tag} && c.logical_parent
+    #     )
+    # 
+    #   end.first
+    #   puts "Logical Parent for '#{_tag}' is (raw) '#{rslt&.tag}', (safe) '#{rslt&.tag || xml_parent.tag}'"
+    #   rslt || xml_parent
     # end
     
-    # Find the element model of _tag from the above cursor
-    def logical_parent_matching_element_model(_tag=@tag, _starting_cursor=parent)
+    # # This also works but runs more than once over the same cursor.
+    # def logical_parent_search(_tag=@tag, _starting_cursor=@xml_parent)
+    #   print("\nLogical parent search for '#{_tag}', with starting cursor '#{_starting_cursor.tag}'")
+    #   rslt = (
+    #   
+    #     # This breaks the recursion here.
+    #     # print_true("\n  checking if '#{_starting_cursor&.tag}' == top") &&
+    #     # (_starting_cursor&.tag == '__TOP__') && _starting_cursor ||
+    #     
+    #     #print("\n  searching cursor '#{_starting_cursor&.tag}'") ||
+    #     _starting_cursor&.model&.dig('elements')&.find{|e| e['name'] == _tag} && _starting_cursor ||
+    #     
+    #     # print_true("\n  searching starting-cursor-xml-parent '#{_starting_cursor&.xml_parent&.tag}'") &&
+    #     # _starting_cursor&.xml_parent&.model&.dig('elements')&.find{|e| e['name'] == _tag} && _starting_cursor.xml_parent ||
+    #     # 
+    #     # print_true("\n  searching starting-cursor-logical-parent '#{_starting_cursor&.logical_parent&.tag}'") &&
+    #     # _starting_cursor&.logical_parent&.model&.dig('elements')&.find{|e| e['name'] == _tag} && _starting_cursor.logical_parent ||
+    #     
+    #     if (_starting_cursor&.tag != '__TOP__')
+    #       _starting_cursor&.logical_parent_search(_tag, _starting_cursor&.xml_parent) ||
+    #       _starting_cursor&.logical_parent_search(_tag, _starting_cursor&.logical_parent)
+    #     end
+    #   )
+    #   
+    #   if tag == _tag
+    #     puts " : with rslt '#{rslt&.tag}'"
+    #     rslt || @xml_parent
+    #   else
+    #     rslt
+    #   end
+    # end
+    
+
+    
+    # This is the most efficient!
+    # It compiles all possible ancestors into a uniq array,
+    # before searching each one for matching elements.
+    def logical_parent_search(_tag=@tag, _starting_cursor=@xml_parent)
+      ancestors = _starting_cursor.xml_ancestors | _starting_cursor.logical_ancestors
+      uniq_ancestors = ancestors.map{|a| [a, a.xml_parent, a.logical_parent]}.flatten.compact.uniq
+      #puts uniq_ancestors.map{|a| a&.tag}.join(', ')
+      uniq_ancestors.find{|a| a.model&.dig('elements')&.find{|e| e['name'] == _tag} } || xml_parent
+    end
+    
+    # Find the element-model of _tag from the above result.
+    def logical_parent_matching_element_model(_tag=@tag, _starting_cursor=xml_parent)
       #_starting_cursor.model_elements?(_tag, (_cursor.ancestral_cursor_match(_tag, _cursor).model rescue @parent.model))
       #model_elements?(_tag, logical_parent_search(_tag, _starting_cursor).model)
       logical_parent_search(_tag, _starting_cursor)&.model&.dig('elements')&.find{|e| e['name'] == _tag}

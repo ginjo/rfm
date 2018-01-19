@@ -199,9 +199,10 @@ module SaxChange
   
     # Insert cursor into stack. Returns cursor.
     def set_cursor(args) # cursor_object
+      #puts "Pushing cursor into stack #{args}"
       if args.is_a? Cursor
         stack.push(args)
-        @stack_debug.push(args.dup)   #.tap(){|c| c.handler = c.handler.object_id; c.parent = c.parent.tag})
+        @stack_debug.push(args.dup.tap(){|c| c.handler = c.handler.object_id})  #; c.parent = c.parent.tag})
       end
       cursor
     end
@@ -291,6 +292,10 @@ module SaxChange
         _start_element('xmldecl', {'version'=>args[0], 'encoding'=>args[1], 'standalone'=>args[2]})
       end
       _end_element('xmldecl')
+    end
+    
+    def print_stack_debug
+      stack_debug.each{|c| puts (" " * c.level) +  "Cursor '#{c.tag}', model '#{c.model['name']}', logical_parent '#{c.logical_parent.tag}', logical_parent_model '#{c.logical_parent_model&.dig('name')}', attach '#{c&.model.dig('attach')}', object '#{c.object.class}'"}; nil
     end
     
   

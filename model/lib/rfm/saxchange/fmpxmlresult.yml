@@ -4,7 +4,7 @@
 # What about scripts?
 ---
 # This is not functionaly required but helps with debugging
-name: 'top-level-name'
+name: fmpxmlresult-top-level
 initial_object: "Rfm::Resultset.new(**config)"
 attach_elements: _meta
 attach_attributes: _meta
