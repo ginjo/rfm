@@ -3,6 +3,8 @@
 # This also works well for parsing 'layouts' command response.
 # What about scripts?
 ---
+# This is not functionaly required but helps with debugging
+name: 'top-level-name'
 initial_object: "Rfm::Resultset.new(**config)"
 attach_elements: _meta
 attach_attributes: _meta

@@ -58,7 +58,7 @@ module SaxChange
       backend_handler_class = get_backend(_backend || config(options)[:backend])
       #puts "#{self}.new with _backend:'#{_backend}', _template:'#{_template}', _initial_object:'#{_initial_object}', options:'#{options}'"
       #backend_handler_class.new(_template, _initial_object, **options)
-      _parser = yield(binding)
+      _parser = yield(binding) if block_given?
       handler_object = backend_handler_class.allocate
       handler_object.parser = _parser
       handler_object.send :initialize, _template, _initial_object, **options
@@ -197,10 +197,11 @@ module SaxChange
       stack.last
     end
   
+    # Insert cursor into stack. Returns cursor.
     def set_cursor(args) # cursor_object
       if args.is_a? Cursor
         stack.push(args)
-        #@stack_debug.push(args.dup.tap(){|c| c.handler = c.handler.object_id; c.parent = c.parent.tag})
+        @stack_debug.push(args.dup)   #.tap(){|c| c.handler = c.handler.object_id; c.parent = c.parent.tag})
       end
       cursor
     end
