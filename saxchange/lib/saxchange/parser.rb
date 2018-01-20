@@ -130,7 +130,10 @@ module SaxChange
       #puts "Parser#call with options: #{options}"
       handler = build_handler(_backend, _template, _initial_object, **options)
       handler.run_parser(io)
-      handler
+    # Inserted for debugging. Should probably reraise for runtime & production.
+    ensure
+      handler.errors << [$!, "  #{$!.backtrace.join("\n  ")}"] if $!
+      return handler
     end
     
     # def parse(*args)

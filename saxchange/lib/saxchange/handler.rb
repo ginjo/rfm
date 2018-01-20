@@ -43,7 +43,7 @@ module SaxChange
     
     extend Forwardable
   
-    attr_accessor :stack, :template, :initial_object, :stack_debug, :default_class, :backend, :parser
+    attr_accessor :stack, :template, :initial_object, :stack_debug, :default_class, :backend, :parser, :errors
       
     def self.included(base)
       base.send :prepend, PrependMethods
@@ -110,6 +110,7 @@ module SaxChange
     # The next step expected after #initialize is run_parser.
     def initialize(_template=nil, _initial_object=nil, **options)
       #puts "Handler#initialize with options: #{options}"
+      @errors = []
       _template ||= config[:template]
       @template = get_template(_template, config)
       _initial_object ||= config[:initial_object] || (@template && @template['initial_object'])
@@ -281,6 +282,7 @@ module SaxChange
     
     def _error(*args)
       #puts "_ERROR '#{args}'"
+      errors << [args]
       SaxChange.log.warn "#{self}##{__callee__} : #{args}"
     end
     
