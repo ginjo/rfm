@@ -112,7 +112,7 @@ module SaxChange
       #puts ["\nRECEIVE_ATTR '#{name}'", "value: #{value}", "tag: #{@tag}", "object: #{object.class}", "model: #{model['name']}"]
       new_att = {name=>value}    #.new.tap{|att| att[name]=value}
       # Temp disable for v4.
-      assign_attributes(new_att) #, @object, @model, @local_model)
+      attribute_target.assign_attributes(new_att, @model) #, @object, @model, @local_model)
     rescue
       SaxChange.log.warn "Error: could not assign attribute '#{name.to_s}' to element '#{self.tag.to_s}': #{$!}"
     end
@@ -146,7 +146,7 @@ module SaxChange
         @object = @logical_parent.object
 
         if @initial_attributes && @initial_attributes.any? #&& @attribute_attachment_prefs != 'none'
-          assign_attributes(@initial_attributes) #, @object, @model, @local_model) 
+          attribute_target.assign_attributes(@initial_attributes, @model)
         end
 
       else
@@ -156,7 +156,7 @@ module SaxChange
 
         if @initial_attributes && @initial_attributes.any? #&& @attribute_attachment_prefs != 'none'
           #puts "PROCESS_NEW_ELEMENT calling assign_attributes with ATTRIBUTES #{@initial_attributes}"
-          assign_attributes(@initial_attributes) #, @object, @model, @local_model) 
+          attribute_target.assign_attributes(@initial_attributes, @model) #, @object, @model, @local_model) 
         end
 
         # If @local_model has a delimiter, defer attach_new_element until later.
@@ -315,28 +315,30 @@ module SaxChange
 
     #####  MERGE METHODS  #####
 
-    # Assign attributes to element.
-    def assign_attributes(_attributes)
+    # Assign attributes to this cursor's object.
+    # The attributes could be from this element or from any sub-element.
+    def assign_attributes(_attributes, attributes_element_model=@model)
       if _attributes && !_attributes.empty?
 
         _attributes.each do |k,v|
           # This now grabs top-level :attributes hash if exists and no local_model.
-          attr_model = model_attributes?(k, @model) || model_attributes?(k, @logical_parent_model)
+          attr_model = model_attributes?(k, attributes_element_model) #|| model_attributes?(k, @logical_parent_model)
           puts "\nASSIGN_ATTRIBUTES each attr key:#{k}, val:#{v}, attr_model:#{attr_model}, @model:#{@model}"
 
           label = label_or_tag(k, attr_model)
 
-          # TODO: for v4, does this @model need to be @logical_parent_model?
-          prefs = [attachment_prefs(@logical_parent_model, attr_model, 'attribute')].flatten(1)[0]
-          puts "ASSIGN_ATTRIBUTES @model: #{@model}"
-          puts "ASSIGN_ATTRIBUTES compiled prefs: #{prefs}"
+          # TODO: for v4, does this @model need to be @logical_parent_model? NO.
+          # Gets compiled prefs from local-attr-attachment-prefs and attribute-specific-model
+          prefs = [attachment_prefs(@model, attr_model, 'attribute')].flatten(1)[0]
+          #puts "ASSIGN_ATTRIBUTES to @model: #{@model}"
+          #puts "ASSIGN_ATTRIBUTES with compiled prefs: #{prefs}"
 
           shared_var_name = shared_variable_name(prefs)
           (prefs = "shared") if shared_var_name
 
-          # TODO: for v4, does this @model need to be @logical_parent_model?
+          # TODO: for v4, does this @model need to be @logical_parent_model? NO
           # Use local create_accessors prefs first, then more general ones.
-          create_accessors = accessor?(attr_model) || create_accessors?(@logical_parent_model)
+          create_accessors = accessor?(attr_model) || create_accessors?(@model)
           #(create_accessors = create_accessors?(@model)) unless create_accessors && create_accessors.any?
 
           puts ["\nASSIGN_ATTRIBUTES-attach-object", "label: #{label}", "object-class: #{@object.class}", "k,v: #{[k,v]}", "attr_model: #{attr_model}", "prefs: #{prefs}", "shared_var_name: #{shared_var_name}", "create_accessors: #{create_accessors}"]
@@ -346,6 +348,8 @@ module SaxChange
       end
     end # assign_attributes
 
+    # This ~should~ be only concerned with how to attach a given element to THIS cursor's object.
+    # HOWEVER, this method is from the viewpoint of the new object being attached.
     def attach_new_element(name, new_object)   #old params (base_object, new_object, name, base_model, new_model, type)
       label = label_or_tag(name, @model)
 
@@ -380,11 +384,20 @@ module SaxChange
       #   puts ["\nATTACH_ATTR", "name: #{name}", "label: #{label}", "new_object: #{new_object.class rescue ''}", "base_object: #{base_object.class rescue ''}", "base_model: #{base_model['name'] rescue ''}", "new_model: #{new_model['name'] rescue ''}", "prefs: #{prefs}"]
       # end
     end # attach_new_element
+    
+    # Which cursor to attache this element's attributes to.
+    def attribute_target
+      if @model&.dig('attach') == 'none'
+        @logical_parent
+      else
+        self
+      end
+    end
 
-    def attachment_prefs(base_model, new_model, type)
+    def attachment_prefs(target_model, new_model, type)
       case type
-      when 'element'; attach?(new_model) || attach_elements?(base_model) #|| attach?(top.model) || attach_elements?(top.model)
-      when 'attribute'; attach?(new_model) || attach_attributes?(base_model) #|| attach?(top.model) || attach_attributes?(top.model)
+      when 'element'; attach?(new_model) || attach_elements?(target_model) #|| attach?(top.model) || attach_elements?(top.model)
+      when 'attribute'; attach?(new_model) || attach_attributes?(target_model) #|| attach?(top.model) || attach_attributes?(top.model)
       end
     end
 
