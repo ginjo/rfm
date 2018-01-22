@@ -108,7 +108,14 @@ module Rfm
         when "container" then
           #resultset_meta = resultset.instance_variable_get(:@meta)
           if resultset_meta && resultset_meta['doctype'] && value.to_s[/\?/]
-            URI.parse(resultset_meta['doctype'].last.to_s).tap{|uri| uri.path, uri.query = value.split('?')}
+            doctype_uri = resultset_meta['doctype'].tap do |dt|
+              break case
+                when dt.is_a?(Array); dt.last.to_s
+                when dt&.dig('values').is_a?(Array); dt&.dig('values').last.to_s
+                when dt.is_a?(Hash); dt&.dig('system_id').to_s
+              end
+            end 
+            URI.parse(doctype_uri).tap{|uri| uri.path, uri.query = value.split('?')}
           else
             value
           end

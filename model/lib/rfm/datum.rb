@@ -40,7 +40,7 @@ module Rfm
         field = resultset.field_meta[name]
         data = @attributes['data'] #'data'
         #puts ["\nDATUM", name, record.class, resultset.class, field, data]
-        puts ["\nDATUM", self.to_yaml]
+        #puts ["\nDATUM", self.to_yaml]
         record[name] = field.coerce(data)
       end
 
