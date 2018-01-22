@@ -93,6 +93,8 @@ module Rfm
           return coerce(value.values[0])
         end
 
+        puts "#{self}.coerce local-var 'result': '#{result}'"
+
         case result
         when "text"      then value
         when "number"    then
@@ -107,14 +109,18 @@ module Rfm
         when "timestamp" then DateTime.strptime(value, resultset_meta.timestamp_format)
         when "container" then
           #resultset_meta = resultset.instance_variable_get(:@meta)
+          puts "#{self}.coerce resultset_meta '#{resultset_meta.to_yaml}'" 
           if resultset_meta && resultset_meta['doctype'] && value.to_s[/\?/]
-            doctype_uri = resultset_meta['doctype'].tap do |dt|
-              break case
+            doctype_uri = resultset_meta['doctype'].as do |dt|
+              # This 'break' is a way to have 'tap' return a different result.
+              # See https://stackoverflow.com/questions/7878687/combinatory-method-like-tap-but-able-to-return-a-different-value/7879071#7879071
+              case
                 when dt.is_a?(Array); dt.last.to_s
                 when dt&.dig('values').is_a?(Array); dt&.dig('values').last.to_s
                 when dt.is_a?(Hash); dt&.dig('system_id').to_s
               end
             end 
+            puts "#{self}.coerce doctype_uri '#{doctype_uri}'"
             URI.parse(doctype_uri).tap{|uri| uri.path, uri.query = value.split('?')}
           else
             value
