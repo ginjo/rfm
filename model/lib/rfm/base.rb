@@ -63,6 +63,7 @@ module Rfm
     end
 
     class << self
+      extend Forwardable
 
       # Access layout functions from base model
       def_delegators :layout, :db, :server, :field_controls, :field_names, :value_lists, :total_count,

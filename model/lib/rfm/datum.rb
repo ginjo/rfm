@@ -16,7 +16,7 @@ module Rfm
         name = get_mapped_name(@attributes['name'].to_s, resultset)
         field = resultset.field_meta[name]
         data = @attributes['data']
-        cursor.parent.object[name.downcase] = field.coerce(data)
+        cursor.logical_parent.object[name.downcase] = field.coerce(data)
       end
 
       def portal_field_element_close_callback(cursor)
@@ -28,19 +28,19 @@ module Rfm
         data = @attributes['data']
         #puts ['DATUM_portal_field_element_close_callback_02', "cursor.parent.object.class: #{cursor.parent.object.class}", "resultset.class: #{resultset.class}", "table: #{table}", "name: #{name}", "field: #{field}", "data: #{data}"]
         #(puts resultset.portal_meta.to_yaml) unless field
-        cursor.parent.object[name.downcase] = field.coerce(data)
+        cursor.logical_parent.object[name.downcase] = field.coerce(data)
       end
 
       # Should return value only.
       def field_element_close_callback(cursor)
-        record = cursor.parent.object
+        record = cursor.logical_parent.object
         resultset = cursor.top.object
 
         name = get_mapped_name(@attributes['name'].to_s, resultset)
         field = resultset.field_meta[name]
         data = @attributes['data'] #'data'
-        #puts ["\nDATUM", name, record.class, resultset.class, data]
-        #puts ["\nDATUM", self.to_yaml]
+        #puts ["\nDATUM", name, record.class, resultset.class, field, data]
+        puts ["\nDATUM", self.to_yaml]
         record[name] = field.coerce(data)
       end
 

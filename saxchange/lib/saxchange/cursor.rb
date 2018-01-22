@@ -11,6 +11,8 @@ module SaxChange
   # necessary to build the resulting object. If you call #cursor on the handler,
   # you will always get the last object added to the stack. Think of a cursor as
   # a framework of tools that accompany each element's build process.
+  #
+  # NOTE: Methods that change this cursor or its objects should follow the operate-on-this-cursor-only rule.
   class Cursor
     using Refinements
     using ObjectMergeRefinements
@@ -75,34 +77,80 @@ module SaxChange
       # The logical_parent may have directives that affect this element or its attributes.
       @logical_parent = logical_parent_search(@tag, @xml_parent)
       @logical_parent_model = @logical_parent&.model
-
-      ## Experimental for v4.
-      ## local_model is whichever one matches this element.
-      #@local_model = (model_elements?(@tag, @parent.model) || config[:default_class].new)
-      #@local_model = (logical_parent_matching_element_model(@tag, @parent) || config[:default_class].new)
-      @model = (@logical_parent_model&.dig('elements')&.find{|e| e['name'] == _tag} || config[:default_class].new)
       
-
-
-      ## Experimental for v4.
-      ## 
-      #@element_attachment_prefs = attachment_prefs(@parent.model, @local_model, 'element')
+      @model = case
+      when @tag == '__TOP__'
+        @logical_parent_model = @handler.template
+      when attach? == 'none'
+        @logical_parent.element?(@tag) || config[:default_class].new
+      else
+        @logical_parent.element?(@tag) || config[:default_class].new
+      end
+      
       @element_attachment_prefs = attachment_prefs(@logical_parent_model, @model, 'element')
       
-      #@attribute_attachment_prefs = attachment_prefs(@parent.model, @local_model, 'attribute')
-
-      if @element_attachment_prefs.is_a? Array
+      if @element_attachment_prefs.is_a?(Array)
         @new_element_callback = @element_attachment_prefs[1..-1]
         @element_attachment_prefs = @element_attachment_prefs[0]
-        if @element_attachment_prefs.to_s == 'default'
-          @element_attachment_prefs = nil
-        end
+        @element_attachment_prefs = nil if @element_attachment_prefs.to_s == 'default'
       end
-
-      #puts ["\nINITIALIZE_CURSOR tag: #{@tag}", "parent.object: #{@parent.object.class}", "local_model: #{@local_model.class}", "el_prefs: #{@element_attachment_prefs}",  "new_el_callback: #{@new_element_callback}", "attributes: #{@initial_attributes}"]
+      
+      @object = case
+      when @tag == '__TOP__'
+        @handler.initial_object
+      when attach? == 'none'
+        # Maybe this needs to be enabled for what used to be attach-cursor?
+        build_new_object_from_callback(binding) || config[:default_class].allocate
+        #@logical_parent.object
+      else
+        build_new_object_from_callback(binding) || config[:default_class].allocate
+      end
+      
+      puts "\n#{self}.initialize #{@level}-#{@tag}, lg-pnt '#{@logical_parent.tag}', eap '#{@element_attachment_prefs}', nec '#{@new_element_callback}', obj '#{@object.class}', model '#{@model}'"
 
       self
     end
+    
+    def build_new_object_from_callback(caller_binding=binding)
+      @new_element_callback ? get_callback(@new_element_callback, caller_binding) : nil
+    end
+
+    # Decides how to attach element & attributes associated with this cursor.
+    def process_new_element(caller_binding=binding)
+      #puts ["\nPROCESS_NEW_ELEMENT tag: #{@tag}", "@element_attachment_prefs: #{@element_attachment_prefs}", "@local_model: #{model}"]
+
+      # NOTE: This has moved to #initialize method.
+      #new_element = get_new_element_from_callback(caller_binding)
+
+      case
+        # when inital cursor, just set model & object.
+      when @tag == '__TOP__';
+        #puts "__TOP__"
+      when @element_attachment_prefs == 'none';
+        #puts "__NONE__"
+        if @initial_attributes && @initial_attributes.any? #&& @attribute_attachment_prefs != 'none'
+          attribute_target.assign_attributes(@initial_attributes, @model)
+        end
+      else
+        #puts "__OTHER__"
+
+        if @initial_attributes && @initial_attributes.any? #&& @attribute_attachment_prefs != 'none'
+          #puts "PROCESS_NEW_ELEMENT calling assign_attributes with ATTRIBUTES #{@initial_attributes}"
+          attribute_target.assign_attributes(@initial_attributes, @model) #, @object, @model, @local_model) 
+        end
+
+        # If @local_model has a delimiter, defer attach_new_element until later.
+        #puts "PROCESS_NEW_ELEMENT delimiter of @local_model #{delimiter?(@local_model)}"
+        # NOTE: I changed this from @local_model to @model
+        if !delimiter?(@model) 
+          #attach_new_object(@parent.object, @object, @tag, @parent.model, @local_model, 'element')
+          #puts "PROCESS_NEW_ELEMENT calling attach_new_element with TAG #{@tag} and OBJECT #{@object}"
+          @logical_parent.attach_new_element(@tag, @object, self)
+        end      
+      end # case
+
+      self
+    end # process_new_element
 
 
     #####  SAX METHODS  #####
@@ -118,83 +166,35 @@ module SaxChange
     end
 
     def receive_start_element(_tag, _attributes)
-      puts "Cursor for #{tag} receiveing start_element for #{_tag}"
+      #puts "Cursor for #{tag} receiveing start_element for #{_tag}"
       #puts ["\nRECEIVE_START '#{_tag}'", "current_object: #{@object.class}", "current_model: #{@model['name']}", "attributes #{_attributes}"]
       new_cursor = Cursor.new(_tag, @handler, self, _attributes, **@config) #, binding)
       new_cursor.process_new_element(binding)
       new_cursor
     end # receive_start_element
 
-    # Decides how to attach element & attributes associated with this cursor.
-    def process_new_element(caller_binding=binding)
-      puts ["\nPROCESS_NEW_ELEMENT tag: #{@tag}", "@element_attachment_prefs: #{@element_attachment_prefs}", "@local_model: #{model}"]
-
-      # TODO: Maybe turn this into a proc or a full method to improve performance?
-      new_element = @new_element_callback ? get_callback(@new_element_callback, caller_binding) : nil
-
-      case
-        # when inital cursor, just set model & object.
-      when @tag == '__TOP__';
-        #puts "__TOP__"
-        # Also setting logical_parent_model, since it wasn't set by handler.
-        # Maybe finda  better way to set the logical_parent_model ivar for the __TOP__ cursor.
-        @model = @logical_parent_model = @handler.template
-        @object = @handler.initial_object
-
-      when @element_attachment_prefs == 'none';
-        #puts "__NONE__"
-        @object = @logical_parent.object
-
-        if @initial_attributes && @initial_attributes.any? #&& @attribute_attachment_prefs != 'none'
-          attribute_target.assign_attributes(@initial_attributes, @model)
-        end
-
-      else
-        #puts "__OTHER__"
-        @object = new_element || config[:default_class].allocate
-
-
-        if @initial_attributes && @initial_attributes.any? #&& @attribute_attachment_prefs != 'none'
-          #puts "PROCESS_NEW_ELEMENT calling assign_attributes with ATTRIBUTES #{@initial_attributes}"
-          attribute_target.assign_attributes(@initial_attributes, @model) #, @object, @model, @local_model) 
-        end
-
-        # If @local_model has a delimiter, defer attach_new_element until later.
-        #puts "PROCESS_NEW_ELEMENT delimiter of @local_model #{delimiter?(@local_model)}"
-        # NOTE: I changed this from @local_model to @model
-        if !delimiter?(@model) 
-          #attach_new_object(@parent.object, @object, @tag, @parent.model, @local_model, 'element')
-          #puts "PROCESS_NEW_ELEMENT calling attach_new_element with TAG #{@tag} and OBJECT #{@object}"
-          attach_new_element(@tag, @object)
-        end      
-      end
-
-      self
-    end # process_new_element
-
-
     def receive_end_element(_tag)
       #puts ["\nRECEIVE_END_ELEMENT '#{_tag}'", "tag: #{@tag}", "object: #{@object.class}", "model: #{@model['name']}", "local_model: #{@local_model['name']}"]
       #puts ["\nEND_ELEMENT_OBJECT", object.to_yaml]
       begin
 
-        if _tag == @tag && (@model == @local_model)
+        if _tag == @tag && (@model == @logical_parent_model)
           # Data cleaup
           compactor_settings = compact? || compact?(top.model)
           #(compactor_settings = compact?(top.model)) unless compactor_settings # prefer local settings, or use top settings.
           (clean_members {|v| clean_members(v){|w| clean_members(w)}}) if compactor_settings
         end
 
-        if (delimiter = delimiter?(@local_model); delimiter && !['none','cursor'].include?(@element_attachment_prefs.to_s))
+        if (delimiter = delimiter?(@model); delimiter && !['none','cursor'].include?(@element_attachment_prefs.to_s))
           #attach_new_object(@parent.object, @object, @tag, @parent.model, @local_model, 'element')
           #puts "RECEIVE_END_ELEMENT attaching new element TAG (#{@tag}) OBJECT (#{@object.class}) #{@object.to_yaml} WITH LOCAL MODEL #{@local_model.to_yaml} TO PARENT (#{@parent.object.class}) #{@parent.object.to_yaml} PARENT MODEL #{@parent.model.to_yaml}"
-          attach_new_element(@tag, @object)
+          @logical_parent.attach_new_element(@tag, @object, self)
         end      
 
         if _tag == @tag #&& (@model == @local_model)
           # End-element callbacks.
           #run_callback(_tag, self)
-          callback = before_close?(@local_model)
+          callback = before_close?(@model)
           get_callback(callback, binding) if callback
         end
 
@@ -203,19 +203,13 @@ module SaxChange
           return true
         end
 
-        # NOTE: This has been commented out for a long time.
-        # # return true only if matching tags
-        # if _tag == @tag
-        #   return true
-        # end
-
         return
         # TODO: Dunno how long this has been commented out.
         #       If it's not used, remove the begin/end keywords.
         #           rescue
         #            SaxChange.log.debug "Error: end_element tag '#{_tag}' failed: #{$!}"
       end # begin
-    end
+    end # receive_end_element
 
     ###  Parse callback instructions, compile & send callback method  ###
     ###  TODO: This is way too convoluted. Document it better, or refactor!!!
@@ -298,19 +292,6 @@ module SaxChange
       end          
     end # get_callback
 
-    # NOTE: I think this has been disabled for a long time.
-    # # Run before-close callback.
-    # def run_callback(_tag, _cursor=self, _model=_cursor.local_model, _object=_cursor.object )
-    #   callback = before_close?(_model)
-    #   #puts ["\nRUN_CALLBACK", _tag, _cursor.tag, _object.class, callback, callback.class]
-    #   if callback.is_a? Symbol
-    #     _object.send callback, _cursor
-    #   elsif callback.is_a?(String)
-    #     _object.send :eval, callback
-    #   end
-    # end
-
-
 
 
     #####  MERGE METHODS  #####
@@ -321,9 +302,8 @@ module SaxChange
       if _attributes && !_attributes.empty?
 
         _attributes.each do |k,v|
-          # This now grabs top-level :attributes hash if exists and no local_model.
-          attr_model = model_attributes?(k, attributes_element_model) #|| model_attributes?(k, @logical_parent_model)
-          puts "\nASSIGN_ATTRIBUTES each attr key:#{k}, val:#{v}, attr_model:#{attr_model}, @model:#{@model}"
+          attr_model = attribute?(k, attributes_element_model)
+          #puts "\nASSIGN_ATTRIBUTES each attr key:#{k}, val:#{v}, attr_model:#{attr_model}, @model:#{@model}"
 
           label = label_or_tag(k, attr_model)
 
@@ -341,7 +321,7 @@ module SaxChange
           create_accessors = accessor?(attr_model) || create_accessors?(@model)
           #(create_accessors = create_accessors?(@model)) unless create_accessors && create_accessors.any?
 
-          puts ["\nASSIGN_ATTRIBUTES-attach-object", "label: #{label}", "object-class: #{@object.class}", "k,v: #{[k,v]}", "attr_model: #{attr_model}", "prefs: #{prefs}", "shared_var_name: #{shared_var_name}", "create_accessors: #{create_accessors}"]
+          #puts ["\nASSIGN_ATTRIBUTES-attach-object", "label: #{label}", "object-class: #{@object.class}", "k,v: #{[k,v]}", "attr_model: #{attr_model}", "prefs: #{prefs}", "shared_var_name: #{shared_var_name}", "create_accessors: #{create_accessors}"]
           @object._attach_object!(v, label, delimiter?(attr_model), prefs, 'attribute', :default_class=>config[:default_class], :shared_variable_name=>shared_var_name, :create_accessors=>create_accessors)
         end
 
@@ -350,20 +330,24 @@ module SaxChange
 
     # This ~should~ be only concerned with how to attach a given element to THIS cursor's object.
     # HOWEVER, this method is from the viewpoint of the new object being attached.
-    def attach_new_element(name, new_object)   #old params (base_object, new_object, name, base_model, new_model, type)
-      label = label_or_tag(name, @model)
+    # TODO: Change this to operate only on this cursor, then call it from the new cursor.
+    #       You will need to clean up the init and process_new_element methods.
+    #       Will also need to clean up or completely change the 'attachment_prefs' method.
+    def attach_new_element(name, new_object, new_object_cursor) 
+      label = label_or_tag(name, new_object_cursor.model)
 
       # Was this, which works fine, but not as efficient:
       # prefs = [attachment_prefs(base_model, new_model, type)].flatten(1)[0]
-      prefs = @element_attachment_prefs
+      #prefs = attachment_prefs(@model, new_object_cursor.model, 'element') #@element_attachment_prefs
+      prefs = new_object_cursor.element_attachment_prefs
 
       shared_var_name = shared_variable_name(prefs)
       (prefs = "shared") if shared_var_name
 
-      # Use local create_accessors prefs first, then more general ones.
+      # Use element's specific accessors? prefs first, then use more general create_accessors? from element's logical_parent (this cursor).
       # Mods for v4.
       #create_accessors = accessor?(@local_model) || create_accessors?(@parent.model)
-      create_accessors = accessor?(@model) || create_accessors?(@logical_parent_model)
+      create_accessors = accessor?(new_object_cursor.model) || create_accessors?(@model)
       #(create_accessors = create_accessors?(@parent.model)) unless create_accessors && create_accessors.any?
 
       # NOTE: This has been disabled for a long time.
@@ -374,11 +358,12 @@ module SaxChange
       # end
 
 
-      #puts ["\nATTACH_NEW_ELEMENT 1", "new_object: #{new_object}", "parent_object: #{@parent.object}", "label: #{label}", "delimiter: #{delimiter?(@local_model)}", "prefs: #{prefs}", "shared_var_name: #{shared_var_name}", "create_accessors: #{create_accessors}", "default_class: #{config[:default_class]}"]
+      #puts ["\nATTACH_NEW_ELEMENT 1", "new_object: #{new_object}", "parent_object: #{@object}", "label: #{name}", "delimiter: #{delimiter?(new_object_model)}", "prefs: #{prefs}", "shared_var_name: #{shared_var_name}", "create_accessors: #{create_accessors}", "default_class: #{config[:default_class]}"]
       
       # Mods for v4.
       #@parent.object._attach_object!(new_object, label, delimiter?(@local_model), prefs, 'element', :default_class=>config[:default_class], :shared_variable_name=>shared_var_name, :create_accessors=>create_accessors)
-      @logical_parent.object._attach_object!(new_object, label, delimiter?(@model), prefs, 'element', :default_class=>config[:default_class], :shared_variable_name=>shared_var_name, :create_accessors=>create_accessors)
+      #@logical_parent.object._attach_object!(new_object, label, delimiter?(@model), prefs, 'element', :default_class=>config[:default_class], :shared_variable_name=>shared_var_name, :create_accessors=>create_accessors)
+      object._attach_object!(new_object, label, delimiter?(new_object_cursor.model), prefs, 'element', :default_class=>config[:default_class], :shared_variable_name=>shared_var_name, :create_accessors=>create_accessors)
       
       # if type == 'attribute'
       #   puts ["\nATTACH_ATTR", "name: #{name}", "label: #{label}", "new_object: #{new_object.class rescue ''}", "base_object: #{base_object.class rescue ''}", "base_model: #{base_model['name'] rescue ''}", "new_model: #{new_model['name'] rescue ''}", "prefs: #{prefs}"]
@@ -394,13 +379,17 @@ module SaxChange
       end
     end
 
+    # Rename this 'compile_attachment_prefs' and make sure it is cursor-agnostic.
+    # This should be called within the target, when it is about to attach an incoming object.
+    # NOTE: The top.model option is new for v4 (it was disabled before)
     def attachment_prefs(target_model, new_model, type)
       case type
-      when 'element'; attach?(new_model) || attach_elements?(target_model) #|| attach?(top.model) || attach_elements?(top.model)
-      when 'attribute'; attach?(new_model) || attach_attributes?(target_model) #|| attach?(top.model) || attach_attributes?(top.model)
+      when 'element'; attach?(new_model) || attach_elements?(target_model) || attach_elements?(top.model)
+      when 'attribute'; attach?(new_model) || attach_attributes?(target_model) || attach_attributes?(top.model)
       end
     end
 
+    # Get shared variable name from element attachment prefs, if any.
     def shared_variable_name(prefs)
       rslt = nil
       if prefs.to_s[0,1] == "_"
@@ -415,32 +404,42 @@ module SaxChange
       self.class.get_constant(klass, config)
     end
 
-    # Methods for current _model
-    # TODO: Should all of these reference @logical_parent_model instead of @model?
+    # Methods to extract template delcarations from current @model.
+    # These could also be applied to any given model, even an attribute-model.
     def ivg(name, _object=@object); _object.instance_variable_get "@#{name}"; end
     def ivs(name, value, _object=@object); _object.instance_variable_set "@#{name}", value; end
-    def model_elements?(which=nil, _model=@model); _model&.dig('elements')&.find{|e| e&.dig('name') == which} || _model&.dig('elements'); end
-    def model_attributes?(which=nil, _model=@model); _model&.dig('attributes')&.find{|a| a&.dig('name') == which} || _model&.dig('attributes'); end
-    def depth?(_model=@model); _model && _model['depth']; end
-    def before_close?(_model=@model); _model && _model['before_close']; end
-    def each_before_close?(_model=@model); _model && _model['each_before_close']; end
-    def compact?(_model=@model); _model && _model['compact']; end
-    def attach?(_model=@model); _model && _model['attach']; end
-    def attach_elements?(_model=@model); _model && _model['attach_elements']; end
-    def attach_attributes?(_model=@model); _model && _model['attach_attributes']; end
-    def delimiter?(_model=@model); _model && _model['delimiter']; end
-    def as_name?(_model=@model); _model && _model['as_name']; end
-    def initialize_with?(_model=@model); _model && _model['initialize_with']; end
-    def create_accessors?(_model=@model); _model && _model['create_accessors'] && [_model['create_accessors']].flatten.compact; end
-    def accessor?(_model=@model); _model && _model['accessor'] && [_model['accessor']].flatten.compact; end
-    def element_handler?(_model=@model); _model && _model['element_handler']; end
+    
+    # TODO: Separate out array result from hash result in model_elements & model_attributes.
+    #       Need to add two more methods for 4 total:
+    #       (elements?, attributes?, element?, attribute?)
+    #def model_elements?(which=nil, _model=@model); _model&.dig('elements')&.find{|e| e&.dig('name') == which} || _model&.dig('elements'); end
+    #def model_attributes?(which=nil, _model=@model); _model&.dig('attributes')&.find{|a| a&.dig('name') == which} || _model&.dig('attributes'); end
+
+    def elements?(_model=@model); _model&.dig('elements'); end
+    def attributes?(_model=@model); _model&.dig('attributes'); end
+    def element?(_tag=@tag, _model=@model) _model&.dig('elements')&.find{|e| e&.dig('name') == _tag}; end
+    def attribute?(_tag=@tag, _model=@model) _model&.dig('attributes')&.find{|e| e&.dig('name') == _tag}; end
+    
+    def depth?(_model=@model); _model&.dig('depth'); end
+    def before_close?(_model=@model); _model&.dig('before_close'); end
+    def each_before_close?(_model=@model); _model&.dig('each_before_close'); end
+    def compact?(_model=@model); _model&.dig('compact'); end
+    def attach?(_model=@model); _model&.dig('attach'); end
+    def attach_elements?(_model=@model); _model&.dig('attach_elements'); end
+    def attach_attributes?(_model=@model); _model&.dig('attach_attributes'); end
+    def delimiter?(_model=@model); _model&.dig('delimiter'); end
+    def as_name?(_model=@model); _model&.dig('as_name'); end
+    def initialize_with?(_model=@model); _model&.dig('initialize_with'); end
+    def create_accessors?(_model=@model); _model&.dig('create_accessors') && [_model&.dig('create_accessors')].flatten.compact; end
+    def accessor?(_model=@model); _model&.dig('accessor') && [_model&.dig('accessor')].flatten.compact; end
+    def element_handler?(_model=@model); _model&.dig('element_handler'); end
 
 
     # Methods for submodel
 
     # This might be broken.
     # NOTE: This was @local_model.
-    def label_or_tag(_tag=@tag, new_model=@model); as_name?(new_model) || _tag; end
+    def label_or_tag(_tag=@tag, _model=@model); as_name?(_model) || _tag; end
 
 
     def clean_members(obj=@object)
@@ -520,17 +519,15 @@ module SaxChange
     def logical_parent_search(_tag=@tag, _starting_cursor=@xml_parent)
       ancestors = _starting_cursor.xml_ancestors | _starting_cursor.logical_ancestors
       uniq_ancestors = ancestors.map{|a| [a, a.xml_parent, a.logical_parent]}.flatten.compact.uniq.sort{|a,b| a.level <=> b.level}.reverse
-      #puts uniq_ancestors.map{|a| a&.tag}.join(', ')
-      puts uniq_ancestors.map(&:tag).join(', ')
+      #puts uniq_ancestors.map(&:tag).join(', ') # This is shorthand for map{|a| a&.tag}.join(', '), but what will it doe if a==nil?
+      
       uniq_ancestors.find{|a| a.model&.dig('elements')&.find{|e| e['name'] == _tag} } ||
       uniq_ancestors.find{|a| a.model&.dig('attach') != 'none'} ||
       top
     end
     
     # Find the element-model of _tag from the above result.
-    def logical_parent_matching_element_model(_tag=@tag, _starting_cursor=xml_parent)
-      #_starting_cursor.model_elements?(_tag, (_cursor.ancestral_cursor_match(_tag, _cursor).model rescue @parent.model))
-      #model_elements?(_tag, logical_parent_search(_tag, _starting_cursor).model)
+    def logical_parent_matching_element_model(_tag=@tag, _starting_cursor=@xml_parent)
       logical_parent_search(_tag, _starting_cursor)&.model&.dig('elements')&.find{|e| e['name'] == _tag}
     end
 

@@ -131,6 +131,8 @@ module SaxChange
       handler = build_handler(_backend, _template, _initial_object, **options)
       handler.run_parser(io)
     # Inserted for debugging. Should probably reraise for runtime & production.
+#     rescue Exception => error
+#       raise error
     ensure
       handler.errors << [$!, "  #{$!.backtrace.join("\n  ")}"] if $!
       return handler

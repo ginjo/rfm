@@ -19,10 +19,11 @@ elements:
 #   - name: value
 #     as_name: doctype
 - name: doctype
-  attach: _meta
+  attach_attributes: hash
 - name: fmresultset
   attach: none
 - name: product
+  attach_attributes: hash
 - name: error
   attach: none
   # I've disabled this for v4.
@@ -32,7 +33,7 @@ elements:
     as_name: error
 - name: datasource
   attach: none
-  before_close: [object, end_datasource_element_callback, self]
+  before_close: ['@logical_parent.object', end_datasource_element_callback, self]
   attributes:
   - name: total_count
     accessor: none
@@ -43,7 +44,7 @@ elements:
   # but the field-mapping translation won't happen.
   # attach: [_meta, 'Rfm::Metadata::Field', allocate]
   # as_name: field_meta
-  attach: [cursor, 'Rfm::Metadata::Field', ':allocate']
+  attach: [none, 'Rfm::Metadata::Field', ':allocate']
   delimiter: name
   attach_attributes: private
   before_close: [object, field_definition_element_close_callback, self]
@@ -53,7 +54,7 @@ elements:
   attach_attributes: private
   elements:
   - name: field_definition
-    attach: [cursor, 'Rfm::Metadata::Field', ':allocate']
+    attach: [none, 'Rfm::Metadata::Field', ':allocate']
     delimiter: name
     as_name: field_meta
     attach_attributes: private
@@ -73,9 +74,15 @@ elements:
   before_close: '@loaded=true'
   elements:
   - name: field
-    attach: [cursor, 'Rfm::Metadata::Datum', ':allocate']
+    attach: [none, 'Rfm::Metadata::Datum', ':allocate']
     compact: false
     before_close: [object, field_element_close_callback, self]
+    # This is needed, because in v4 top-level attachment declarations affect ALL models.
+    attach_attributes: shared
+    attach_elements: shared
+    elements:
+    - name: data
+      attach_attributes: hash
   - name: relatedset
     attach: [private, Array, ':allocate']
     as_name: portals
@@ -91,7 +98,7 @@ elements:
       elements:
       - name: field
         compact: true
-        attach: [cursor, 'Rfm::Metadata::Datum', ':allocate']
+        attach: [none, 'Rfm::Metadata::Datum', ':allocate']
         before_close: [object, portal_field_element_close_callback, self]
 
 
