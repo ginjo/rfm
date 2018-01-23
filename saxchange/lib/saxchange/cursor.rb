@@ -87,7 +87,7 @@ module SaxChange
         @logical_parent.element?(@tag) || config[:default_class].new
       end
       
-      @element_attachment_prefs = attachment_prefs(@logical_parent_model, @model, 'element')
+      @element_attachment_prefs = compile_attachment_prefs(@logical_parent_model, @model, 'element')
       
       if @element_attachment_prefs.is_a?(Array)
         @new_element_callback = @element_attachment_prefs[1..-1]
@@ -180,7 +180,7 @@ module SaxChange
 
         if _tag == @tag && (@model == @logical_parent_model)
           # Data cleaup
-          compactor_settings = compact? || compact?(top.model)
+          compactor_settings = compact? || compact_default?
           #(compactor_settings = compact?(top.model)) unless compactor_settings # prefer local settings, or use top settings.
           (clean_members {|v| clean_members(v){|w| clean_members(w)}}) if compactor_settings
         end
@@ -309,7 +309,7 @@ module SaxChange
 
           # TODO: for v4, does this @model need to be @logical_parent_model? NO.
           # Gets compiled prefs from local-attr-attachment-prefs and attribute-specific-model
-          prefs = [attachment_prefs(@model, attr_model, 'attribute')].flatten(1)[0]
+          prefs = [compile_attachment_prefs(@model, attr_model, 'attribute')].flatten(1)[0]
           #puts "ASSIGN_ATTRIBUTES to @model: #{@model}"
           #puts "ASSIGN_ATTRIBUTES with compiled prefs: #{prefs}"
 
@@ -382,10 +382,10 @@ module SaxChange
     # Rename this 'compile_attachment_prefs' and make sure it is cursor-agnostic.
     # This should be called within the target, when it is about to attach an incoming object.
     # NOTE: The top.model option is new for v4 (it was disabled before)
-    def attachment_prefs(target_model, new_model, type)
+    def compile_attachment_prefs(target_model, new_model, type)
       case type
-      when 'element'; attach?(new_model) || attach_elements?(target_model) || attach_elements?(top.model)
-      when 'attribute'; attach?(new_model) || attach_attributes?(target_model) || attach_attributes?(top.model)
+      when 'element'; attach?(new_model) || attach_elements?(target_model) || attach_elements_default?
+      when 'attribute'; attach?(new_model) || attach_attributes?(target_model) || attach_attributes_default?
       end
     end
 
@@ -423,8 +423,11 @@ module SaxChange
     def depth?(_model=@model); _model&.dig('depth'); end
     def before_close?(_model=@model); _model&.dig('before_close'); end
     def each_before_close?(_model=@model); _model&.dig('each_before_close'); end
+    def compact_default?; top.model&.dig('compact'); end
     def compact?(_model=@model); _model&.dig('compact'); end
     def attach?(_model=@model); _model&.dig('attach'); end
+    def attach_elements_default?; top.model&.dig('attach_elements_default'); end
+    def attach_attributes_default?; top.model&.dig('attach_attributes_default'); end
     def attach_elements?(_model=@model); _model&.dig('attach_elements'); end
     def attach_attributes?(_model=@model); _model&.dig('attach_attributes'); end
     def delimiter?(_model=@model); _model&.dig('delimiter'); end

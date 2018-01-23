@@ -93,7 +93,7 @@ module Rfm
           return coerce(value.values[0])
         end
 
-        puts "#{self}.coerce local-var 'result': '#{result}'"
+        #puts "#{self}.coerce local-var 'result': '#{result}'"
 
         case result
         when "text"      then value
@@ -109,7 +109,7 @@ module Rfm
         when "timestamp" then DateTime.strptime(value, resultset_meta.timestamp_format)
         when "container" then
           #resultset_meta = resultset.instance_variable_get(:@meta)
-          puts "#{self}.coerce resultset_meta '#{resultset_meta.to_yaml}'" 
+          #puts "#{self}.coerce resultset_meta '#{resultset_meta.to_yaml}'" 
           if resultset_meta && resultset_meta['doctype'] && value.to_s[/\?/]
             doctype_uri = resultset_meta['doctype'].as do |dt|
               # This 'break' is a way to have 'tap' return a different result.
@@ -120,7 +120,7 @@ module Rfm
                 when dt.is_a?(Hash); dt&.dig('system_id').to_s
               end
             end 
-            puts "#{self}.coerce doctype_uri '#{doctype_uri}'"
+            #puts "#{self}.coerce doctype_uri '#{doctype_uri}'"
             URI.parse(doctype_uri).tap{|uri| uri.path, uri.query = value.split('?')}
           else
             value

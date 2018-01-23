@@ -12,18 +12,13 @@ create_accessors: all
 # Name is not functionally necessary, but I'm using it to debug cursor stack.
 name: fmresultset-top-level
 elements:
-# Doctype callback is different for different backends.
-# - name: doctype
-#   attach: none
-#   attributes:
-#   - name: value
-#     as_name: doctype
+# Note: doctype callback is different for different backends.
 - name: doctype
-  attach_attributes: hash
+  #attach_attributes: hash
 - name: fmresultset
   attach: none
 - name: product
-  attach_attributes: hash
+  #attach_attributes: hash
 - name: error
   attach: none
   # I've disabled this for v4.
@@ -78,11 +73,11 @@ elements:
     compact: false
     before_close: [object, field_element_close_callback, self]
     # This is needed, because in v4 top-level attachment declarations affect ALL models.
-    attach_attributes: shared
-    attach_elements: shared
-    elements:
-    - name: data
-      attach_attributes: hash
+    # attach_attributes: shared
+    # attach_elements: shared
+    # elements:
+    # - name: data
+    #   attach_attributes: hash
   - name: relatedset
     attach: [private, Array, ':allocate']
     as_name: portals
@@ -101,11 +96,11 @@ elements:
         attach: [none, 'Rfm::Metadata::Datum', ':allocate']
         before_close: [object, portal_field_element_close_callback, self]
         # This is needed, because in v4 top-level attachment declarations affect ALL models.
-        attach_attributes: shared
-        attach_elements: shared
-        elements:
-        - name: data
-          attach_attributes: hash
+        # attach_attributes: shared
+        # attach_elements: shared
+        # elements:
+        # - name: data
+        #   attach_attributes: hash
 
 
 
