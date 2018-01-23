@@ -318,7 +318,8 @@ module SaxChange
 
           # TODO: for v4, does this @model need to be @logical_parent_model? NO
           # Use local create_accessors prefs first, then more general ones.
-          create_accessors = accessor?(attr_model) || create_accessors?(@model)
+          #create_accessors = accessor?(attr_model) || create_accessors?(@model)
+          create_accessors = compile_create_accessors(@model, attr_model)
           #(create_accessors = create_accessors?(@model)) unless create_accessors && create_accessors.any?
 
           #puts ["\nASSIGN_ATTRIBUTES-attach-object", "label: #{label}", "object-class: #{@object.class}", "k,v: #{[k,v]}", "attr_model: #{attr_model}", "prefs: #{prefs}", "shared_var_name: #{shared_var_name}", "create_accessors: #{create_accessors}"]
@@ -329,10 +330,6 @@ module SaxChange
     end # assign_attributes
 
     # This ~should~ be only concerned with how to attach a given element to THIS cursor's object.
-    # HOWEVER, this method is from the viewpoint of the new object being attached.
-    # TODO: Change this to operate only on this cursor, then call it from the new cursor.
-    #       You will need to clean up the init and process_new_element methods.
-    #       Will also need to clean up or completely change the 'attachment_prefs' method.
     def attach_new_element(name, new_object, new_object_cursor) 
       label = label_or_tag(name, new_object_cursor.model)
 
@@ -347,7 +344,8 @@ module SaxChange
       # Use element's specific accessors? prefs first, then use more general create_accessors? from element's logical_parent (this cursor).
       # Mods for v4.
       #create_accessors = accessor?(@local_model) || create_accessors?(@parent.model)
-      create_accessors = accessor?(new_object_cursor.model) || create_accessors?(@model)
+      #create_accessors = accessor?(new_object_cursor.model) || create_accessors?(@model)
+      create_accessors = compile_create_accessors(@model, new_object_cursor.model)
       #(create_accessors = create_accessors?(@parent.model)) unless create_accessors && create_accessors.any?
 
       # NOTE: This has been disabled for a long time.
@@ -388,6 +386,10 @@ module SaxChange
       when 'attribute'; attach?(new_model) || attach_attributes?(target_model) || attach_attributes_default?
       end
     end
+    
+    def compile_create_accessors(_parent_model, _local_model)
+      create_accessors = accessor?(_local_model) || create_accessors?(_parent_model) || create_accessors_default?
+    end
 
     # Get shared variable name from element attachment prefs, if any.
     def shared_variable_name(prefs)
@@ -407,7 +409,7 @@ module SaxChange
     # Methods to extract template delcarations from current @model.
     # These could also be applied to any given model, even an attribute-model.
     ###
-    ### Not Used?
+    ### Not Used ?
     ###
     def ivg(name, _object=@object); _object.instance_variable_get "@#{name}"; end
     def ivs(name, value, _object=@object); _object.instance_variable_set "@#{name}", value; end
@@ -418,11 +420,12 @@ module SaxChange
     ###
     ### Defaults for All Cursors/Models
     ###
-    def compact_default?; top&.model&.dig('compact'); end
     def attach_elements_default?; top&.model&.dig('attach_elements_default'); end
     def attach_attributes_default?; top&.model&.dig('attach_attributes_default'); end
+    def compact_default?; top&.model&.dig('compact'); end
+    def create_accessors_default?; top&.model&.dig('create_accessors_default') && [top&.model&.dig('create_accessors_default')].flatten.compact; end
     ###
-    ### For Designated Cursor Only
+    ### For This (or specified) Cursor Only
     ###
     def elements?(_model=@model); _model&.dig('elements'); end
     def attributes?(_model=@model); _model&.dig('attributes'); end
