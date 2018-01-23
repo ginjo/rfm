@@ -406,42 +406,42 @@ module SaxChange
 
     # Methods to extract template delcarations from current @model.
     # These could also be applied to any given model, even an attribute-model.
+    ###
+    ### Not Used?
+    ###
     def ivg(name, _object=@object); _object.instance_variable_get "@#{name}"; end
     def ivs(name, value, _object=@object); _object.instance_variable_set "@#{name}", value; end
-    
-    # TODO: Separate out array result from hash result in model_elements & model_attributes.
-    #       Need to add two more methods for 4 total:
-    #       (elements?, attributes?, element?, attribute?)
-    #def model_elements?(which=nil, _model=@model); _model&.dig('elements')&.find{|e| e&.dig('name') == which} || _model&.dig('elements'); end
-    #def model_attributes?(which=nil, _model=@model); _model&.dig('attributes')&.find{|a| a&.dig('name') == which} || _model&.dig('attributes'); end
-
+    def initialize_with?(_model=@model); _model&.dig('initialize_with'); end
+    def each_before_close?(_model=@model); _model&.dig('each_before_close'); end
+    def depth?(_model=@model); _model&.dig('depth'); end
+    def element_handler?(_model=@model); _model&.dig('element_handler'); end
+    ###
+    ### Defaults for All Cursors/Models
+    ###
+    def compact_default?; top.model&.dig('compact'); end
+    def attach_elements_default?; top.model&.dig('attach_elements_default'); end
+    def attach_attributes_default?; top.model&.dig('attach_attributes_default'); end
+    ###
+    ### For Designated Cursor Only
+    ###
     def elements?(_model=@model); _model&.dig('elements'); end
     def attributes?(_model=@model); _model&.dig('attributes'); end
     def element?(_tag=@tag, _model=@model) _model&.dig('elements')&.find{|e| e&.dig('name') == _tag}; end
     def attribute?(_tag=@tag, _model=@model) _model&.dig('attributes')&.find{|e| e&.dig('name') == _tag}; end
-    
-    def depth?(_model=@model); _model&.dig('depth'); end
     def before_close?(_model=@model); _model&.dig('before_close'); end
-    def each_before_close?(_model=@model); _model&.dig('each_before_close'); end
-    def compact_default?; top.model&.dig('compact'); end
     def compact?(_model=@model); _model&.dig('compact'); end
     def attach?(_model=@model); _model&.dig('attach'); end
-    def attach_elements_default?; top.model&.dig('attach_elements_default'); end
-    def attach_attributes_default?; top.model&.dig('attach_attributes_default'); end
     def attach_elements?(_model=@model); _model&.dig('attach_elements'); end
     def attach_attributes?(_model=@model); _model&.dig('attach_attributes'); end
     def delimiter?(_model=@model); _model&.dig('delimiter'); end
     def as_name?(_model=@model); _model&.dig('as_name'); end
-    def initialize_with?(_model=@model); _model&.dig('initialize_with'); end
     def create_accessors?(_model=@model); _model&.dig('create_accessors') && [_model&.dig('create_accessors')].flatten.compact; end
     def accessor?(_model=@model); _model&.dig('accessor') && [_model&.dig('accessor')].flatten.compact; end
-    def element_handler?(_model=@model); _model&.dig('element_handler'); end
 
 
     # Methods for submodel
 
-    # This might be broken.
-    # NOTE: This was @local_model.
+    # Get the tag name or corresponding 'as_name?'
     def label_or_tag(_tag=@tag, _model=@model); as_name?(_model) || _tag; end
 
 
@@ -515,23 +515,16 @@ module SaxChange
       [self].concat logical_parent.logical_ancestors
     end
 
-    # Compiles all possible ancestors into a uniq array,
+    # Compiles all possible ancestors of this cursor into a uniq array,
     # before searching each one for matching elements.
-    # TODO: Might have to order the uniq_ancestors by level,
-    #       which means you would have to track level in this method.
     def logical_parent_search(_tag=@tag, _starting_cursor=@xml_parent)
       ancestors = _starting_cursor.xml_ancestors | _starting_cursor.logical_ancestors
       uniq_ancestors = ancestors.map{|a| [a, a.xml_parent, a.logical_parent]}.flatten.compact.uniq.sort{|a,b| a.level <=> b.level}.reverse
-      #puts uniq_ancestors.map(&:tag).join(', ') # This is shorthand for map{|a| a&.tag}.join(', '), but what will it doe if a==nil?
+      #puts uniq_ancestors.map(&:tag).join(', ') # This is shorthand for map{|a| a&.tag}.join(', '), but what will it do if a==nil?
       
       uniq_ancestors.find{|a| a.model&.dig('elements')&.find{|e| e['name'] == _tag} } ||
       uniq_ancestors.find{|a| a.model&.dig('attach') != 'none'} ||
       top
-    end
-    
-    # Find the element-model of _tag from the above result.
-    def logical_parent_matching_element_model(_tag=@tag, _starting_cursor=@xml_parent)
-      logical_parent_search(_tag, _starting_cursor)&.model&.dig('elements')&.find{|e| e['name'] == _tag}
     end
 
   end # Cursor
