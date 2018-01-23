@@ -25,9 +25,10 @@ module SaxChange
     initial_object
     logger
     log_parser
+    raise_parse_errors
+    shared_variable_name
     text_label
     tag_translation
-    shared_variable_name
     template
     templates
     template_prefix

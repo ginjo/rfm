@@ -418,9 +418,9 @@ module SaxChange
     ###
     ### Defaults for All Cursors/Models
     ###
-    def compact_default?; top.model&.dig('compact'); end
-    def attach_elements_default?; top.model&.dig('attach_elements_default'); end
-    def attach_attributes_default?; top.model&.dig('attach_attributes_default'); end
+    def compact_default?; top&.model&.dig('compact'); end
+    def attach_elements_default?; top&.model&.dig('attach_elements_default'); end
+    def attach_attributes_default?; top&.model&.dig('attach_attributes_default'); end
     ###
     ### For Designated Cursor Only
     ###

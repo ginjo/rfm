@@ -11,6 +11,21 @@ module SaxChange
       self.template = _template
     end
     
+    def attach_attributes_default(*args)
+      puts "#{self}.#{__callee__} #{args}"
+      self['attach_attributes_default'] = args[0]
+    end
+    
+    def compact_default(*args)
+      puts "#{self}.#{__callee__} #{args}"
+      self['compact_default'] = args[0]
+    end
+    
+    def attach_elements_default(*args)
+      puts "#{self}.#{__callee__} #{args}"
+      self['attach_elements_default'] = args[0]
+    end
+    
     def element(*args)
       puts "#{self}.#{__callee__} #{args}"
       new_element = enhanced_hash(Hash.new).merge!('name' => args[0])
