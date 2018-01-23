@@ -3,11 +3,21 @@ module SaxChange
     ###  Extend this module in any class or module that you want
     ###  to behave as a template for this sax parser.
     
+    # TODO: Load plain ruby hashes from file:
+    #       SaxChange::Template.instance_eval{templates.unshift(eval(File.read('test_sax_template_ruby.rb')))}
+    # TODO: Load yaml templates from file:
+    #       SaxChange::Template.instance_eval{templates.unshift(YAML.load_file(SaxChange::Config.config[:template_prefix].to_s + 'fmpxmllayout.yml'))}
+    # TODO: Move handler template methods to here, but retain ability to cache the templates in any array (or hash?).
+    #       The ability to cache templates anywhere might just be limited to yaml and plain-ruby templates.
+    #       The DSL templates should really be cached globally.
+    # TODO: Consider dropping ability to cache templates anywhere. If templates can be named, even by user,
+    #       they can safely be cached in main Template cache
+    #
     
     ###  Module methods just for this module
     
     class << self
-      attr_accessor :templates
+      attr_accessor :cache
     
       def [](name)
         # constant_name = constants.find(){|c| const_get(c)&.template&.dig('name') == name}
@@ -24,13 +34,22 @@ module SaxChange
     
     ###  Methods to be extended by other Module or Class.
     
+    # TODO: Should this be renamed 'template'?
+    # TODO: Potential functionality:
+    # given yaml string: loads yaml.
+    # given any other string: is name of template.
+    # given hash: inserts hash into cache.
+    # given name, hash: inserts hash into cache.
+    # given block: evaluates as Template DSL.
+    # given nothing: returns cached template object.
+    #
     def document(*args)
       #puts "#{self}.#{__callee__} #{args}"
       _template = enhanced_hash(Hash.new)
       _template['name'] = args[0]
       _template.instance_eval &proc if block_given?
       self.template = _template
-      Template.templates << _template
+      Template.cache.unshift _template
     end
     
     def attach_attributes_default(*args)
