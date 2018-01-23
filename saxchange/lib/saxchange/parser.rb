@@ -131,11 +131,11 @@ module SaxChange
       handler = build_handler(_backend, _template, _initial_object, **options)
       handler.run_parser(io)
       handler
-    ensure
-      handler.errors << [$!, "  #{$!.backtrace.join("\n  ")}"] if $!
-      # Put a 'return' in the 'ensure' clause to create a hidden 'rescue'.
-      #return handler
-      handler
+#     ensure
+#       handler.errors << [$!, "  #{$!.backtrace.join("\n  ")}"] if $!
+#       # Put a 'return' in the 'ensure' clause to create a hidden 'rescue'.
+#       #return handler
+#       handler
     end
     
     # def parse(*args)

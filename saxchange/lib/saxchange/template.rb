@@ -1,8 +1,28 @@
 module SaxChange
   module Template
-    # Extend this module in any class that you want to behave as a template for this sax parser.
+    ###  Extend this module in any class or module that you want
+    ###  to behave as a template for this sax parser.
+    
+    
+    ###  Module methods just for this module
+    
+    class << self
+      attr_accessor :templates
+    
+      def [](name)
+        # constant_name = constants.find(){|c| const_get(c)&.template&.dig('name') == name}
+        # constant_name && const_get(constant_name)&.template
+        templates.find{|t| t&.dig('name') == name}
+      end
+      
+    end # class << self
+    
+    @templates = []
       
     attr_accessor :template
+    
+    
+    ###  Methods to be extended by other Module or Class.
     
     def document(*args)
       #puts "#{self}.#{__callee__} #{args}"
@@ -10,6 +30,7 @@ module SaxChange
       _template['name'] = args[0]
       _template.instance_eval &proc if block_given?
       self.template = _template
+      Template.templates << _template
     end
     
     def attach_attributes_default(*args)
@@ -105,7 +126,7 @@ module SaxChange
     end
             
   end # Template
-end
+end # SaxChange
 
 
 
