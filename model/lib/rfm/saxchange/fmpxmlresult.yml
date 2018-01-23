@@ -28,12 +28,12 @@ elements:
   - name: text
     as_name: error
 - name: database
-  attach: none
-  # Disabled for v4 dev.
-  #before_close: [object, end_datasource_element_callback, self]
-  attributes:
-  - name: total_count
-    accessor: none
+#   attach: none
+#   # Disabled for v4 dev.
+#   #before_close: [object, end_datasource_element_callback, self]
+#   attributes:
+#   - name: total_count
+#     accessor: none
 - name:  metadata
   attach: none
 - name: field

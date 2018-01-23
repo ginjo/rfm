@@ -11,6 +11,8 @@ attach_elements: hash  #_meta
 attach_attributes: hash  #_meta
 create_accessors: all
 elements:
+- name: xmldecl
+  attach: hash
 # Doctype callback is different for different backends.
 # - name: doctype
 #   attach: none
