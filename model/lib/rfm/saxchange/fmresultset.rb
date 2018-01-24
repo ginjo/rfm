@@ -1,3 +1,6 @@
+SaxChange::Template.document(YAML.load(<<-EEOOFF))
+
+
 #!/usr/bin/env ruby
 # YAML structure defining a SAX parsing scheme for fmresultset xml.
 # The initial object of this parse should be a new instance of Rfm::Resultset.
@@ -103,82 +106,4 @@ elements:
         #   attach_attributes: hash
 
 
-
-# Works - doesn't use Handler methods.
-# ---
-# attach_elements: _meta
-# attach_attributes: _meta
-# create_accessors: all
-# elements:
-# - name: doctype
-#   attach: none
-#   attributes:
-#   - name: value
-#     as_name: doctype
-# - name: fmresultset
-#   attach: none
-# - name: product
-# - name: error
-#   attach: none
-#   before_close: 'check_for_errors'
-#   attributes:
-#   - name: code
-#     as_name: error
-# - name: datasource
-#   attach: none
-#   before_close: :end_datasource_element_callback
-# - name:  metadata
-#   attach: none
-# - name: field_definition
-#   class: Rfm::Metadata::Field
-#   attach: cursor
-#   delimiter: name
-#   as_name: field_meta
-#   attach_attributes: private
-#   before_close: :main_callback
-# - name: relatedset_definition
-#   delimiter: table
-#   as_name: portal_meta
-#   attach_attributes: private
-#   elements:
-#   - name: field_definition
-#     class: Rfm::Metadata::Field
-#     attach: cursor
-#     delimiter: name
-#     as_name: field_meta
-#     attach_attributes: private
-#     before_close: :portal_callback
-# - name: resultset
-#   attach: none
-# - name: record
-#   class: Rfm::Record
-#   initialize: [new, object]
-#   attach: array
-#   attach_attributes: private
-#   before_close: '@loaded=true'
-#   elements:
-#   - name: field
-#     class: Rfm::Metadata::Datum
-#     compact: true
-#     attach: cursor
-#     before_close: :main_callback
-#   - name: relatedset
-#     class: Array
-#     as_name: portals
-#     attach: private
-#     attach_attributes: private
-#     create_accessors: all
-#     delimiter: table
-#     elements:
-#     - name: record
-#       class: Rfm::Record
-#       # Should this be enabled?
-#       #initialize: [new, object]
-#       attach_attributes: private
-#       before_close: '@loaded=true'
-#       elements:
-#       - name: field
-#         compact: true
-#         class: Rfm::Metadata::Datum
-#         attach: cursor
-#         before_close: :portal_callback
+EEOOFF

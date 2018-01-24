@@ -3,15 +3,16 @@ module SaxChange
     ###  Extend this module in any class or module that you want
     ###  to behave as a template for this sax parser.
     
+    # 
     # TODO: Load plain ruby hashes from file:
     #       SaxChange::Template.instance_eval{templates.unshift(eval(File.read('test_sax_template_ruby.rb')))}
     # TODO: Load yaml templates from file:
     #       SaxChange::Template.instance_eval{templates.unshift(YAML.load_file(SaxChange::Config.config[:template_prefix].to_s + 'fmpxmllayout.yml'))}
     # TODO: Move handler template methods to here, but retain ability to cache the templates in any array (or hash?).
     #       The ability to cache templates anywhere might just be limited to yaml and plain-ruby templates.
-    #       The DSL templates should really be cached globally.
-    # TODO: Consider dropping ability to cache templates anywhere. If templates can be named, even by user,
-    #       they can safely be cached in main Template cache
+    #       The DSL templates should really be cached globally, since they're module/class based.
+    # TODO: Consider dropping ability to cache templates anywhere. If templates can be named by user,
+    #       they can safely be cached in main Template cache.
     #
     
     ###  Module methods just for this module
@@ -22,12 +23,12 @@ module SaxChange
       def [](name)
         # constant_name = constants.find(){|c| const_get(c)&.template&.dig('name') == name}
         # constant_name && const_get(constant_name)&.template
-        templates.find{|t| t&.dig('name') == name}
+        cache.find{|t| t&.dig('name') == name}
       end
       
     end # class << self
     
-    @templates = []
+    @cache = []
       
     attr_accessor :template
     
@@ -43,12 +44,15 @@ module SaxChange
     # given block: evaluates as Template DSL.
     # given nothing: returns cached template object.
     #
-    def document(*args)
+    def document(*args, **options)
       #puts "#{self}.#{__callee__} #{args}"
+      opts = args.pop if args.last.is_a?(Hash)
       _template = enhanced_hash(Hash.new)
-      _template['name'] = args[0]
+      _template['name'] = args[0] if (args[0].is_a?(String) || args[0].is_a?(Symbol))
+      _template.merge!(opts) if opts
       _template.instance_eval &proc if block_given?
       self.template = _template
+      puts "#{self}.document _template: #{_template['name']}"
       Template.cache.unshift _template
     end
     
@@ -143,7 +147,9 @@ module SaxChange
       hash.singleton_class.send :include, Template
       hash
     end
-            
+    
+    extend self
+    
   end # Template
 end # SaxChange
 

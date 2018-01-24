@@ -5,7 +5,7 @@ module SaxChange
     module Fmpxmlresult
       extend Template
       
-      document('fmpxmlresult') do
+      document('fmpxmlresult_dsl') do
         initial_object "Rfm::Resultset.new(**config)"
         attach_elements '_meta'
         attach_attributes '_meta'

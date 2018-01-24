@@ -1,3 +1,5 @@
+SaxChange::Template.document(YAML.load(<<-EEOOFF))
+
 #!/usr/bin/env ruby
 # This is a template for parsing 'databases' from FMPXMLRESULT fms response.
 # This also works well for parsing 'layouts' command response.
@@ -70,6 +72,8 @@ elements:
   - name: text
     attach: values
     compact: true
+    
+EEOOFF
 
 
 

@@ -1,5 +1,6 @@
 # Another (better?) minimal FMPXMLRESULT parser.
 ---
+name: fmpxmlresult_alt
 elements:
 - name: fmpxmlresult
   elements:

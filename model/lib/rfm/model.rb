@@ -10,6 +10,12 @@ require 'rfm-core'
 #require 'saxchange/config'
 require 'saxchange'
 
+# Loads all sax parsing templates.
+multiple_dirs = Dir[File.join(File.dirname(__FILE__), "saxchange/*.rb")]
+multiple_dirs.each do |f|
+  require f
+end
+
 # This is needed to serve the proc below, which is inserted into the parser defaults.
 # Moved to rfm-core, since saxchange might be used without rfm-model.
 # SaxChange::AllowableOptions.push %w(
@@ -28,7 +34,9 @@ SaxChange::Config.defaults.merge!(
   # This lambda-proc should resolve to a filename.
   :template => ->(options, env_binding){
       gr_str = options[:grammar].to_s.downcase
-      gr_str.size >0 ? gr_str + '.yml' : nil
+      #
+      #gr_str.size >0 ? gr_str + '.yml' : nil
+      gr_str.size >0 ? gr_str : nil
     },
 )
 

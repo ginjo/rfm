@@ -139,46 +139,62 @@ module SaxChange
     # Takes string, symbol, or hash, and returns a (possibly cached) parsing template.
     def get_template(_template=nil, _template_prefix=nil, _template_cache=nil, **options)  #_template_prefix=config[:template_prefix])
       _template ||= options[:template] || config[:template] || default_template
-      #puts "#{self}#get_template using _template: #{_template}"
-      return _template unless ['String', 'Symbol', 'Proc'].include?(_template.class.name.split(':').last.to_s)
       
-      file_name = case
-        when _template.is_a?(Proc); _template.call(options, binding)
-        when _template.to_s[/\.[yx].?ml$/i]; _template.to_s
-        when _template.is_a?(Symbol); _template.to_s + '.yml'
-        else raise "Template '#{_template}' cannot be found."
+      # This is what it boils down to now, simple call to an array of templates.
+      #
+      #####
+      puts "Getting template for '#{_template}'"
+      self.template = if _template.is_a?(Proc)
+        Template[_template.call(options, binding).to_s]
+      else
+        Template[_template]
       end
-      # Return a template-object (or nil) if proc resolved to anything other than string.
-      return default_template unless file_name
-      return file_name unless file_name.is_a?(String)
-      load_template(file_name, _template_prefix, _template_cache, **options)  #, **options)
+      puts "Template retrieved '#{template}' "
+      return template
+      #####
+      
+      #####  Logical End of Method  #####
+      
+      #   #puts "#{self}#get_template using _template: #{_template}"
+      #   return _template unless ['String', 'Symbol', 'Proc'].include?(_template.class.name.split('::').last.to_s)
+      #   
+      #   file_name = case
+      #     when _template.is_a?(Proc); _template.call(options, binding)
+      #     when _template.to_s[/\.[yx].?ml$/i]; _template.to_s
+      #     when _template.is_a?(Symbol); _template.to_s + '.yml'
+      #     else raise "Template '#{_template}' cannot be found."
+      #   end
+      #   # Return a template-object (or nil) if proc resolved to anything other than string.
+      #   return default_template unless file_name
+      #   return file_name unless file_name.is_a?(String)
+      #   load_template(file_name, _template_prefix, _template_cache, **options)  #, **options)
     end
 
-    # Does the heavy-lifting of template retrieval.
-    # template_cache is a reference to any cache of templates (a hash),
-    # but it should generally be a Parser#@templates ivar, if possible.
-    def load_template(file_name, _template_prefix=nil, _template_cache=nil, **options)  #, **options)
-      return default_template unless file_name.to_s.size > 0
-      #puts "LOAD_TEMPLATE name: '#{file_name}', prefix: '#{_template_prefix}'"
-      _template_prefix ||= options[:template_prefix] || config[:template_prefix]
-      _template_cache ||= (parser && parser.templates) || default_template
-      #puts "PARSERID: #{parser.object_id}"
-      #puts "PARSERTEMPLATESID: #{parser.templates.object_id}"
-      #puts "TEMPLATECACHEID: #{_template_cache.object_id}, #{_template_cache}"
-      _template_cache[file_name] ||= case
-        when file_name.to_s[/\.y.?ml$/i]; (YAML.load_file(File.join(*[_template_prefix, file_name].compact)))
-         # This line might cause an infinite loop.
-         # TODO: Update this template-selection matcher for rfm v4.
-         #       The 'self.class.build' is leftover from monolithic parser/handler in v3.
-         # when name.to_s[/\.xml$/i]; self.class.build(File.join(*[_template_prefix, name].compact), nil, {'compact'=>true})
-        else config.merge(options)[:default_class].new
-      end
-      #puts "#{self}.load_template loaded: #{_template_cache[file_name]}"
-      _template_cache[file_name]
-    rescue #:error
-      SaxChange.log.warn "SaxChange::Parser#load_template '#{file_name}' raised exception: #{$!}"
-      default_template
-    end
+    #   # Does the heavy-lifting of template retrieval.
+    #   # template_cache is a reference to any cache of templates (a hash),
+    #   # but it should generally be a Parser#@templates ivar, if possible.
+    #   def load_template(file_name, _template_prefix=nil, _template_cache=nil, **options)  #, **options)
+    #     return default_template unless file_name.to_s.size > 0
+    #     #puts "LOAD_TEMPLATE name: '#{file_name}', prefix: '#{_template_prefix}'"
+    #     _template_prefix ||= options[:template_prefix] || config[:template_prefix]
+    #     _template_cache ||= (parser && parser.templates) || default_template
+    #     #puts "PARSERID: #{parser.object_id}"
+    #     #puts "PARSERTEMPLATESID: #{parser.templates.object_id}"
+    #     #puts "TEMPLATECACHEID: #{_template_cache.object_id}, #{_template_cache}"
+    #     _template_cache[file_name] ||= case
+    #       when file_name.to_s[/\.y.?ml$/i]; (YAML.load_file(File.join(*[_template_prefix, file_name].compact)))
+    #        # This line might cause an infinite loop.
+    #        # TODO: Update this template-selection matcher for rfm v4.
+    #        #       The 'self.class.build' is leftover from monolithic parser/handler in v3.
+    #        # when name.to_s[/\.xml$/i]; self.class.build(File.join(*[_template_prefix, name].compact), nil, {'compact'=>true})
+    #       else config.merge(options)[:default_class].new
+    #     end
+    #     #puts "#{self}.load_template loaded: #{_template_cache[file_name]}"
+    #     _template_cache[file_name]
+    #   rescue #:error
+    #     SaxChange.log.warn "SaxChange::Parser#load_template '#{file_name}' raised exception: #{$!}"
+    #     default_template
+    #   end
     
     # Call this from each backend 'run_parser' method.
     # Be careful - calling io.eof? can raise errors if io is not in proper state.

@@ -31,6 +31,7 @@
 #
 # The top level represents the initial object, a basic hash in this case.
 ---
+name: fmpxml_minimal
 attach_elements: none
 attach_attributes: none
 elements:
