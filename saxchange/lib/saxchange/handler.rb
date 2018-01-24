@@ -143,13 +143,13 @@ module SaxChange
       # This is what it boils down to now, simple call to an array of templates.
       #
       #####
-      puts "Getting template for '#{_template}'"
+      #puts "Getting template for '#{_template}'"
       self.template = if _template.is_a?(Proc)
         Template[_template.call(options, binding).to_s]
       else
         Template[_template]
       end
-      puts "Template retrieved '#{template}' "
+      #puts "Template retrieved '#{template}' "
       return template
       #####
       

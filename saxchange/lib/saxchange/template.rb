@@ -52,7 +52,7 @@ module SaxChange
       _template.merge!(opts) if opts
       _template.instance_eval &proc if block_given?
       self.template = _template
-      puts "#{self}.document _template: #{_template['name']}"
+      #puts "#{self}.document _template: #{_template['name']}"
       Template.cache.unshift _template
     end
     
