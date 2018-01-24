@@ -55,6 +55,7 @@ module SaxChange
       #puts "#{self}.document _template: #{_template['name']}"
       Template.cache.unshift _template
     end
+    alias_method :new, :document
     
     def attach_attributes_default(*args)
       #puts "#{self}.#{__callee__} #{args}"
