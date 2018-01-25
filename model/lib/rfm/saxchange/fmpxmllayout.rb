@@ -1,4 +1,4 @@
-SaxChange::Template.new(YAML.load(<<-EEOOFF))
+SaxChange::Template.register(YAML.load(<<-EEOOFF))
 
 #!/usr/bin/env ruby
 # YAML structure defining a SAX parsing scheme for fmpxmllayout xml.

@@ -1,4 +1,4 @@
-SaxChange::Template.document(YAML.load(<<-EEOOFF))
+SaxChange::Template.register(YAML.load(<<-EEOOFF))
 
 
 #!/usr/bin/env ruby
