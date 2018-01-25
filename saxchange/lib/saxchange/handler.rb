@@ -14,9 +14,9 @@ module SaxChange
   # The handler instance is unique to each different parsing gem but inherits generic
   # methods from this Handler module. During each parsing run, the Hander module creates
   # a new instance of the spcified parer's handler class and runs the handler's main parsing method.
-  # At the end of the parsing run the handler instance, along with it's newly parsed object,
-  # is returned to the object that originally called for the parsing run (your script/app/whatever).
-  # Remember: The template hash keys must be Strings, not Symbols.
+  # At the end of the parsing run, the handler instance along with it's newly parsed object
+  # is returned to the original call for the parsing run (your script/app/whatever).
+  # NOTE: The template hash keys must be Strings, not Symbols.
   module Handler
     # We stick these methods in front of the specific handler class,
     # so they run before their namesake's in the Handler class.
@@ -33,12 +33,7 @@ module SaxChange
     end # PrependMethods
   
     using Refinements
-    # Was experimental.
-    #using ObjectMergeRefinements
-
     
-    # This might have to be done for each specific handler class,
-    # but it seems to work just fine doing it once here.
     prepend Config
     
     extend Forwardable
@@ -47,11 +42,6 @@ module SaxChange
       
     def self.included(base)
       base.send :prepend, PrependMethods
-      
-      # Currently, this is done just in the main Handler class, and it seems to work.
-      #base.send :prepend, Config
-      
-      #base.singleton_class.send :attr_accessor, :label, :file, :setup, :backend_instance, :loaded
     end
     
     def self.new(_backend=nil, _template=nil, _initial_object=nil, **options)
@@ -125,7 +115,7 @@ module SaxChange
       @stack = []
       @stack_debug=[]
       
-      # Experimental cache config
+      # Experimental config cache.
       @config_cache = config
 
       set_cursor Cursor.new('__TOP__', self, **options).process_new_element
@@ -139,64 +129,19 @@ module SaxChange
     # Takes string, symbol, or hash, and returns a (possibly cached) parsing template.
     def get_template(_template=nil, _template_prefix=nil, _template_cache=nil, **options)  #_template_prefix=config[:template_prefix])
       _template ||= options[:template] || config[:template] || default_template
-      
-      # This is what it boils down to now, simple call to an array of templates.
-      #
-      #####
-      #puts "Getting template for '#{_template}'"
+
       self.template = if _template.is_a?(Proc)
         Template[_template.call(options, binding).to_s]
       else
         Template[_template]
       end
-      #puts "Template retrieved '#{template}' "
-      return template
-      #####
-      
-      #####  Logical End of Method  #####
-      
-      #   #puts "#{self}#get_template using _template: #{_template}"
-      #   return _template unless ['String', 'Symbol', 'Proc'].include?(_template.class.name.split('::').last.to_s)
-      #   
-      #   file_name = case
-      #     when _template.is_a?(Proc); _template.call(options, binding)
-      #     when _template.to_s[/\.[yx].?ml$/i]; _template.to_s
-      #     when _template.is_a?(Symbol); _template.to_s + '.yml'
-      #     else raise "Template '#{_template}' cannot be found."
-      #   end
-      #   # Return a template-object (or nil) if proc resolved to anything other than string.
-      #   return default_template unless file_name
-      #   return file_name unless file_name.is_a?(String)
-      #   load_template(file_name, _template_prefix, _template_cache, **options)  #, **options)
+      template || default_template
+    rescue #:error
+      SaxChange.log.warn "SaxChange::Parser#get_template '#{_template}' raised exception: #{$!}#{$!.backtrace.join('\n  ')}"
+      default_template
     end
-
-    #   # Does the heavy-lifting of template retrieval.
-    #   # template_cache is a reference to any cache of templates (a hash),
-    #   # but it should generally be a Parser#@templates ivar, if possible.
-    #   def load_template(file_name, _template_prefix=nil, _template_cache=nil, **options)  #, **options)
-    #     return default_template unless file_name.to_s.size > 0
-    #     #puts "LOAD_TEMPLATE name: '#{file_name}', prefix: '#{_template_prefix}'"
-    #     _template_prefix ||= options[:template_prefix] || config[:template_prefix]
-    #     _template_cache ||= (parser && parser.templates) || default_template
-    #     #puts "PARSERID: #{parser.object_id}"
-    #     #puts "PARSERTEMPLATESID: #{parser.templates.object_id}"
-    #     #puts "TEMPLATECACHEID: #{_template_cache.object_id}, #{_template_cache}"
-    #     _template_cache[file_name] ||= case
-    #       when file_name.to_s[/\.y.?ml$/i]; (YAML.load_file(File.join(*[_template_prefix, file_name].compact)))
-    #        # This line might cause an infinite loop.
-    #        # TODO: Update this template-selection matcher for rfm v4.
-    #        #       The 'self.class.build' is leftover from monolithic parser/handler in v3.
-    #        # when name.to_s[/\.xml$/i]; self.class.build(File.join(*[_template_prefix, name].compact), nil, {'compact'=>true})
-    #       else config.merge(options)[:default_class].new
-    #     end
-    #     #puts "#{self}.load_template loaded: #{_template_cache[file_name]}"
-    #     _template_cache[file_name]
-    #   rescue #:error
-    #     SaxChange.log.warn "SaxChange::Parser#load_template '#{file_name}' raised exception: #{$!}"
-    #     default_template
-    #   end
     
-    # Call this from each backend 'run_parser' method.
+    # Called from each backend 'run_parser' method thru prepended handler method 'run_parser'.
     # Be careful - calling io.eof? can raise errors if io is not in proper state.
     def raise_if_bad_io(io)
       #SaxChange.log.info("Handler#raise_if_bad_io io.closed?: '#{io.closed?}'") #if config[:log_parser]
@@ -206,15 +151,18 @@ module SaxChange
       end
     end
   
+    # Get result object from stack.
     def result
       stack[0].object if stack[0].is_a? Cursor
     end
   
+    # Get current cursor.
     def cursor
       stack.last
     end
   
-    # Insert cursor into stack. Returns cursor.
+    # Insert cursor into stack.
+    # Returns cursor.
     def set_cursor(args) # cursor_object
       #puts "Pushing cursor into stack #{args}"
       if args.is_a? Cursor
@@ -224,14 +172,17 @@ module SaxChange
       cursor
     end
   
+    # Jettison the current cursor.
     def dump_cursor
       stack.pop
     end
   
+    # Get the beginning cursor of the stack.
     def top
       stack[0]
     end
   
+    # Return tag name translated by :tag_translation object.
     def transform(name)
       return name unless config[:tag_translation].is_a?(Proc)
       config[:tag_translation].call(name.to_s)
@@ -312,14 +263,12 @@ module SaxChange
       _end_element('xmldecl')
     end
     
+    # For debugging parsing & cursor errors.
     def print_stack_debug
       #stack_debug.each{|c| puts (" " * c.level) +  "Cursor '#{c.tag}', model '#{c.model['name']}', logical_parent '#{c.logical_parent.tag}', logical_parent_model '#{c.logical_parent_model&.dig('name')}', attach '#{c&.model.dig('attach')}', object '#{c.object.class}'"}; nil
       stack_debug.each{|c| puts (" " * c.level) +  "Cursor '#{c.tag}', logical_parent '#{c.logical_parent&.tag}', xml_parent '#{c.xml_parent&.tag}'"}; nil
     end
     
-  
   end # Handler
-  
-
-
 end # SaxChange
+

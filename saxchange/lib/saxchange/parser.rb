@@ -92,7 +92,7 @@ module SaxChange
   
     # Initialize template cache in singleton-class of Parser,
     # to hide data from casual onlookers.
-    meta_attr_accessor :templates
+    #meta_attr_accessor :templates
   
     extend Forwardable
     prepend Config
@@ -106,13 +106,16 @@ module SaxChange
       :create_accessors => [] #:all, :private, :shared, :hash
     }
     
+    # Convenience method.
     def self.parse(io, **options)
       new(**options).parse(io)
     end
         
-    def initialize(_templates=nil, **options)
-      #puts "Parser#initialize with options: #{options}"
-      self.templates = _templates.dup || config.delete(:templates).dup || Hash.new
+    def initialize(backend=nil, **options)  #(_templates=nil, **options)
+      # The options aren't really needed here, but they have to be in the args because of Config.
+      #puts "Parser#initialize with backend '#{backend}', options: #{options}"
+      #self.templates = _templates.dup || config.delete(:templates).dup || Hash.new
+      (config backend: backend) if backend
     end
 
     def build_handler(_backend=nil, _template=nil, _initial_object=nil, **options)
@@ -126,22 +129,21 @@ module SaxChange
     end
     
     # TODO: Should the _backend arg be first for these two methods?
+    #       At this point, I think no.
+    # NOTE: 'call' will suppress errors and return the handler.
+    #       See handler.errors for any errors generated along the way.
     def call(io='', _template=nil, _initial_object=nil, _backend=nil, **options)
       #puts "Parser#call with options: #{options}"
       handler = build_handler(_backend, _template, _initial_object, **options)
       handler.run_parser(io)
       handler
-#     ensure
-#       handler.errors << [$!, "  #{$!.backtrace.join("\n  ")}"] if $!
-#       # Put a 'return' in the 'ensure' clause to create a hidden 'rescue'.
-#       #return handler
-#       handler
+    ensure
+      handler.errors << [$!, "  #{$!.backtrace.join("\n  ")}"] if $!
+      # Put a 'return' in the 'ensure' clause to create a hidden 'rescue'.
+      return handler
     end
     
-    # def parse(*args)
-    #   call(*args).result
-    # end
-    
+    # Parse will return the result object, unless errors are raised.
     def parse(io='', _template=nil, _initial_object=nil, _backend=nil, **options)
       #puts "Parser#parse with options: #{options}"
       handler = build_handler(_backend, _template, _initial_object, **options)

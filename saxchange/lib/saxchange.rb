@@ -1,16 +1,15 @@
 module SaxChange
+  # Add load path for library usage without rubygems.
   PATH = File.expand_path(File.dirname(__FILE__))
   $LOAD_PATH.unshift(PATH) unless $LOAD_PATH.include?(PATH)
 
   require 'logger'
   
-  # TODO: Use submodules to pull gist of Refinements down to each gem within rfm repo.
-  # TODO: Also use submidules to pull in generic Config class in both saxchange and rfm-core.
-  #
-  # Dynamically load generic Refinements and Config under the above module.
+  # Dynamically load generic Refinements under the above module.
   eval(File.read(File.join(File.dirname(__FILE__), './ginjo_tools/refinements.rb')))
   using Refinements
   
+  # Dynamically load generic Config under the above module.
   eval(File.read(File.join(File.dirname(__FILE__), './ginjo_tools/config.rb'))) 
 
   RUBY_VERSION_NUM = RUBY_VERSION[0,3].to_f
@@ -19,6 +18,7 @@ module SaxChange
   singleton_class.def_delegators Config, :defaults, :'defaults='
   singleton_class.def_delegators :'SaxChange::Parser', :parse
   
+  # TODO: Should allowable-options be a Config setting, instead of an app setting?
   AllowableOptions = %w(
     backend
     default_class
@@ -30,8 +30,8 @@ module SaxChange
     text_label
     tag_translation
     template
-    templates
-    template_prefix
+    #templates
+    #template_prefix
   ).compact.uniq
     
   # These defaults can be set here or in any ancestor/enclosing module or class,
@@ -39,8 +39,8 @@ module SaxChange
   #
   #  Default class MUST be a descendant of Hash or respond to hash methods !!!
   #   
-  # For backend, use :libxml, :nokogiri, :ox, :rexml, or anything else, if you want it to always default
-  # to something other than the fastest backend found.
+  # For backend, use :libxml-ruby, :nokogiri, :ox, :rexml, :oga, or anything else, if you want it to always default
+  # to something other than the first backend found.
   # Using nil will let the Parser decide.
   Config.defaults = {
     :default_class => Hash,

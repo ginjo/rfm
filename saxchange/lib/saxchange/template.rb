@@ -7,23 +7,27 @@ module SaxChange
     class << self
       attr_accessor :cache
       
+      # Register a new template.
+      # Takes name, hash, block. All optional
       def register(*args, &block)
         Template.cache.unshift(new(*args, &block)).first
       end
     
+      # Get template from cache, given name == :name
       def [](name)
         # constant_name = constants.find(){|c| const_get(c)&.template&.dig('name') == name}
         # constant_name && const_get(constant_name)&.template
         cache.find{|t| t&.dig('name') == name}
       end
-      
     end # class << self
     
     @cache = []
       
-    attr_accessor :template
+    # I don't think this is used any more, since THIS IS the template now.
+    #attr_accessor :template
     
-    
+    # Create a new template or sub-template.
+    # Takes name, hash, block. All optional.
     def initialize(*args)
       hash = args.pop if args.last.is_a?(Hash)
       self['name'] = args[0] if (args[0].is_a?(String) || args[0].is_a?(Symbol))
@@ -32,11 +36,14 @@ module SaxChange
       #puts "#{self['name']}.#{__callee__} hash_given?: #{!hash.nil?}, block_given? #{block_given?}"
     end
     
+    # Convenience method for 'self.class.new'.
     def new_level(*args, &block)
       #puts "#{self}.#{__callee__} #{args}"
       self.class.new(*args, &block)
     end
     
+    # Manual registration of this template.
+    # This is not necessary if using 'Template.register'.
     def register
       self.class.register(self)
     end
