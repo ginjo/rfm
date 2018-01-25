@@ -30,9 +30,7 @@ module SaxChange
     text_label
     tag_translation
     template
-    #templates
-    #template_prefix
-  ).compact.uniq
+  ).delete_if(){|x| x[/^\s*\#/]}.compact.uniq
     
   # These defaults can be set here or in any ancestor/enclosing module or class,
   # as long as the defaults or their constants can be seen from this POV.
@@ -48,7 +46,6 @@ module SaxChange
     :text_label => 'text',
     :tag_translation => lambda {|txt| txt.gsub(/\-/, '_').downcase},
     :shared_variable_name => 'attributes',
-    :template_prefix => nil,
     :logger => Logger.new($stdout),
   }
   

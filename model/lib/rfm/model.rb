@@ -10,32 +10,18 @@ require 'rfm-core'
 #require 'saxchange/config'
 require 'saxchange'
 
-# Loads all sax parsing templates.
+# Loads all sax parsing templates (ruby).
 multiple_dirs = Dir[File.join(File.dirname(__FILE__), "saxchange/*.rb")]
 multiple_dirs.each do |f|
   require f
 end
 
-# This is needed to serve the proc below, which is inserted into the parser defaults.
-# Moved to rfm-core, since saxchange might be used without rfm-model.
-# SaxChange::AllowableOptions.push %w(
-#   grammar
-#   field_mapping
-#   decimal_separator
-#   layout
-#   connection
-#   local_env
-# )
-
 # Set SaxChange defaults.
 SaxChange::Config.defaults.merge!(
   :default_class => Rfm::CaseInsensitiveHash,
-  :template_prefix => File.join(File.dirname(__FILE__), 'saxchange/'),
   # This lambda-proc should resolve to a filename.
   :template => ->(options, env_binding){
       gr_str = options[:grammar].to_s.downcase
-      #
-      #gr_str.size >0 ? gr_str + '.yml' : nil
       gr_str.size >0 ? gr_str : nil
     },
 )
@@ -48,20 +34,16 @@ module Rfm
   module Config
     using Refinements
     
-    # Rewrite this like this: defaults[:parser] ||= ...
-    # Same with formatter.
-    #puts "MODEL setting formatter"
-    defaults.merge!({
-      parser: SaxChange::Parser.new,
-      formatter: ->(io, options) do
-        handler = options[:parser].call(io, options)
-          # TODO: Is this the right place to check for errors?
-          #       Or should it be in the template/model? Somewhere else?
-        error = handler.result.respond_to?(:error) && handler.result.error
-        options[:local_env][:check_for_errors, error]
-        handler.result
-      end
-    })
+    #defaults[:parser] ||= SaxChange::Parser.new
+    
+    defaults[:formatter] = ->(io, options) do
+      handler = options[:parser].call(io, options)
+        # TODO: Is this the right place to check for errors?
+        #       Or should it be in the template/model? Somewhere else?
+      error = handler.result.respond_to?(:error) && handler.result.error
+      options[:local_env][:check_for_errors, error]
+      handler.result
+    end
   end # Config
 
   #autoload :Server,       'rfm/server'
@@ -83,7 +65,5 @@ module Rfm
   
   def_delegators 'Rfm::Resultset', :load_data
   
-  #extend self
-
 end # Rfm
 

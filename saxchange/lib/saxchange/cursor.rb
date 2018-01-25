@@ -91,10 +91,8 @@ module SaxChange
       @object = case
       when @tag == '__TOP__'
         @handler.initial_object
-      when attach? == 'none'
-        # Maybe this needs to be enabled for what used to be attach-cursor?
-        build_new_object_from_callback(binding) || config[:default_class].allocate
-        #@logical_parent.object
+      # when attach? == 'none'
+      #   build_new_object_from_callback(binding) || config[:default_class].allocate
       else
         build_new_object_from_callback(binding) || config[:default_class].allocate
       end
@@ -148,7 +146,6 @@ module SaxChange
     def receive_attribute(name, value)
       #puts ["\nRECEIVE_ATTR '#{name}'", "value: #{value}", "tag: #{@tag}", "object: #{object.class}", "model: #{model['name']}"]
       new_att = {name=>value}    #.new.tap{|att| att[name]=value}
-      # Temp disable for v4.
       attribute_target.assign_attributes(new_att, @model) #, @object, @model, @local_model)
     rescue
       SaxChange.log.warn "Error: could not assign attribute '#{name.to_s}' to element '#{self.tag.to_s}': #{$!}"
@@ -168,21 +165,19 @@ module SaxChange
       begin
 
         if _tag == @tag && (@model == @logical_parent_model)
-          # Data cleaup
+          # Data cleanup
           compactor_settings = compact? || compact_default?
           #(compactor_settings = compact?(top.model)) unless compactor_settings # prefer local settings, or use top settings.
           (clean_members {|v| clean_members(v){|w| clean_members(w)}}) if compactor_settings
         end
 
         if (delimiter = delimiter?(@model); delimiter && !['none','cursor'].include?(@element_attachment_prefs.to_s))
-          #attach_new_object(@parent.object, @object, @tag, @parent.model, @local_model, 'element')
           #puts "RECEIVE_END_ELEMENT attaching new element TAG (#{@tag}) OBJECT (#{@object.class}) #{@object.to_yaml} WITH LOCAL MODEL #{@local_model.to_yaml} TO PARENT (#{@parent.object.class}) #{@parent.object.to_yaml} PARENT MODEL #{@parent.model.to_yaml}"
           @logical_parent.attach_new_element(@tag, @object, self)
         end      
 
         if _tag == @tag #&& (@model == @local_model)
           # End-element callbacks.
-          #run_callback(_tag, self)
           callback = before_close?(@model)
           get_callback(callback, binding) if callback
         end
@@ -225,15 +220,13 @@ module SaxChange
 
           # TODO: for v4, does this @model need to be @logical_parent_model? NO
           # Use local create_accessors prefs first, then more general ones.
-          #create_accessors = accessor?(attr_model) || create_accessors?(@model)
           create_accessors = compile_create_accessors(@model, attr_model)
-          #(create_accessors = create_accessors?(@model)) unless create_accessors && create_accessors.any?
 
           #puts ["\nASSIGN_ATTRIBUTES-attach-object", "label: #{label}", "object-class: #{@object.class}", "k,v: #{[k,v]}", "attr_model: #{attr_model}", "prefs: #{prefs}", "shared_var_name: #{shared_var_name}", "create_accessors: #{create_accessors}"]
           @object._attach_object!(v, label, delimiter?(attr_model), prefs, 'attribute', :default_class=>config[:default_class], :shared_variable_name=>shared_var_name, :create_accessors=>create_accessors)
         end
 
-      end
+      end # if
     end # assign_attributes
 
     # This ~should~ be only concerned with how to attach a given element to THIS cursor's object.
@@ -250,10 +243,7 @@ module SaxChange
 
       # Use element's specific accessors? prefs first, then use more general create_accessors? from element's logical_parent (this cursor).
       # Mods for v4.
-      #create_accessors = accessor?(@local_model) || create_accessors?(@parent.model)
-      #create_accessors = accessor?(new_object_cursor.model) || create_accessors?(@model)
       create_accessors = compile_create_accessors(@model, new_object_cursor.model)
-      #(create_accessors = create_accessors?(@parent.model)) unless create_accessors && create_accessors.any?
 
       # NOTE: This has been disabled for a long time.
       # # This is NEW!
@@ -265,9 +255,6 @@ module SaxChange
 
       #puts ["\nATTACH_NEW_ELEMENT 1", "new_object: #{new_object}", "parent_object: #{@object}", "label: #{name}", "delimiter: #{delimiter?(new_object_model)}", "prefs: #{prefs}", "shared_var_name: #{shared_var_name}", "create_accessors: #{create_accessors}", "default_class: #{config[:default_class]}"]
       
-      # Mods for v4.
-      #@parent.object._attach_object!(new_object, label, delimiter?(@local_model), prefs, 'element', :default_class=>config[:default_class], :shared_variable_name=>shared_var_name, :create_accessors=>create_accessors)
-      #@logical_parent.object._attach_object!(new_object, label, delimiter?(@model), prefs, 'element', :default_class=>config[:default_class], :shared_variable_name=>shared_var_name, :create_accessors=>create_accessors)
       object._attach_object!(new_object, label, delimiter?(new_object_cursor.model), prefs, 'element', :default_class=>config[:default_class], :shared_variable_name=>shared_var_name, :create_accessors=>create_accessors)
       
       # if type == 'attribute'
@@ -295,7 +282,7 @@ module SaxChange
     def attach_elements_default?; top&.model&.dig('attach_elements_default'); end
     def attach_attributes_default?; top&.model&.dig('attach_attributes_default'); end
     def compact_default?; top&.model&.dig('compact'); end
-    def create_accessors_default?; top&.model&.dig('create_accessors_default') && [top&.model&.dig('create_accessors_default')].flatten.compact; end
+    def create_accessors_default?; [top&.model&.dig('create_accessors_default')].flatten.compact.as{|i| i.any? && i}; end
     ###
     ### For This (or specified) Cursor Only
     ###
@@ -310,8 +297,8 @@ module SaxChange
     def attach_attributes?(_model=@model); _model&.dig('attach_attributes'); end
     def delimiter?(_model=@model); _model&.dig('delimiter'); end
     def as_name?(_model=@model); _model&.dig('as_name'); end
-    def create_accessors?(_model=@model); _model&.dig('create_accessors') && [_model&.dig('create_accessors')].flatten.compact; end
-    def accessor?(_model=@model); _model&.dig('accessor') && [_model&.dig('accessor')].flatten.compact; end
+    def create_accessors?(_model=@model); [_model&.dig('create_accessors')].flatten.compact.as{|i| i.any? && i}; end
+    def accessor?(_model=@model); [_model&.dig('accessor')].flatten.compact.as{|i| i.any? && i}; end
 
 
     ###  Parse callback instructions, compile & send callback method  ###

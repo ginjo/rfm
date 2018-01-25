@@ -39,13 +39,9 @@ module Rfm
     timeout
     log_actions
     log_responses
-    log_parser
-    use
-    parent
     template
     grammar
     field_mapping
-    capture_strings_with
     logger
     decimal_separator
     formatter
@@ -60,8 +56,6 @@ module Rfm
     tag_translation
     shared_variable_name
     template
-    templates
-    template_prefix
   ).delete_if(){|x| x[/^\s*\#/]}.compact.uniq
   
   Config.defaults = {

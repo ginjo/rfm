@@ -90,10 +90,6 @@ module SaxChange
     using Refinements
     using ObjectMergeRefinements
   
-    # Initialize template cache in singleton-class of Parser,
-    # to hide data from casual onlookers.
-    #meta_attr_accessor :templates
-  
     extend Forwardable
     prepend Config
     
@@ -111,10 +107,9 @@ module SaxChange
       new(**options).parse(io)
     end
         
-    def initialize(backend=nil, **options)  #(_templates=nil, **options)
+    def initialize(backend=nil, **options)
       # The options aren't really needed here, but they have to be in the args because of Config.
       #puts "Parser#initialize with backend '#{backend}', options: #{options}"
-      #self.templates = _templates.dup || config.delete(:templates).dup || Hash.new
       (config backend: backend) if backend
     end
 
@@ -128,8 +123,6 @@ module SaxChange
       end
     end
     
-    # TODO: Should the _backend arg be first for these two methods?
-    #       At this point, I think no.
     # NOTE: 'call' will suppress errors and return the handler.
     #       See handler.errors for any errors generated along the way.
     def call(io='', _template=nil, _initial_object=nil, _backend=nil, **options)

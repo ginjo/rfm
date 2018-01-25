@@ -2,9 +2,7 @@ require 'forwardable'
 module SaxChange
   
   #####  SAX HANDLER  #####
-  
-  # TODO: Find out why handler instance template_prefix attribute is empty, even when passing a template thru options.
-  
+    
   # A handler instance is created for each parsing run. The handler has several important functions:
   # 1. Receive callbacks from the sax/stream parsing engine (start_element, end_element, attribute...).
   # 2. Maintain a stack of cursors, growing & shrinking, throughout the parsing run.
@@ -33,9 +31,7 @@ module SaxChange
     end # PrependMethods
   
     using Refinements
-    
     prepend Config
-    
     extend Forwardable
   
     attr_accessor :stack, :template, :initial_object, :stack_debug, :default_class, :backend, :parser, :errors
@@ -127,7 +123,7 @@ module SaxChange
     end
         
     # Takes string, symbol, or hash, and returns a (possibly cached) parsing template.
-    def get_template(_template=nil, _template_prefix=nil, _template_cache=nil, **options)  #_template_prefix=config[:template_prefix])
+    def get_template(_template=nil, _template_cache=nil, **options)
       _template ||= options[:template] || config[:template] || default_template
 
       self.template = if _template.is_a?(Proc)

@@ -32,6 +32,8 @@ module SaxChange
       hash = args.pop if args.last.is_a?(Hash)
       self['name'] = args[0] if (args[0].is_a?(String) || args[0].is_a?(Symbol))
       merge!(hash) if hash
+      # Note that while the block will be evaluated in this instances context,
+      # it will not have access to local variables from this specific method.
       instance_eval &proc if block_given?
       #puts "#{self['name']}.#{__callee__} hash_given?: #{!hash.nil?}, block_given? #{block_given?}"
     end
