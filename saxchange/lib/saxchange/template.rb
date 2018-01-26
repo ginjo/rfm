@@ -88,7 +88,11 @@ module SaxChange
       #self['attach'] = []
       #self['attach'].concat args
       #self['attach'] << Proc.new if block_given?
-      self['attach'] = args[0]
+      if block_given?
+        self['attach'] = proc
+      else
+        self['attach'] = args[0]
+      end
     end
     
     def attach_elements(*args)

@@ -100,11 +100,13 @@ module SaxChange
       #puts "\n#{self}.initialize #{@level}-#{@tag}, lg-pnt '#{@logical_parent.tag}', eap '#{@element_attachment_prefs}', nec '#{@new_element_callback}', obj '#{@object.class}', model '#{@model}'"
       self
     end # initialize
+
     
     # Build a new object, given @new_element_callback and caller_binding.
     def build_new_object_from_callback(caller_binding=binding)
       @new_element_callback ? get_callback(@new_element_callback, caller_binding) : nil
     end
+
 
     # Decide how to attach element & attributes associated with this cursor.
     def process_new_element(caller_binding=binding)
@@ -119,6 +121,15 @@ module SaxChange
         if @initial_attributes && @initial_attributes.any? #&& @attribute_attachment_prefs != 'none'
           attribute_target.assign_attributes(@initial_attributes, @model)
         end
+
+      # TODO: Dunno if this is the best place for attachment proc.
+      when @element_attachment_prefs.is_a?(Proc);
+        #puts "__PROC__"
+        if @initial_attributes && @initial_attributes.any? #&& @attribute_attachment_prefs != 'none'
+          attribute_target.assign_attributes(@initial_attributes, @model)
+        end
+        instance_exec(binding, &@element_attachment_prefs)
+        
       else
         #puts "__OTHER__"
 
@@ -127,11 +138,13 @@ module SaxChange
           attribute_target.assign_attributes(@initial_attributes, @model) #, @object, @model, @local_model) 
         end
 
-        # If @model has a delimiter, defer attach_new_element until later.
+        # If @model has a delimiter, defer attach_new_element until later,
+        # otherwise attach this element to the logical-parent.
         #puts "PROCESS_NEW_ELEMENT delimiter of @model #{delimiter?(@model)}"
         if !delimiter?(@model) 
           #attach_new_object(@parent.object, @object, @tag, @parent.model, @local_model, 'element')
           #puts "PROCESS_NEW_ELEMENT calling attach_new_element with TAG #{@tag} and OBJECT #{@object}"
+          # TODO: Reconsider where we leave this element and hand over processing to the logical-parent element.
           @logical_parent.attach_new_element(@tag, @object, self)
         end      
       end # case
@@ -170,7 +183,13 @@ module SaxChange
           #(compactor_settings = compact?(top.model)) unless compactor_settings # prefer local settings, or use top settings.
           (clean_members {|v| clean_members(v){|w| clean_members(w)}}) if compactor_settings
         end
-
+        
+        # # TODO: I don't think this is the right place for the attachment proc.
+        # if @element_attachment_prefs.is_a?(Proc)
+        #   instance_exec(binding, &@element_attachment_prefs)
+        #
+        # elsif
+        #
         if (delimiter = delimiter?(@model); delimiter && !['none','cursor'].include?(@element_attachment_prefs.to_s))
           #puts "RECEIVE_END_ELEMENT attaching new element TAG (#{@tag}) OBJECT (#{@object.class}) #{@object.to_yaml} WITH LOCAL MODEL #{@local_model.to_yaml} TO PARENT (#{@parent.object.class}) #{@parent.object.to_yaml} PARENT MODEL #{@parent.model.to_yaml}"
           @logical_parent.attach_new_element(@tag, @object, self)
@@ -223,13 +242,20 @@ module SaxChange
           create_accessors = compile_create_accessors(@model, attr_model)
 
           #puts ["\nASSIGN_ATTRIBUTES-attach-object", "label: #{label}", "object-class: #{@object.class}", "k,v: #{[k,v]}", "attr_model: #{attr_model}", "prefs: #{prefs}", "shared_var_name: #{shared_var_name}", "create_accessors: #{create_accessors}"]
-          @object._attach_object!(v, label, delimiter?(attr_model), prefs, 'attribute', :default_class=>config[:default_class], :shared_variable_name=>shared_var_name, :create_accessors=>create_accessors)
+          # TODO: This isn't the right place for this. I think it should be in the attribute-source cursor.
+          #       So this is here just as a demo...
+          if prefs.is_a?(Proc)
+            instance_exec(binding, &prefs)
+          else
+            @object._attach_object!(v, label, delimiter?(attr_model), prefs, 'attribute', :default_class=>config[:default_class], :shared_variable_name=>shared_var_name, :create_accessors=>create_accessors)
+          end
         end
 
       end # if
     end # assign_attributes
 
     # This ~should~ be only concerned with how to attach a given element to THIS cursor's object.
+    # TODO: Reconsider the args passed to this method.
     def attach_new_element(name, new_object, new_object_cursor) 
       label = label_or_tag(name, new_object_cursor.model)
 

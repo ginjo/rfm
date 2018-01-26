@@ -149,6 +149,7 @@ module Rfm
       #connect('-dbnames', {}, {:grammar=>'FMPXMLRESULT'}.merge(options)).body
       # But we want controll over grammer & parsing, so use get_records...
       options[:grammar] ||= 'FMPXMLRESULT'
+      (options[:record_proc] = proc) if block_given?
       # Don't set this here. Try to use rfm-model to set it, if even needed at all.
       #options[:template] ||= :databases
       get_records('-dbnames', {}, options)

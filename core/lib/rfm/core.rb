@@ -45,6 +45,7 @@ module Rfm
     logger
     decimal_separator
     formatter
+    record_proc
     
     #SAXCHANGE
     backend
@@ -87,6 +88,7 @@ module Rfm
         decimal_separator
         layout
         connection
+        record_proc
       )
       
       # As a side note, here's a way to pretty-print raw xml in ruby:
