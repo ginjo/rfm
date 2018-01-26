@@ -244,9 +244,10 @@ module SaxChange
           #puts ["\nASSIGN_ATTRIBUTES-attach-object", "label: #{label}", "object-class: #{@object.class}", "k,v: #{[k,v]}", "attr_model: #{attr_model}", "prefs: #{prefs}", "shared_var_name: #{shared_var_name}", "create_accessors: #{create_accessors}"]
           # TODO: This isn't the right place for this. I think it should be in the attribute-source cursor.
           #       So this is here just as a demo...
-          if prefs.is_a?(Proc)
-            instance_exec(binding, &prefs)
-          else
+          proc_result = instance_exec(binding, &prefs) if prefs.is_a?(Proc)
+          (prefs = proc_result) if proc_result
+          
+          if proc_result || !prefs.is_a?(Proc)
             @object._attach_object!(v, label, delimiter?(attr_model), prefs, 'attribute', :default_class=>config[:default_class], :shared_variable_name=>shared_var_name, :create_accessors=>create_accessors)
           end
         end

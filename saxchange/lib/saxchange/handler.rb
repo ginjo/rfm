@@ -163,7 +163,7 @@ module SaxChange
       #puts "Pushing cursor into stack #{args}"
       if args.is_a? Cursor
         stack.push(args)
-        @stack_debug.push(args.dup.tap(){|c| c.handler = c.handler.object_id})  #; c.parent = c.parent.tag})
+        @stack_debug.push(args.dup.tap(){|c| c.handler = c.handler.object_id})  if config[:debug] #; c.parent = c.parent.tag})
       end
       cursor
     end

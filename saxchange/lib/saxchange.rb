@@ -22,6 +22,7 @@ module SaxChange
   AllowableOptions = %w(
     backend
     default_class
+    debug
     initial_object
     logger
     log_parser

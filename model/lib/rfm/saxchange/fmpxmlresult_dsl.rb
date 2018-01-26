@@ -3,6 +3,10 @@ module Rfm
   # This is for enhanced Binding methods in attachment procs.
   # It's not necessary, unless you want to do 'binding[:some_local_var_or_method]'.
   using Refinements
+  
+  # This is for running the object attachment command directly from the template.
+  # I don't think we want to do that, but for experimental purposes...
+  #using ObjectMergeRefinements
       
   SaxChange::Template.register('fmpxmlresult') do
   
@@ -59,11 +63,11 @@ module Rfm
     end
     
     element 'row' do
-      #attach 'none'
-      attach do |env_binding|
-        puts "Element attachment proc, cursor '#{@tag}', initial_attributes '#{@initial_attributes}'"
-        instance_exec(env_binding, &handler.config[:record_proc]) if handler.config[:record_proc].is_a?(Proc)
-      end
+      attach 'none'
+      # attach do |env_binding|
+      #   puts "Element attachment proc, cursor '#{@tag}', initial_attributes '#{@initial_attributes}'"
+      #   instance_exec(env_binding, &handler.config[:record_proc]) if handler.config[:record_proc].is_a?(Proc)
+      # end
       attribute 'modid' do
         attach 'none'
       end
@@ -78,14 +82,29 @@ module Rfm
     
     element 'data' do
       attach 'none'
+      
       attribute 'text' do
         #attach 'values'
-        attach do |env_binding|
-          puts "Attribute attachment proc, cursor '#{@tag}', attr-label '#{env_binding[:label]}', attr-value '#{env_binding[:v]}', object: #{@object.class}"
+        
+        # If a record_proc exists, run it, otherwise return the
+        # correct attachment prefs for this attribute 'values'.
+        # If the record_proc returns anything, it will be sent back
+        # to the cursor as an attachment pref, causing cursor to attach
+        # this attribute anyway. So return nil from record_proc, if you
+        # don't want the result object to fill with records.
+        # 'env' is binding of cursor method where this is yielded.
+        attach do |env|
+          record_proc = handler.config[:record_proc]
+          if record_proc.is_a?(Proc)
+            instance_exec(env, &record_proc)
+          else
+            'values'
+          end
         end
+        
         compact true
-      end
-    end
+      end # attribute
+    end # element
     
   end # document
 end # Rfm
