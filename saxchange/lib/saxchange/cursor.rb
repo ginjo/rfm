@@ -116,20 +116,20 @@ module SaxChange
         # when inital cursor, just set model & object.
       when @tag == '__TOP__';
         #puts "__TOP__"
-      when @element_attachment_prefs == 'none';
+      when @element_attachment_prefs == 'none' || @element_attachment_prefs.is_a?(Proc);
         #puts "__NONE__"
         if @initial_attributes && @initial_attributes.any? #&& @attribute_attachment_prefs != 'none'
           attribute_target.assign_attributes(@initial_attributes, @model)
         end
 
-      # TODO: Dunno if this is the best place for attachment proc.
-      when @element_attachment_prefs.is_a?(Proc);
-        #puts "__PROC__"
-        if @initial_attributes && @initial_attributes.any? #&& @attribute_attachment_prefs != 'none'
-          attribute_target.assign_attributes(@initial_attributes, @model)
-        end
-        instance_exec(binding, &@element_attachment_prefs)
-        
+      # # TODO: Dunno if this is the best place for attachment proc.
+      # when @element_attachment_prefs.is_a?(Proc);
+      #   #puts "__PROC__"
+      #   if @initial_attributes && @initial_attributes.any? #&& @attribute_attachment_prefs != 'none'
+      #     attribute_target.assign_attributes(@initial_attributes, @model)
+      #   end
+      #   instance_exec(binding, &@element_attachment_prefs)
+      #   
       else
         #puts "__OTHER__"
 
@@ -184,13 +184,12 @@ module SaxChange
           (clean_members {|v| clean_members(v){|w| clean_members(w)}}) if compactor_settings
         end
         
-        # # TODO: I don't think this is the right place for the attachment proc.
-        # if @element_attachment_prefs.is_a?(Proc)
-        #   instance_exec(binding, &@element_attachment_prefs)
-        #
-        # elsif
-        #
-        if (delimiter = delimiter?(@model); delimiter && !['none','cursor'].include?(@element_attachment_prefs.to_s))
+        #   # TODO: I don't think this is the right place for the attachment proc.
+        #   if @element_attachment_prefs.is_a?(Proc)
+        #     proc_result = instance_exec(binding, &@element_attachment_prefs) 
+        #   end
+        
+        if (delimiter = delimiter?(@model); delimiter && !['none','cursor'].include?(@element_attachment_prefs.to_s)) || @element_attachment_prefs.is_a?(Proc)
           #puts "RECEIVE_END_ELEMENT attaching new element TAG (#{@tag}) OBJECT (#{@object.class}) #{@object.to_yaml} WITH LOCAL MODEL #{@local_model.to_yaml} TO PARENT (#{@parent.object.class}) #{@parent.object.to_yaml} PARENT MODEL #{@parent.model.to_yaml}"
           @logical_parent.attach_new_element(@tag, @object, self)
         end      
@@ -219,6 +218,7 @@ module SaxChange
 
     # Assign attributes to this cursor's object.
     # The attributes could be from this element or from any sub-element.
+    # TODO: I think the 2nd arg should be attributes_element_cursor, with no default.
     def assign_attributes(_attributes, attributes_element_model=@model)
       if _attributes && !_attributes.empty?
 
@@ -256,7 +256,7 @@ module SaxChange
     end # assign_attributes
 
     # This ~should~ be only concerned with how to attach a given element to THIS cursor's object.
-    # TODO: Reconsider the args passed to this method.
+    # TODO: Reconsider the args passed to this method. I think get rid of arg 'new_object'.
     def attach_new_element(name, new_object, new_object_cursor) 
       label = label_or_tag(name, new_object_cursor.model)
 
@@ -265,6 +265,7 @@ module SaxChange
       #prefs = attachment_prefs(@model, new_object_cursor.model, 'element') #@element_attachment_prefs
       prefs = new_object_cursor.element_attachment_prefs
 
+      # Something not quite right about this. What does it do, exactly?
       shared_var_name = shared_variable_name(prefs)
       (prefs = "shared") if shared_var_name
 
@@ -279,10 +280,14 @@ module SaxChange
       #   new_object = base_object.send translator, name, new_object
       # end
 
-
       #puts ["\nATTACH_NEW_ELEMENT 1", "new_object: #{new_object}", "parent_object: #{@object}", "label: #{name}", "delimiter: #{delimiter?(new_object_model)}", "prefs: #{prefs}", "shared_var_name: #{shared_var_name}", "create_accessors: #{create_accessors}", "default_class: #{config[:default_class]}"]
       
-      object._attach_object!(new_object, label, delimiter?(new_object_cursor.model), prefs, 'element', :default_class=>config[:default_class], :shared_variable_name=>shared_var_name, :create_accessors=>create_accessors)
+      proc_result = new_object_cursor.instance_exec(binding, &prefs) if prefs.is_a?(Proc)
+      (prefs = proc_result) if proc_result
+      
+      if proc_result || !prefs.is_a?(Proc)
+        @object._attach_object!(new_object, label, delimiter?(new_object_cursor.model), prefs, 'element', :default_class=>config[:default_class], :shared_variable_name=>shared_var_name, :create_accessors=>create_accessors)
+      end
       
       # if type == 'attribute'
       #   puts ["\nATTACH_ATTR", "name: #{name}", "label: #{label}", "new_object: #{new_object.class rescue ''}", "base_object: #{base_object.class rescue ''}", "base_model: #{base_model['name'] rescue ''}", "new_model: #{new_model['name'] rescue ''}", "prefs: #{prefs}"]
@@ -422,10 +427,14 @@ module SaxChange
     # This should be called within the target, when it is about to attach an incoming object.
     # NOTE: The top.model defaults option is new for v4 (it was disabled before)
     def compile_attachment_prefs(target_model, new_model, type)
-      case type
+      prefs = case type
       when 'element'; attach?(new_model) || attach_elements?(target_model) || attach_elements_default?
       when 'attribute'; attach?(new_model) || attach_attributes?(target_model) || attach_attributes_default?
       end
+      if prefs.to_s[/^ *(proc|lambda)/i]
+        prefs = eval(prefs)
+      end
+      prefs
     end
     
     def compile_create_accessors(_parent_model, _local_model)

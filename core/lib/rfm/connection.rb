@@ -81,6 +81,7 @@ module Rfm
       #return unless self.class.const_defined?(:ENABLE_FINDALL) && ENABLE_FINDALL || ENV['ENABLE_FINDALL']
       options[:database] ||= database
       options[:layout] = _layout || options[:layout] || layout
+      (options[:record_proc] = proc) if block_given?
       get_records('-findall', {}, options)
     end
 
@@ -96,6 +97,7 @@ module Rfm
       options[:database] ||= database
       options[:layout] = _layout || options[:layout] || layout
       find_criteria = {'-recid'=>find_criteria} if (find_criteria.to_s.to_i > 0)
+      (options[:record_proc] = proc) if block_given?
       # Original (and better!) code for making this 'find' command compound-capable:
       get_records(*Rfm::CompoundQuery.new(find_criteria, options))
       # But then inserted this to stub 'find' to get it working for rfm v4 dev changes.
@@ -106,6 +108,7 @@ module Rfm
     def query(_layout=nil, query_hash, **options)
       options[:database] ||= database
       options[:layout] = _layout || options[:layout] || layout
+      (options[:record_proc] = proc) if block_given?
       get_records('-findquery', query_hash, options)
     end
 
@@ -160,6 +163,7 @@ module Rfm
       # options[:database] ||= database
       # options[:grammar] ||= 'FMPXMLRESULT'
       # get_records('-layoutnames', {}, options)
+      (options[:record_proc] = proc) if block_given?
       
       require 'rfm/layouts_cmd'
       Rfm::Commands::Layouts.new(self, **options).call
@@ -178,6 +182,7 @@ module Rfm
       #connect('-scriptnames', {"-db" => database}, {:grammar=>'FMPXMLRESULT'}.merge(options)).body
       options[:database] ||= database
       options[:grammar] ||= 'FMPXMLRESULT'
+      (options[:record_proc] = proc) if block_given?
       # Don't set this here. Try to use rfm-model to set it, if even needed at all.
       #options[:template] ||= :databases
       get_records('-scriptnames', {}, options)

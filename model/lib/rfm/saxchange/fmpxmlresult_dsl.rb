@@ -96,7 +96,7 @@ module Rfm
         attach do |env|
           record_proc = handler.config[:record_proc]
           if record_proc.is_a?(Proc)
-            instance_exec(env, &record_proc)
+            instance_exec(env[:v], top.object, env, &record_proc)
           else
             'values'
           end

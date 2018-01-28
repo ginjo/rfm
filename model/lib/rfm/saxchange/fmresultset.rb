@@ -65,9 +65,20 @@ elements:
   - name: fetch_size
     accessor: none
 - name: record
-  #attach: [cursor, object, handle_new_record, _attributes]
-  #attach_attributes: none
-  attach: [array, 'Rfm::Record', new, object]
+  ##attach: [cursor, object, handle_new_record, _attributes]
+  ##attach_attributes: none
+  #attach: [array, 'Rfm::Record', new, object]
+  #attach: 'proc {|env| puts "Inside fmresultset record template proc"; ["array", "Rfm::Record", "new", "object"]}'
+  attach: |
+    proc do |env|
+      puts 'inside attachment proc'
+      record_proc = handler.config[:record_proc]
+      if record_proc.is_a?(Proc)
+        instance_exec(@object, top.object, env, &record_proc)
+      else;
+        'values'
+      end
+    end
   attach_attributes: private
   before_close: '@loaded=true'
   elements:
