@@ -159,7 +159,7 @@ module Rfm
         # Added by wbr for v4.
         self.resultset = cursor.top.object
         
-        cursor.parent.object[get_mapped_name.split('::').last.to_s.downcase] = self
+        cursor.logical_parent.object[get_mapped_name.split('::').last.to_s.downcase] = self
         #puts ['FIELD_portal_callback', name, cursor.parent.object.object_id, cursor.parent.tag, cursor.parent.object[name.split('::').last.to_s.downcase]].join(', ')
       end
 

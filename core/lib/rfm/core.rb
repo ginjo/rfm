@@ -98,7 +98,7 @@ module Rfm
       #SaxChange::Config.defaults[:template] = {'compact'=>true}
       Config.defaults[:parser] = SaxChange::Parser.new(Config.defaults)
       #puts "CORE setting formatter"
-      Config.defaults[:formatter] = ->(io, options){options[:parser].call(io, options)}
+      Config.defaults[:formatter] = ->(io, options){options[:parser].parse(io, options)}
     else 
       Config.defaults[:formatter] = ->(io, options){ REXML::Document.new(io) }
   end

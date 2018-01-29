@@ -71,12 +71,15 @@ elements:
   #attach: 'proc {|env| puts "Inside fmresultset record template proc"; ["array", "Rfm::Record", "new", "object"]}'
   attach: |
     proc do |env|
-      puts 'inside attachment proc'
+      #puts 'inside attachment proc'
       record_proc = handler.config[:record_proc]
       if record_proc.is_a?(Proc)
         instance_exec(@object, top.object, env, &record_proc)
       else;
-        'values'
+        # TODO: Neither of these work here, because by this time
+        #       the 'prefs' variable has been mutated in 'attach_new_element'
+        #['array', 'Rfm::Record', 'new', 'object']
+        'array'
       end
     end
   attach_attributes: private
@@ -86,12 +89,6 @@ elements:
     attach: [none, 'Rfm::Metadata::Datum', ':allocate']
     compact: false
     before_close: [object, field_element_close_callback, self]
-    # This is needed, because in v4 top-level attachment declarations affect ALL models.
-    # attach_attributes: shared
-    # attach_elements: shared
-    # elements:
-    # - name: data
-    #   attach_attributes: hash
   - name: relatedset
     attach: [private, Array, ':allocate']
     as_name: portals

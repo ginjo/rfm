@@ -266,7 +266,9 @@ module SaxChange
       prefs = new_object_cursor.element_attachment_prefs
 
       # Something not quite right about this. What does it do, exactly?
+      # TODO: Mutating 'prefs' makes it difficult to patch in attachment-proc and record-proc !!!
       shared_var_name = shared_variable_name(prefs)
+      puts "Cursor#attach_new_element '#{new_object_cursor.tag}' prefs before mutating: #{prefs}"
       (prefs = "shared") if shared_var_name
 
       # Use element's specific accessors? prefs first, then use more general create_accessors? from element's logical_parent (this cursor).
@@ -285,6 +287,7 @@ module SaxChange
       proc_result = new_object_cursor.instance_exec(binding, &prefs) if prefs.is_a?(Proc)
       (prefs = proc_result) if proc_result
       
+      puts "Cursor#attach_new_element '#{new_object_cursor.tag}' prefs after mutating: #{prefs}"
       if proc_result || !prefs.is_a?(Proc)
         @object._attach_object!(new_object, label, delimiter?(new_object_cursor.model), prefs, 'element', :default_class=>config[:default_class], :shared_variable_name=>shared_var_name, :create_accessors=>create_accessors)
       end

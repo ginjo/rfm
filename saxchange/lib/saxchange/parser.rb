@@ -132,11 +132,14 @@ module SaxChange
       handler
     ensure
       handler.errors << [$!, "  #{$!.backtrace.join("\n  ")}"] if $!
+      SaxChange.log.warn [$!, $!.backtrace.to_yaml] if $!
       # Put a 'return' in the 'ensure' clause to create a hidden 'rescue'.
-      return handler
+      #return handler
+      handler
     end
     
     # Parse will return the result object, unless errors are raised.
+    # Should this piggy-back on 'call' ?
     def parse(io='', _template=nil, _initial_object=nil, _backend=nil, **options)
       #puts "Parser#parse with options: #{options}"
       handler = build_handler(_backend, _template, _initial_object, **options)
