@@ -23,7 +23,7 @@ module SaxChange
     # element_attachment_prefs - local object's attachment prefs based on local_model and current_model.
     # level - cursor depth
     attr_accessor :model, :object, :tag, :handler, :xml_parent, :level, :element_attachment_prefs, :new_element_callback, :initial_attributes, :config #, :local_model
-    attr_accessor :logical_parent, :logical_parent_model
+    attr_accessor :logical_parent, :logical_parent_model, :initial_object
 
     def_delegators :handler, :top, :stack
 
@@ -82,6 +82,9 @@ module SaxChange
       
       @element_attachment_prefs = compile_attachment_prefs(@logical_parent_model, @model, 'element')
       
+      @initial_object = compile_initial_object
+      
+      # I think this will soon be leaving.
       if @element_attachment_prefs.is_a?(Array)
         @new_element_callback = @element_attachment_prefs[1..-1]
         @element_attachment_prefs = @element_attachment_prefs[0]
@@ -321,6 +324,7 @@ module SaxChange
     ###
     ### For This (or specified) Cursor Only
     ###
+    def initial_object?(_model=@model); _model&.dig('initial_object'); end
     def elements?(_model=@model); _model&.dig('elements'); end
     def attributes?(_model=@model); _model&.dig('attributes'); end
     def element?(_tag=@tag, _model=@model) _model&.dig('elements')&.find{|e| e&.dig('name') == _tag}; end
@@ -426,7 +430,43 @@ module SaxChange
         self
       end
     end
-
+    
+    def compile_initial_object(_model, *args)
+      initobj = initial_object?(_model)
+      case
+      when initobj.is_a?(Array);
+      when initobj.is_a?(String) && initobj[/^ *(proc|lambda)/i]; instance_exec(binding, &eval(initobj))
+      when initobj.is_a?(Proc); instance_exec(binding, &initobj)
+      when initobj.is_a?(Class); initobj.new
+      end
+    end
+    
+    # TODO: What about string args in successive iterations?
+    #       I think we should implement  string/proc resolution
+    #       when the template is loaded, not when it's used in
+    #       a parsing run. For all string args for 'object', 'attach',  and 'callbck'
+    #       settings, eval them when template is loaded. The result of eval
+    #       is the loaded setting (will usually be a proc or a class).
+    #       Special setting names (like 'none', 'shared', 'private') should be
+    #       symbols, not strings.
+    # TODO: I think the variety of argument styles should be reduced.
+    #       A string should be one of (option-name, class, proc)
+    #       Probably need to get rid of the array type of arg [receiver, message, *args]
+    # TODO: Should probably wait until element_close to attach elements.
+    #       This shouldn't affect attribute and sub-element attachment, and might
+    #       reduce complexity of attachment logic.
+    # TODO: Consider adding optional callbacks for (after-new-element, before/after-attribute, before/after-element-close).
+    #
+    def render_setting(setting, *args)
+      case
+      when setting.is_a?(Array); render_setting(setting[0], *setting[1..-1])
+      when setting.is_a?(String) && setting[/^ *(proc|lambda)/i]; instance_exec(binding, &eval(setting))
+      when setting.is_a?(Proc); instance_exec(binding, &setting)
+      when setting.is_a?(Class); setting.send((args[0] || :new), *args[1..-1])
+      when setting.is_a?(String); render_setting(eval(setting), *setting[1..-1])
+      end
+    end
+    
     # This should be called within the target, when it is about to attach an incoming object.
     # NOTE: The top.model defaults option is new for v4 (it was disabled before)
     def compile_attachment_prefs(target_model, new_model, type)
