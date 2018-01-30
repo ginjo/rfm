@@ -140,6 +140,25 @@ module SaxChange
       self['before_close'] = args[0]
     end
     
+    # TODO: This is new and not yet functional.
+    # Originally from Cursor. It should ultimately do the following:
+    # (This may require multiple submethods)
+    # 
+    # If input to setting is String, 
+    # and does not match list of reserved words,
+    # then eval it and store result as new value
+    # for curent tuple in template hash.
+    # If 
+    def render_setting(setting, *args)
+      case
+      when setting.is_a?(Array); render_setting(setting[0], *setting[1..-1])
+      when setting.is_a?(String) && setting[/^ *(proc|lambda)/i]; instance_exec(binding, &eval(setting))
+      when setting.is_a?(Proc); instance_exec(binding, &setting)
+      when setting.is_a?(Class); setting.send((args[0] || :new), *args[1..-1])
+      when setting.is_a?(String); render_setting(eval(setting), *setting[1..-1])
+      end
+    end
+    
   end # Template
 end # SaxChange
 
