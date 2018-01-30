@@ -7,7 +7,7 @@
 #initial_object: "Rfm::Layout.new('temp_name_until_Rfm_Layout_class_is_fixed_and_layout_name_is_generated_from_xml_data')"
 #initial_object: "Rfm::Layout.new(**options)"
 name: fmpxmllayout
-initial_object: "Rfm::Metadata::LayoutMeta.new(**options)"
+initial_object: proc { Rfm::Metadata::LayoutMeta.new(**options) }
 attach_elements: hash  #_meta
 attach_attributes: hash  #_meta
 create_accessors: all

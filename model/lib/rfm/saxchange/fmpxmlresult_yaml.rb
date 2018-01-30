@@ -7,7 +7,7 @@ SaxChange::Template.register(YAML.load(<<-EEOOFF))
 ---
 # This is not functionaly required but helps with debugging
 name: fmpxmlresult_yaml
-initial_object: "Rfm::Resultset.new(**config)"
+initial_object: proc { Rfm::Resultset.new(**config) }
 attach_elements: _meta
 attach_attributes: _meta
 create_accessors: all

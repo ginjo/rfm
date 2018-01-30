@@ -8,7 +8,7 @@ SaxChange::Template.register(YAML.load(<<-EEOOFF))
 # This first function doesn't work anymore, since config[:layout] is not available in the parser environment.
 #initial_object: "Rfm::Resultset.new(Rfm::Layout.new(config[:layout]))"
 #initial_object: "Rfm::Resultset.new(Rfm::Layout.new('temp_name_until_Rfm_Resultset_class_is_fixed_and_layout_name_is_generated_from_xml_data'))"
-initial_object: "Rfm::Resultset.new(**config)"
+initial_object: proc {Rfm::Resultset.new(**config)}
 attach_elements: _meta
 attach_attributes: _meta
 create_accessors: all

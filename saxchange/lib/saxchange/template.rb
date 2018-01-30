@@ -10,7 +10,7 @@ module SaxChange
       # Register a new template.
       # Takes name, hash, block. All optional
       def register(*args, &block)
-        Template.cache.unshift(new(*args, &block)).first
+        Template.cache.unshift(new(*args, &block)).first.render_settings
       end
     
       # Get template from cache, given name == :name
@@ -23,8 +23,6 @@ module SaxChange
     
     @cache = []
       
-    # I don't think this is used any more, since THIS IS the template now.
-    #attr_accessor :template
     
     # Create a new template or sub-template.
     # Takes name, hash, block. All optional.
@@ -50,8 +48,50 @@ module SaxChange
       self.class.register(self)
     end
     
+    # Recursively traverse template keys/values & all element/attribute children,
+    # evaling each qualifying string value.
+    def render_settings
+      each do |k,v|
+        case
+        when %w(initial_object object before_close).include?(k)
+          self[k] = eval_setting(v)
+        when %w(attach attach_elements attach_attributes).include?(k)
+          self[k] = eval_setting(v, 'private', 'shared', 'hash', 'array', 'none')
+        when %w(elements attributes).include?(k)
+          v.is_a?(Array) && templateize_array_hashes(v)
+          v.each{|t| t.is_a?(self.class) && t.render_settings}
+        end
+      end
+      self
+    end
     
-    ###  Block-level DSL methods
+    # If input to setting is String and does not match list
+    # of reserved words, then eval it.
+    def eval_setting(setting, *skip_reserved_words)
+      #puts "Template#eval_setting '#{setting}', reserved-words '#{skip_reserved_words}'"
+      # TODO: Move the underscore-private-ivar-name-indicator condition to somewhere else.
+      if setting.is_a?(String) && !skip_reserved_words.include?(setting) && !setting[/^_/]
+        eval(setting)
+      else
+        setting
+      end
+    end
+
+    # Change plain-hash template into Template.
+    def templateize_array_hashes(array)
+      array.collect! do |h|
+        if h.is_a?(self.class)
+          h
+        elsif h.is_a?(Hash)
+          self.class.new(h)
+        else
+          h
+        end
+      end
+    end
+    
+    
+    ###  Template DSL methods
     
     def element(*args, &block)
       #puts "#{self}.#{__callee__} #{args}"
@@ -139,25 +179,7 @@ module SaxChange
       #puts "#{self}.#{__callee__} #{args}"
       self['before_close'] = args[0]
     end
-    
-    # TODO: This is new and not yet functional.
-    # Originally from Cursor. It should ultimately do the following:
-    # (This may require multiple submethods)
-    # 
-    # If input to setting is String, 
-    # and does not match list of reserved words,
-    # then eval it and store result as new value
-    # for curent tuple in template hash.
-    # If 
-    def render_setting(setting, *args)
-      case
-      when setting.is_a?(Array); render_setting(setting[0], *setting[1..-1])
-      when setting.is_a?(String) && setting[/^ *(proc|lambda)/i]; instance_exec(binding, &eval(setting))
-      when setting.is_a?(Proc); instance_exec(binding, &setting)
-      when setting.is_a?(Class); setting.send((args[0] || :new), *args[1..-1])
-      when setting.is_a?(String); render_setting(eval(setting), *setting[1..-1])
-      end
-    end
+
     
   end # Template
 end # SaxChange

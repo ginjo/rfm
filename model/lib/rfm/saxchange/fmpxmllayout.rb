@@ -9,7 +9,7 @@ SaxChange::Template.register(YAML.load(<<-EEOOFF))
 #initial_object: "Rfm::Layout.new('temp_name_until_Rfm_Layout_class_is_fixed_and_layout_name_is_generated_from_xml_data')"
 #initial_object: "Rfm::Layout.new(**options)"
 name: fmpxmllayout
-initial_object: "Rfm::Metadata::LayoutMeta.new(**options)"
+initial_object: proc { Rfm::Metadata::LayoutMeta.new(**options) }
 attach_elements: hash  #_meta
 attach_attributes: hash  #_meta
 create_accessors: all
@@ -79,7 +79,7 @@ elements:
   - name: value
     #class: Rfm::Metadata::ValueListItem
     attach: [array, 'Rfm::Metadata::ValueListItem', ':allocate']
-    before_close: replace(@value.to_s)
+    before_close: proc { replace(@value.to_s) }
     attach_attributes: private
     attributes:
     - name: display

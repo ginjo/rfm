@@ -10,7 +10,7 @@ module Rfm
       
   SaxChange::Template.register('fmpxmlresult') do
   
-    initial_object "Rfm::Resultset.new(**config)"
+    initial_object { Rfm::Resultset.new(**config) }
     attach_elements '_meta'
     attach_attributes '_meta'
     create_accessors 'all'
