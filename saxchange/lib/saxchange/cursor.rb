@@ -122,7 +122,8 @@ module SaxChange
         # when inital cursor, just set model & object.
       when @tag == '__TOP__';
         #puts "__TOP__"
-      when @element_attachment_prefs == 'none' || @element_attachment_prefs.is_a?(Proc);
+        #puts handler.template
+      when ['none', 'cursor'].include?(@element_attachment_prefs) || @element_attachment_prefs.is_a?(Proc);
         #puts "__NONE__"
         if @initial_attributes && @initial_attributes.any? #&& @attribute_attachment_prefs != 'none'
           attribute_target.assign_attributes(@initial_attributes, @model)
@@ -179,7 +180,7 @@ module SaxChange
     end # receive_start_element
 
     def receive_end_element(_tag)
-      #puts ["\nRECEIVE_END_ELEMENT '#{_tag}'", "tag: #{@tag}", "object: #{@object.class}", "model: #{@model['name']}", "local_model: #{@local_model['name']}"]
+      #puts ["\nRECEIVE_END_ELEMENT '#{_tag}'", "tag: #{@tag}", "object: #{@object.class}", "model: #{@model}"]
       #puts ["\nEND_ELEMENT_OBJECT", object.to_yaml]
       begin
 
@@ -187,6 +188,7 @@ module SaxChange
           # Data cleanup
           compactor_settings = compact? || compact_default?
           #(compactor_settings = compact?(top.model)) unless compactor_settings # prefer local settings, or use top settings.
+          #puts "Cursor#receive_end_element compactor_settings '#{compactor_settings}'"
           (clean_members {|v| clean_members(v){|w| clean_members(w)}}) if compactor_settings
         end
         

@@ -44,6 +44,7 @@ module SaxChange
       backend_handler_class = get_backend(_backend || config(options)[:backend])
       #puts "#{self}.new with _backend:'#{_backend}', _template:'#{_template}', _initial_object:'#{_initial_object}', options:'#{options}'"
       #backend_handler_class.new(_template, _initial_object, **options)
+      # The block should always return the parser instance that called for this handler.
       _parser = yield(binding) if block_given?
       handler_object = backend_handler_class.allocate
       handler_object.parser = _parser
@@ -99,7 +100,7 @@ module SaxChange
       @errors = []
       _template ||= config[:template]
       @template = get_template(_template, config)
-      _initial_object ||= config[:initial_object] || (@template && @template['initial_object'])
+      _initial_object ||= config[:initial_object] || @template&.dig('initial_object')
       @initial_object = case
         when _initial_object.nil?; config[:default_class].new
         when _initial_object.is_a?(Class); _initial_object.new(**config) # added by wbr for v4
@@ -128,10 +129,13 @@ module SaxChange
     def get_template(_template=nil, _template_cache=nil, **options)
       _template ||= options[:template] || config[:template] || default_template
 
-      self.template = if _template.is_a?(Proc)
+      self.template = case
+      when _template.is_a?(Proc)
         Template[_template.call(options, binding).to_s]
-      else
+      when _template.is_a?(String) || _template.is_a?(Symbol)
         Template[_template]
+      when _template.is_a?(Hash)
+        _template
       end
       template || default_template
     rescue #:error

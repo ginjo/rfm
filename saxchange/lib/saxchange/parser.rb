@@ -123,7 +123,7 @@ module SaxChange
       end
     end
     
-    # NOTE: 'call' will suppress errors and return the handler.
+    # NOTE: 'call' will (might?) suppress parsing errors and return the handler.
     #       See handler.errors for any errors generated along the way.
     def call(io='', _template=nil, _initial_object=nil, _backend=nil, **options)
       #puts "Parser#call with options: #{options}"
