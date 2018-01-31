@@ -23,7 +23,7 @@ module SaxChange
     # element_attachment_prefs - local object's attachment prefs based on local_model and current_model.
     # level - cursor depth
     attr_accessor :model, :object, :tag, :handler, :xml_parent, :level, :element_attachment_prefs, :new_element_callback, :initial_attributes, :config #, :local_model
-    attr_accessor :logical_parent, :logical_parent_model, :initial_object
+    attr_accessor :logical_parent, :logical_parent_model  #, :initial_object
 
     def_delegators :handler, :top, :stack
 
@@ -81,15 +81,17 @@ module SaxChange
       end
       
       @element_attachment_prefs = compile_attachment_prefs(@logical_parent_model, @model, 'element')
+      # NOTE: '=' takes precedence over 'if', so you don't need parens around assignment expression.
+      @element_attachment_prefs = nil if @element_attachment_prefs.to_s == 'default'
       
-      @initial_object = compile_initial_object
+      #@initial_object = compile_initial_object(@model)
       
       # I think this will soon be leaving.
-      if @element_attachment_prefs.is_a?(Array)
-        @new_element_callback = @element_attachment_prefs[1..-1]
-        @element_attachment_prefs = @element_attachment_prefs[0]
-        @element_attachment_prefs = nil if @element_attachment_prefs.to_s == 'default'
-      end
+      #   if @element_attachment_prefs.is_a?(Array)
+      #     @new_element_callback = @element_attachment_prefs[1..-1]
+      #     @element_attachment_prefs = @element_attachment_prefs[0]
+      #     @element_attachment_prefs = nil if @element_attachment_prefs.to_s == 'default'
+      #   end
       
       @object = case
       when @tag == '__TOP__'
@@ -97,7 +99,8 @@ module SaxChange
       # when attach? == 'none'
       #   build_new_object_from_callback(binding) || config[:default_class].allocate
       else
-        build_new_object_from_callback(binding) || config[:default_class].allocate
+        #build_new_object_from_callback(binding) || config[:default_class].allocate
+        compile_initial_object(@model)
       end
 
       #puts "\n#{self}.initialize #{@level}-#{@tag}, lg-pnt '#{@logical_parent.tag}', eap '#{@element_attachment_prefs}', nec '#{@new_element_callback}', obj '#{@object.class}', model '#{@model}'"
@@ -106,9 +109,9 @@ module SaxChange
 
     
     # Build a new object, given @new_element_callback and caller_binding.
-    def build_new_object_from_callback(caller_binding=binding)
-      @new_element_callback ? get_callback(@new_element_callback, caller_binding) : nil
-    end
+    #   def build_new_object_from_callback(caller_binding=binding)
+    #     @new_element_callback ? get_callback(@new_element_callback, caller_binding) : nil
+    #   end
 
 
     # Decide how to attach element & attributes associated with this cursor.
@@ -200,7 +203,8 @@ module SaxChange
         if _tag == @tag #&& (@model == @local_model)
           # End-element callbacks.
           callback = before_close?(@model)
-          get_callback(callback, binding) if callback
+          #get_callback(callback, binding) if callback
+          instance_exec(binding, &callback) if callback.is_a?(Proc)
         end
 
         if _tag == @tag
@@ -233,23 +237,26 @@ module SaxChange
 
           # TODO: for v4, does this @model need to be @logical_parent_model? NO.
           # Gets compiled prefs from local-attr-attachment-prefs and attribute-specific-model
-          prefs = [compile_attachment_prefs(@model, attr_model, 'attribute')].flatten(1)[0]
+          #prefs = [compile_attachment_prefs(@model, attr_model, 'attribute')].flatten(1)[0]
+          prefs = compile_attachment_prefs(@model, attr_model, 'attribute')
           #puts "ASSIGN_ATTRIBUTES to @model: #{@model}"
           #puts "ASSIGN_ATTRIBUTES with compiled prefs: #{prefs}"
 
           shared_var_name = shared_variable_name(prefs)
-          (prefs = "shared") if shared_var_name
+          prefs = "shared" if shared_var_name
 
           # TODO: for v4, does this @model need to be @logical_parent_model? NO
           # Use local create_accessors prefs first, then more general ones.
           create_accessors = compile_create_accessors(@model, attr_model)
 
-          #puts ["\nASSIGN_ATTRIBUTES-attach-object", "label: #{label}", "object-class: #{@object.class}", "k,v: #{[k,v]}", "attr_model: #{attr_model}", "prefs: #{prefs}", "shared_var_name: #{shared_var_name}", "create_accessors: #{create_accessors}"]
           # TODO: This isn't the right place for this. I think it should be in the attribute-source cursor.
           #       So this is here just as a demo...
+          #       Hmm.. still sure about above statement?
           proc_result = instance_exec(binding, &prefs) if prefs.is_a?(Proc)
-          (prefs = proc_result) if proc_result
-          
+          prefs = proc_result if proc_result
+
+          #puts ["\nASSIGN_ATTRIBUTES-attach-object", "label: #{label}", "receiving-object-class: #{@object.class}", "k,v: #{[k,v]}", "attr_model: #{attr_model}", "prefs: #{prefs}", "shared_var_name: #{shared_var_name}", "create_accessors: #{create_accessors}", "delimiter: #{delimiter?(attr_model)}"]
+
           if proc_result || !prefs.is_a?(Proc)
             @object._attach_object!(v, label, delimiter?(attr_model), prefs, 'attribute', :default_class=>config[:default_class], :shared_variable_name=>shared_var_name, :create_accessors=>create_accessors)
           end
@@ -271,8 +278,8 @@ module SaxChange
       # Something not quite right about this. What does it do, exactly?
       # TODO: Mutating 'prefs' makes it difficult to patch in attachment-proc and record-proc !!!
       shared_var_name = shared_variable_name(prefs)
-      puts "Cursor#attach_new_element '#{new_object_cursor.tag}' prefs before mutating: #{prefs}"
-      (prefs = "shared") if shared_var_name
+      #puts "Cursor#attach_new_element '#{new_object_cursor.tag}' prefs before mutating: #{prefs}"
+      prefs = "shared" if shared_var_name
 
       # Use element's specific accessors? prefs first, then use more general create_accessors? from element's logical_parent (this cursor).
       # Mods for v4.
@@ -284,24 +291,27 @@ module SaxChange
       # if translator
       #   new_object = base_object.send translator, name, new_object
       # end
-
-      #puts ["\nATTACH_NEW_ELEMENT 1", "new_object: #{new_object}", "parent_object: #{@object}", "label: #{name}", "delimiter: #{delimiter?(new_object_model)}", "prefs: #{prefs}", "shared_var_name: #{shared_var_name}", "create_accessors: #{create_accessors}", "default_class: #{config[:default_class]}"]
       
       proc_result = new_object_cursor.instance_exec(binding, &prefs) if prefs.is_a?(Proc)
-      (prefs = proc_result) if proc_result
+      prefs = proc_result if proc_result
+
+      #puts ["\nATTACH_NEW_ELEMENT", "new_object: #{new_object}", "parent_object: #{@object}", "label: #{name}", "delimiter: #{delimiter?(new_object_cursor.model)}", "prefs: #{prefs}", "shared_var_name: #{shared_var_name}", "create_accessors: #{create_accessors}"]      
       
-      puts "Cursor#attach_new_element '#{new_object_cursor.tag}' prefs after mutating: #{prefs}"
       if proc_result || !prefs.is_a?(Proc)
         @object._attach_object!(new_object, label, delimiter?(new_object_cursor.model), prefs, 'element', :default_class=>config[:default_class], :shared_variable_name=>shared_var_name, :create_accessors=>create_accessors)
       end
-      
-      # if type == 'attribute'
-      #   puts ["\nATTACH_ATTR", "name: #{name}", "label: #{label}", "new_object: #{new_object.class rescue ''}", "base_object: #{base_object.class rescue ''}", "base_model: #{base_model['name'] rescue ''}", "new_model: #{new_model['name'] rescue ''}", "prefs: #{prefs}"]
-      # end
     end # attach_new_element
 
 
     #####  UTILITY  #####
+    
+    # TODO: Special setting names (like 'none', 'shared', 'private') should be
+    #       symbols, not strings.
+    # TODO: Should probably wait until element_close to attach elements.
+    #       This shouldn't affect attribute and sub-element attachment, and might
+    #       reduce complexity of attachment logic.
+    # TODO: Consider adding optional callbacks for (after-new-element, before/after-attribute, before/after-element-close).
+    
 
     # Methods to extract template delcarations from current @model.
     # These could also be applied to any given model, even an attribute-model.
@@ -340,131 +350,27 @@ module SaxChange
     def accessor?(_model=@model); [_model&.dig('accessor')].flatten.compact.as{|i| i.any? && i}; end
 
 
-    ###  Parse callback instructions, compile & send callback method  ###
-    ###  TODO: This is way too convoluted. Document it better, or refactor!!!
-    # This method will send a method to an object, with parameters, and return a new object.
-    # Input (first param): string, symbol, or array of strings
-    # Returns: object
-    # Default options:
-    #   :object=>object
-    #   :method=>'a method name string or symbol'
-    #   :params=>"params string to be eval'd in context of cursor"
-    # Usage:
-    #   callback: send a method (or eval string) to an object with parameters, consisting of...
-    #     string: a string to be eval'd in context of current object.
-    #     or symbol: method to be called on current object.
-    #     or array: object, method, params.
-    #       object: <object or string>
-    #       method: <string or symbol>
-    #       params: <string>
-    #
-    # TODO-MAYBE: Change param order to (method, object, params),
-    #             might help confusion with param complexities.
-    #
-    def get_callback(callback, caller_binding=binding, _defaults={})
-      input = callback.is_a?(Array) ? callback.dup : callback
-      #puts "\nGET_CALLBACK tag: #{tag}, callback: #{callback}"
-      params = case
-               when input.is_a?(String) || input.is_a?(Symbol)
-                 [nil, input]
-                 # when input.is_a?(Symbol)
-                 #   [nil, input]
-               when input.is_a?(Array)
-                 #puts ["\nCURSOR#get_callback is an array", input]
-                 case
-                 when input[0].is_a?(Symbol)
-                   [nil, input].flatten(1)
-                 when input[1].is_a?(String) && ( input.size > 2 || (remove_colon=(input[1][0,1]==":"); remove_colon) )
-                   code_or_method = input[1].dup
-                   code_or_method[0]='' if remove_colon
-                   code_or_method = code_or_method.to_sym
-                   output = [input[0], code_or_method, input[2..-1]].flatten(1)
-                   #puts ["\nCURSOR#get_callback converted input[1] to symbol", output]
-                   output
-                 else # when input is ['object', 'sym-or-str', 'param1',' param2', ...]
-                   input
-                 end
-               else
-                 []
-               end
-
-      obj_raw = params.shift
-      #puts ["\nOBJECT_RAW:","class: #{obj_raw.class}", "object: #{obj_raw}"]
-      obj = if obj_raw.is_a?(String)
-              eval(obj_raw.to_s, caller_binding)
-            else
-              obj_raw
-            end
-      if obj.nil? || obj == ''
-        obj = _defaults[:object] || @object
-      end
-      #puts ["\nOBJECT:","class: #{obj.class}", "object: #{obj}"]
-
-      code = params.shift || _defaults[:method]
-      params.each_with_index do |str, i|
-        if str.is_a?(String)
-          params[i] = eval(str, caller_binding)
-        end
-      end
-      params = _defaults[:params] if params.size == 0
-      #puts ["\nGET_CALLBACK tag: #{@tag}" ,"callback: #{callback}", "obj.class: #{obj.class}", "code: #{code}", "params-class #{params.class}"]
-      case
-      when (code.nil? || code=='')
-        obj
-      when (code.is_a?(Symbol) || params)
-        #puts ["\nGET_CALLBACK sending symbol", obj.class, code] 
-        obj.send(*[code, params].flatten(1).compact)
-      when code.is_a?(String)
-        #puts ["\nGET_CALLBACK evaling string", obj.class, code]
-        obj.send :eval, code
-        #eval(code, caller_binding)
-      end          
-    end # get_callback
-
-
     # Which cursor to attach this element's attributes to.
+    # TODO: This needs work.
+    # What does an element with attach:none do with attributes?
     def attribute_target
-      if @model&.dig('attach') == 'none'
+      if attach? == 'none' && (attach_attributes? == 'none' || attach_attributes?.nil?)
         @logical_parent
       else
         self
       end
     end
     
-    def compile_initial_object(_model, *args)
+    def compile_initial_object(_model, env_binding=binding)  #, *args)
       initobj = initial_object?(_model)
-      case
-      when initobj.is_a?(Array);
-      when initobj.is_a?(String) && initobj[/^ *(proc|lambda)/i]; instance_exec(binding, &eval(initobj))
-      when initobj.is_a?(Proc); instance_exec(binding, &initobj)
+      rslt = case
       when initobj.is_a?(Class); initobj.new
+      when initobj.is_a?(Proc); instance_exec(env_binding, &initobj)
+      #when initobj.is_a?(String); eval(initobj)
+      else initobj || config[:default_class].allocate
       end
-    end
-    
-    # TODO: What about string args in successive iterations?
-    #       I think we should implement  string/proc resolution
-    #       when the template is loaded, not when it's used in
-    #       a parsing run. For all string args for 'object', 'attach',  and 'callbck'
-    #       settings, eval them when template is loaded. The result of eval
-    #       is the loaded setting (will usually be a proc or a class).
-    #       Special setting names (like 'none', 'shared', 'private') should be
-    #       symbols, not strings.
-    # TODO: I think the variety of argument styles should be reduced.
-    #       A string should be one of (option-name, class, proc)
-    #       Probably need to get rid of the array type of arg [receiver, message, *args]
-    # TODO: Should probably wait until element_close to attach elements.
-    #       This shouldn't affect attribute and sub-element attachment, and might
-    #       reduce complexity of attachment logic.
-    # TODO: Consider adding optional callbacks for (after-new-element, before/after-attribute, before/after-element-close).
-    #
-    def render_setting(setting, *args)
-      case
-      when setting.is_a?(Array); render_setting(setting[0], *setting[1..-1])
-      when setting.is_a?(String) && setting[/^ *(proc|lambda)/i]; instance_exec(binding, &eval(setting))
-      when setting.is_a?(Proc); instance_exec(binding, &setting)
-      when setting.is_a?(Class); setting.send((args[0] || :new), *args[1..-1])
-      when setting.is_a?(String); render_setting(eval(setting), *setting[1..-1])
-      end
+      #puts "Cursor#compile_initial_object with '#{initobj}', rslt '#{rslt}'"
+      rslt
     end
     
     # This should be called within the target, when it is about to attach an incoming object.
@@ -474,9 +380,9 @@ module SaxChange
       when 'element'; attach?(new_model) || attach_elements?(target_model) || attach_elements_default?
       when 'attribute'; attach?(new_model) || attach_attributes?(target_model) || attach_attributes_default?
       end
-      if prefs.to_s[/^ *(proc|lambda)/i]
-        prefs = eval(prefs)
-      end
+      # if prefs.to_s[/^ *(proc|lambda)/i]
+      #   prefs = eval(prefs)
+      # end
       prefs
     end
     

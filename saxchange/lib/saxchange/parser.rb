@@ -131,9 +131,9 @@ module SaxChange
       handler.run_parser(io)
       handler
     ensure
-      handler.errors << [$!, "  #{$!.backtrace.join("\n  ")}"] if $!
-      SaxChange.log.warn [$!, $!.backtrace.to_yaml] if $!
+      SaxChange.log.warn [$!, $!.backtrace].to_yaml if $!
       # Put a 'return' in the 'ensure' clause to create a hidden 'rescue'.
+      #handler.errors << [$!, "  #{$!.backtrace.join("\n  ")}"] if $!
       #return handler
       handler
     end

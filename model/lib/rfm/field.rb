@@ -148,7 +148,7 @@ module Rfm
         #self.decimal_separator = cursor.top.object.options[:decimal_separator] || '.'
         self.resultset = cursor.top.object
         
-        #puts ["\nFIELD#field_definition_element_close_callback", resultset.to_yaml]
+        #puts ["\nField#field_definition_element_close_callback", cursor.tag, resultset_meta.field_meta, name]
         resultset_meta.field_meta[get_mapped_name.to_s.downcase] = self
       end
 

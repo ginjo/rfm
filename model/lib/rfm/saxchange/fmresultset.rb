@@ -8,7 +8,7 @@ SaxChange::Template.register(YAML.load(<<-EEOOFF))
 # This first function doesn't work anymore, since config[:layout] is not available in the parser environment.
 #initial_object: "Rfm::Resultset.new(Rfm::Layout.new(config[:layout]))"
 #initial_object: "Rfm::Resultset.new(Rfm::Layout.new('temp_name_until_Rfm_Resultset_class_is_fixed_and_layout_name_is_generated_from_xml_data'))"
-initial_object: proc {Rfm::Resultset.new(**config)}
+initial_object: proc { Rfm::Resultset.new(**config) }
 attach_elements: _meta
 attach_attributes: _meta
 create_accessors: all
@@ -31,7 +31,8 @@ elements:
     as_name: error
 - name: datasource
   attach: none
-  before_close: ['@logical_parent.object', end_datasource_element_callback, self]
+  #before_close: ['@logical_parent.object', end_datasource_element_callback, self]
+  before_close: proc { @logical_parent.object.end_datasource_element_callback(self) }
   attributes:
   - name: total_count
     accessor: none
@@ -42,21 +43,27 @@ elements:
   # but the field-mapping translation won't happen.
   # attach: [_meta, 'Rfm::Metadata::Field', allocate]
   # as_name: field_meta
-  attach: [none, 'Rfm::Metadata::Field', ':allocate']
+  #attach: [none, 'Rfm::Metadata::Field', ':allocate']
+  initial_object: proc { Rfm::Metadata::Field.allocate }
+  attach: none
   delimiter: name
   attach_attributes: private
-  before_close: [object, field_definition_element_close_callback, self]
+  #before_close: [object, field_definition_element_close_callback, self]
+  before_close: proc { @object.field_definition_element_close_callback(self) }
 - name: relatedset_definition
   delimiter: table
   as_name: portal_meta
   attach_attributes: private
   elements:
   - name: field_definition
-    attach: [none, 'Rfm::Metadata::Field', ':allocate']
+    #attach: [none, 'Rfm::Metadata::Field', ':allocate']
+    initial_object: proc { Rfm::Metadata::Field.allocate }
+    attach: none
     delimiter: name
     as_name: field_meta
     attach_attributes: private
-    before_close:  [object, relatedset_field_definition_element_close_callback, self]
+    #before_close:  [object, relatedset_field_definition_element_close_callback, self]
+    before_close: proc { @object.relatedset_field_definition_element_close_callback(self) }
 - name: resultset
   attach: none
   attributes:
@@ -83,14 +90,24 @@ elements:
       end
     end
   attach_attributes: private
-  before_close: '@loaded=true'
+  #before_close: '@loaded=true'
+  before_close: proc { @object.instance_variable_set(:@loaded, true) }
   elements:
   - name: field
-    attach: [none, 'Rfm::Metadata::Datum', ':allocate']
+    #attach: [none, 'Rfm::Metadata::Datum', ':allocate']
+    initial_object: proc { Rfm::Metadata::Datum.allocate }
+    # This needs to be 'cursor' or attributes won't be handled properly.
+    attach: cursor
+    # This will lock attributes to this element's cursor, but it breaks the attribute attachment style.
+    # Any attach_attributes here will do the same.
+    #attach_attributes: default
     compact: false
-    before_close: [object, field_element_close_callback, self]
+    #before_close: [object, field_element_close_callback, self]
+    before_close: proc { @object.field_element_close_callback(self) }
   - name: relatedset
-    attach: [private, Array, ':allocate']
+    #attach: [private, Array, ':allocate']
+    initial_object: proc { Array.allocate }
+    attach: private
     as_name: portals
     attach_attributes: private
     create_accessors: all
@@ -98,14 +115,20 @@ elements:
     elements:
     - name: record
       #class: Rfm::Record
-      attach: [default, 'Rfm::Record', ':allocate']
+      #attach: [default, 'Rfm::Record', ':allocate']
+      initial_object: proc { Rfm::Record.allocate }
+      attach: default
       attach_attributes: private
-      before_close: '@loaded=true'
+      #before_close: '@loaded=true'
+      before_close: proc { @object.instance_variable_set(:@loaded, true) }
       elements:
       - name: field
         compact: true
-        attach: [none, 'Rfm::Metadata::Datum', ':allocate']
-        before_close: [object, portal_field_element_close_callback, self]
+        #attach: [none, 'Rfm::Metadata::Datum', ':allocate']
+        initial_object: proc { Rfm::Metadata::Datum.allocate }
+        attach: none
+        #before_close: [object, portal_field_element_close_callback, self]
+        before_close: proc { @object.portal_field_element_close_callback(self) }
         # This is needed, because in v4 top-level attachment declarations affect ALL models.
         # attach_attributes: shared
         # attach_elements: shared

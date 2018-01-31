@@ -103,9 +103,11 @@ module SaxChange
       @initial_object = case
         when _initial_object.nil?; config[:default_class].new
         when _initial_object.is_a?(Class); _initial_object.new(**config) # added by wbr for v4
-        when _initial_object.is_a?(String); eval(_initial_object)
+        #when _initial_object.is_a?(String); eval(_initial_object)
         when _initial_object.is_a?(Symbol); self.class.const_get(_initial_object).new(**config) # added by wbr for v4
-        when _initial_object.is_a?(Proc); _initial_object.call(self)
+        #when _initial_object.is_a?(Proc); _initial_object.call(self)
+        # Should this be here or in cursor
+        when _initial_object.is_a?(Proc); instance_exec(&_initial_object)
         else _initial_object
       end
       @stack = []

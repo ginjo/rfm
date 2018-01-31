@@ -56,7 +56,7 @@ module SaxChange
         when %w(initial_object object before_close).include?(k)
           self[k] = eval_setting(v)
         when %w(attach attach_elements attach_attributes).include?(k)
-          self[k] = eval_setting(v, 'private', 'shared', 'hash', 'array', 'none')
+          self[k] = eval_setting(v, *%w( private shared hash array none values cursor default ))
         when %w(elements attributes).include?(k)
           v.is_a?(Array) && templateize_array_hashes(v)
           v.each{|t| t.is_a?(self.class) && t.render_settings}
@@ -68,13 +68,14 @@ module SaxChange
     # If input to setting is String and does not match list
     # of reserved words, then eval it.
     def eval_setting(setting, *skip_reserved_words)
-      #puts "Template#eval_setting '#{setting}', reserved-words '#{skip_reserved_words}'"
       # TODO: Move the underscore-private-ivar-name-indicator condition to somewhere else.
-      if setting.is_a?(String) && !skip_reserved_words.include?(setting) && !setting[/^_/]
+      rslt = if setting.is_a?(String) && !skip_reserved_words.include?(setting) && !setting[/^_/]
         eval(setting)
       else
         setting
       end
+      #puts "Template#eval_setting for '#{self['name']}', raw-setting '#{setting}', reserved-words '#{skip_reserved_words}', rslt '#{rslt}'"
+      rslt
     end
 
     # Change plain-hash template into Template.
@@ -105,12 +106,22 @@ module SaxChange
     
     def attach_attributes_default(*args)
       #puts "#{self}.#{__callee__} #{args}"
-      self['attach_attributes_default'] = args[0]
+      #self['attach_attributes_default'] = args[0]
+      if block_given?
+        self['attach_attributes_default'] = proc
+      else
+        self['attach_attributes_default'] = args[0]
+      end
     end
     
     def attach_elements_default(*args)
       #puts "#{self}.#{__callee__} #{args}"
-      self['attach_elements_default'] = args[0]
+      #self['attach_elements_default'] = args[0]
+      if block_given?
+        self['attach_elements_default'] = proc
+      else
+        self['attach_elements_default'] = args[0]
+      end
     end    
     
     def compact_default(*args)
@@ -137,12 +148,22 @@ module SaxChange
     
     def attach_elements(*args)
       #puts "#{self}.#{__callee__} #{args}"
-      self['attach_elements'] = args[0]
+      #self['attach_elements'] = args[0]
+      if block_given?
+        self['attach_elements'] = proc
+      else
+        self['attach_elements'] = args[0]
+      end
     end
     
     def attach_attributes(*args)
       #puts "#{self}.#{__callee__} #{args}"
-      self['attach_attributes'] = args[0]
+      #self['attach_attributes'] = args[0]
+      if block_given?
+        self['attach_attributes'] = proc
+      else
+        self['attach_attributes'] = args[0]
+      end
     end
     
     def delimiter(*args)
@@ -172,12 +193,22 @@ module SaxChange
     
     def initial_object(*args)
       #puts "#{self}.#{__callee__} #{args}"
-      self['initial_object'] = args[0]
+      #self['initial_object'] = args[0]
+      if block_given?
+        self['initial_object'] = proc
+      else
+        self['initial_object'] = args[0]
+      end
     end
     
     def before_close(*args)
       #puts "#{self}.#{__callee__} #{args}"
-      self['before_close'] = args[0]
+      #self['before_close'] = args[0]
+      if block_given?
+        self['before_close'] = proc
+      else
+        self['before_close'] = args[0]
+      end
     end
 
     
