@@ -18,46 +18,40 @@ module Rfm
   eval(File.read(File.join(File.dirname(__FILE__), '../ginjo_tools/config.rb')))
   
   AllowableOptions = %w(
-    #RFM-CORE
+    account_name
+    database
+    decimal_separator
+    field_mapping
     file_name
     file_path
-    parser
+    formatter
+    grammar
     host
+    ignore_bad_data
+    layout
+    logger
+    log_actions
+    log_responses
+    parser
+    password
     port
     proxy
-    account_name
-    password
-    database
-    layout
-    ignore_bad_data
-    ssl
+    raise_on_401
+    record_proc
     root_cert
     root_cert_name
     root_cert_path
-    warn_on_redirect
-    raise_on_401
+    ssl
+    template
     timeout
-    log_actions
-    log_responses
-    template
-    grammar
-    field_mapping
-    logger
-    decimal_separator
-    formatter
-    record_proc
-    
-    #SAXCHANGE
-    backend
-    default_class
-    initial_object
-    logger
-    log_parser
-    text_label
-    tag_translation
-    shared_variable_name
-    template
-  ).delete_if(){|x| x[/^\s*\#/]}.compact.uniq
+    warn_on_redirect
+  )
+  
+  AllowableOptions.push(*SaxChange::AllowableOptions) if Kernel.const_defined?(:SaxChange)
+  
+  AllowableOptions.delete_if(){|x| x[/^\s*\#/]}
+  AllowableOptions.compact!
+  AllowableOptions.uniq!
   
   Config.defaults = {
     :host => 'localhost',
@@ -82,7 +76,8 @@ module Rfm
   case 
     when Kernel.const_defined?(:SaxChange)
     
-      SaxChange::AllowableOptions.push %w(
+      # Add some options to SaxChange for parsing Rfm data.
+      SaxChange::AllowableOptions.push *%w(
         grammar
         field_mapping
         decimal_separator
