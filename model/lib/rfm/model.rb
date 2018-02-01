@@ -42,7 +42,7 @@ module Rfm
         #       Or should it be in the template/model? Somewhere else?
       error = handler.result.respond_to?(:error) && handler.result.error
       options[:local_env][:check_for_errors, error]
-      handler.result
+      options[:debug] ? handler : handler.result
     end
   end # Config
 

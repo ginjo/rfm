@@ -145,7 +145,7 @@ module SaxChange
     def parse(io='', _template=nil, _initial_object=nil, _backend=nil, **options)
       #puts "Parser#parse with options: #{options}"
       handler = build_handler(_backend, _template, _initial_object, **options)
-      handler.run_parser(io)
+      handler.run_parser(io).as{|r| config[:debug] ? handler : r}
     end
 
   end # Parser

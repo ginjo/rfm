@@ -22,19 +22,11 @@ module SaxChange
     # local_model - model of this cursor's tag (rename to local_model)
     # element_attachment_prefs - local object's attachment prefs based on local_model and current_model.
     # level - cursor depth
-    attr_accessor :model, :object, :tag, :handler, :xml_parent, :level, :element_attachment_prefs, :new_element_callback, :initial_attributes, :config #, :local_model
+    attr_accessor :model, :object, :tag, :handler, :xml_parent, :level, :element_attachment_prefs, :new_element_callback, :initial_attributes
     attr_accessor :logical_parent, :logical_parent_model  #, :initial_object
 
-    def_delegators :handler, :top, :stack
+    def_delegators :handler, :top, :stack, :config
 
-    #singleton_class.extend Forwardable
-    #singleton_class.def_delegators Config, :config, :defaults
-    
-    # We're not using Config module, rolling our own here.
-    # Is this really what we want? Why did we do this?
-    def self.config
-      @config ||= Config.config
-    end
 
     # Main get-constant method
     def self.get_constant(klass, options=config)
@@ -55,11 +47,10 @@ module SaxChange
     end
 
     # Most if not all cursor settings/attributes should be set at init time.
-    def initialize(_tag, _handler, _parent=nil, _initial_attributes=nil, **opts)
+    def initialize(_tag, _handler, _parent=nil, _initial_attributes=nil)  #, **opts)
       #puts "CURSOR#initialize options: #{opts}"
       @tag     =  _tag
       @handler = _handler
-      @config = @handler.config.merge(opts)
       @xml_parent = _parent || self
       @initial_attributes = _initial_attributes
       @level = @xml_parent.level.to_i + 1
@@ -174,7 +165,8 @@ module SaxChange
     def receive_start_element(_tag, _attributes)
       #puts "Cursor for #{tag} receiveing start_element for #{_tag}"
       #puts ["\nRECEIVE_START '#{_tag}'", "current_object: #{@object.class}", "current_model: #{@model['name']}", "attributes #{_attributes}"]
-      new_cursor = Cursor.new(_tag, @handler, self, _attributes, **@config) #, binding)
+      #new_cursor = Cursor.new(_tag, @handler, self, _attributes, **@config) #, binding)
+      new_cursor = Cursor.new(_tag, @handler, self, _attributes)
       new_cursor.process_new_element(binding)
       new_cursor
     end # receive_start_element

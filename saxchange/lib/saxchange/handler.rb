@@ -117,7 +117,8 @@ module SaxChange
       # Experimental config cache.
       @config_cache = config
 
-      set_cursor Cursor.new('__TOP__', self, **options).process_new_element
+      #set_cursor Cursor.new('__TOP__', self, **options).process_new_element
+      set_cursor Cursor.new('__TOP__', self).process_new_element
       #puts "Handler#initialize done: #{self.to_yaml}"
     end
     
