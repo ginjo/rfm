@@ -9,7 +9,7 @@ SaxChange::Template.register(YAML.load(<<-EEOOFF))
 #initial_object: "Rfm::Layout.new('temp_name_until_Rfm_Layout_class_is_fixed_and_layout_name_is_generated_from_xml_data')"
 #initial_object: "Rfm::Layout.new(**options)"
 name: fmpxmllayout
-initial_object: proc { Rfm::Metadata::LayoutMeta.new(**options) }
+initial_object: proc { Rfm::Metadata::LayoutMeta.new(**config) }
 attach_elements: hash  #_meta
 attach_attributes: hash  #_meta
 create_accessors: all
@@ -41,15 +41,18 @@ elements:
   - name: NAME
     as_name: name
 - name: field
-  attach:
-  - cursor
-  - Rfm::Metadata::FieldControl
-  - :new
-  #- ivg(:meta)
-  - top.object
+  # attach:
+  # - cursor
+  # - Rfm::Metadata::FieldControl
+  # - :new
+  # #- ivg(:meta)
+  # - top.object
+  initial_object: proc { Rfm::Metadata::FieldControl.new(top.object) }
+  attach: skip
   delimiter: name
   # Must use before_close handler to attach, since field_mapping must be applied to value-list key name.
-  before_close: [object, ':element_close_handler']
+  #before_close: [object, ':element_close_handler']
+  before_close: proc { @object.element_close_handler }
   # # Used to be 'object.meta', but that required sloppy 'loaded' indicator handling (or infinite loop),
   # # so now just referring to raw inst var @meta, instead of method .meta.
   # # Need to assume attributes may or may not be included in start_element call.
@@ -72,13 +75,17 @@ elements:
 - name: valuelist
   #class: Array
   #attach: [_meta, Array, ':new']
-  attach: [hash, Array, ':new']
+  #attach: [hash, Array, ':new']
+  initial_object: proc { Array.new }
+  attach: hash
   as_name: value_lists
   delimiter: name
   elements:
   - name: value
     #class: Rfm::Metadata::ValueListItem
-    attach: [array, 'Rfm::Metadata::ValueListItem', ':allocate']
+    #attach: [array, 'Rfm::Metadata::ValueListItem', ':allocate']
+    initial_object: proc { Rfm::Metadata::ValueListItem.allocate }
+    attach: array
     before_close: proc { replace(@value.to_s) }
     attach_attributes: private
     attributes:

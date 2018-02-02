@@ -101,6 +101,7 @@ module SaxChange
       _template ||= config[:template]
       @template = get_template(_template, config)
       _initial_object ||= config[:initial_object] || @template&.dig('initial_object')
+      # TODO: Reconsider this tangle, now that template has initial_object proc support.
       @initial_object = case
         when _initial_object.nil?; config[:default_class].new
         when _initial_object.is_a?(Class); _initial_object.new(**config) # added by wbr for v4
