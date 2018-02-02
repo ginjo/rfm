@@ -56,7 +56,7 @@ module SaxChange
         when %w(initial_object object before_close).include?(k)
           self[k] = eval_setting(v)
         when %w(attach attach_elements attach_attributes).include?(k)
-          self[k] = eval_setting(v, *%w( private shared hash array none values cursor default ))
+          self[k] = eval_setting(v, *%w( private shared hash array none values cursor default skip ))
         when %w(elements attributes).include?(k)
           v.is_a?(Array) && templateize_array_hashes(v)
           v.each{|t| t.is_a?(self.class) && t.render_settings}

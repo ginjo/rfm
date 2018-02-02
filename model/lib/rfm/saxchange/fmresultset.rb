@@ -76,6 +76,7 @@ elements:
   ##attach_attributes: none
   #attach: [array, 'Rfm::Record', new, object]
   #attach: 'proc {|env| puts "Inside fmresultset record template proc"; ["array", "Rfm::Record", "new", "object"]}'
+  initial_object: proc { Rfm::Record.new(@object) }
   attach: |
     proc do |env|
       #puts 'inside attachment proc'
@@ -96,11 +97,14 @@ elements:
   - name: field
     #attach: [none, 'Rfm::Metadata::Datum', ':allocate']
     initial_object: proc { Rfm::Metadata::Datum.allocate }
-    # This needs to be 'cursor' or attributes won't be handled properly.
-    attach: cursor
-    # This will lock attributes to this element's cursor, but it breaks the attribute attachment style.
-    # Any attach_attributes here will do the same.
-    #attach_attributes: default
+    # This is like previous attach:cursor.
+    # It skips attaching this element, but still allows 
+    # sub-elements & attributes to attach to it.
+    attach: skip
+    # This does the same thing but requires attach_attributes:shared and attach_elements:shared
+    #attach: none
+    #attach_attributes: shared
+    #attach_elements: shared
     compact: false
     #before_close: [object, field_element_close_callback, self]
     before_close: proc { @object.field_element_close_callback(self) }

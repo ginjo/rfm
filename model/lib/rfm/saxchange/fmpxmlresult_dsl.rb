@@ -54,7 +54,6 @@ module Rfm
       attach 'none'
       delimiter 'name'
       attach_attributes 'private'
-      #before_close ['object', 'field_definition_element_close_callback', 'self']
       before_close { @object.field_definition_element_close_callback(self) }
     end
   

@@ -84,7 +84,7 @@ module SaxChange
         get_initial_object(binding)
       end
 
-      #puts "\n#{self}.initialize #{@level}-#{@tag}, lg-pnt '#{@logical_parent.tag}', eap '#{@element_attachment_prefs}', nec '#{@new_element_callback}', obj '#{@object.class}', model '#{@model}'"
+      #puts "\n#{self}.initialize #{@level}-#{@tag}, lg-pnt '#{@logical_parent.tag}', eap '#{@element_attachment_prefs}', obj '#{@object.class}', model '#{@model['name']}'"
       self
     end # initialize
     
@@ -105,7 +105,7 @@ module SaxChange
       
       attribute_target.assign_attributes(@initial_attributes, @model) if @initial_attributes&.any?
       
-      if ! ['none', 'cursor'].include?(@element_attachment_prefs) &&
+      if ! ['none', 'cursor', 'skip'].include?(@element_attachment_prefs) &&
          ! @element_attachment_prefs.is_a?(Proc) &&
          ! delimiter?
       then
@@ -215,7 +215,7 @@ module SaxChange
         #     proc_result = instance_exec(binding, &@element_attachment_prefs) 
         #   end
         
-        if (delimiter = delimiter?(@model); delimiter && !['none','cursor'].include?(@element_attachment_prefs.to_s)) || @element_attachment_prefs.is_a?(Proc)
+        if (delimiter = delimiter?(@model); delimiter && !['none','cursor','skip'].include?(@element_attachment_prefs.to_s)) || @element_attachment_prefs.is_a?(Proc)
           #puts "RECEIVE_END_ELEMENT attaching new element TAG (#{@tag}) OBJECT (#{@object.class}) #{@object.to_yaml} WITH LOCAL MODEL #{@local_model.to_yaml} TO PARENT (#{@parent.object.class}) #{@parent.object.to_yaml} PARENT MODEL #{@parent.model.to_yaml}"
           @logical_parent.attach_new_element(@tag, @object, self)
         end      
@@ -292,8 +292,12 @@ module SaxChange
     # TODO: This needs work.
     # What does an element with attach:none do with attributes?
     def attribute_target
-      if attach? == 'none' && (attach_attributes? == 'none' || attach_attributes?.nil?)
-        @logical_parent
+      #if attach? == 'none' && (attach_attributes? == 'none' || attach_attributes?.nil?)
+      # This changes to general rule that "attach:none disables this cursor's attach_attributes affect".
+      # This now says that when attach:none, attributes will by-default 'skip' to attach to parent,
+      # unless attach_attributes is something other than nil or 'skip'.
+      if attach? == 'none' && attach_attributes?.nil? || attach_attributes? == 'skip'
+        @logical_parent.attribute_target || top
       else
         self
       end
@@ -406,8 +410,18 @@ module SaxChange
       uniq_ancestors = ancestors.map{|a| [a, a.xml_parent, a.logical_parent]}.flatten.compact.uniq.sort{|a,b| a.level <=> b.level}.reverse
       #puts uniq_ancestors.map(&:tag).join(', ') # This is shorthand for map{|a| a&.tag}.join(', '), but what will it do if a==nil?
       
-      uniq_ancestors.find{|a| a.model&.dig('elements')&.find{|e| e['name'] == _tag} } ||
-      uniq_ancestors.find{|a| a.model&.dig('attach') != 'none' } ||
+      # uniq_ancestors.find{|a| a.model&.dig('elements')&.find{|e| e['name'] == _tag} } ||
+      # uniq_ancestors.find{|a| a.model&.dig('attach') != 'none' } ||
+      uniq_ancestors.find{|a| a.elements?&.find{|e| e['name'] == _tag} } ||
+      #uniq_ancestors.find{|a| a.attach? != 'none' } ||
+      # This is same logic as attribute_target above, but the truth is reversed.
+      # "This now says that when attach:none, l-p will by-default 'skip' to the next higher parent,
+      # unless attach_elements is something other than nil or 'skip'.
+      # This says skip the cursor if attach_elements:skip, or if attach_elements is empty and attach:none.
+      # It also means if attach:none && attach_elements:none, then use this cursor as l-p, but don't attach any elements to it.
+      # Experimentally, trying out attach:skip should be same as previous attach:cursor. Will need to change 'skip' to something else
+      # for choosing actual attachment style further down the chain (in object-merge stage I think).
+      uniq_ancestors.find{|a| ! (a.attach? == 'none' && a.attach_elements?.nil? || a.attach_elements? == 'skip') } ||  # || a.attach? == 'skip') } ||
       top
     end
 
