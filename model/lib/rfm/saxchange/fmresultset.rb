@@ -100,7 +100,7 @@ elements:
     # This is like previous attach:cursor.
     # It skips attaching this element, but still allows 
     # sub-elements & attributes to attach to it.
-    attach: skip
+    attach: hidden
     # This does the same thing but requires attach_attributes:shared and attach_elements:shared
     #attach: none
     #attach_attributes: shared

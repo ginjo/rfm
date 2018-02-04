@@ -73,15 +73,16 @@ module SaxChange
       
       @element_attachment_prefs = compile_attachment_prefs(@logical_parent_model, @model, 'element')
       # NOTE: '=' takes precedence over 'if', so you don't need parens around assignment expression.
+      # TODO: Should this go further down the chain, maybe in the object-merge methods?
       @element_attachment_prefs = nil if @element_attachment_prefs.to_s == 'default'
       
       @object = case
-      when @tag == '__TOP__'
-        @handler.initial_object
-      #when attach? == 'none'
-      #
-      else
-        get_initial_object(binding)
+        when @tag == '__TOP__'
+          @handler.initial_object
+        #when attach? == 'none'
+        #
+        else
+          get_initial_object(binding)
       end
 
       #puts "\n#{self}.initialize #{@level}-#{@tag}, lg-pnt '#{@logical_parent.tag}', eap '#{@element_attachment_prefs}', obj '#{@object.class}', model '#{@model['name']}'"
@@ -105,7 +106,7 @@ module SaxChange
       
       attribute_target.assign_attributes(@initial_attributes, @model) if @initial_attributes&.any?
       
-      if ! ['none', 'cursor', 'skip'].include?(@element_attachment_prefs) &&
+      if ! ['none', 'hidden'].include?(@element_attachment_prefs) &&
          ! @element_attachment_prefs.is_a?(Proc) &&
          ! delimiter?
       then
@@ -215,7 +216,7 @@ module SaxChange
         #     proc_result = instance_exec(binding, &@element_attachment_prefs) 
         #   end
         
-        if (delimiter = delimiter?(@model); delimiter && !['none','cursor','skip'].include?(@element_attachment_prefs.to_s)) || @element_attachment_prefs.is_a?(Proc)
+        if (delimiter = delimiter?(@model); delimiter && !['none','hidden'].include?(@element_attachment_prefs.to_s)) || @element_attachment_prefs.is_a?(Proc)
           #puts "RECEIVE_END_ELEMENT attaching new element TAG (#{@tag}) OBJECT (#{@object.class}) #{@object.to_yaml} WITH LOCAL MODEL #{@local_model.to_yaml} TO PARENT (#{@parent.object.class}) #{@parent.object.to_yaml} PARENT MODEL #{@parent.model.to_yaml}"
           @logical_parent.attach_new_element(@tag, @object, self)
         end      
@@ -292,12 +293,15 @@ module SaxChange
     # TODO: This needs work.
     # What does an element with attach:none do with attributes?
     def attribute_target
+      @attribute_target ||=
       #if attach? == 'none' && (attach_attributes? == 'none' || attach_attributes?.nil?)
       # This changes to general rule that "attach:none disables this cursor's attach_attributes affect".
       # This now says that when attach:none, attributes will by-default 'skip' to attach to parent,
       # unless attach_attributes is something other than nil or 'skip'.
-      if attach? == 'none' && attach_attributes?.nil? || attach_attributes? == 'skip'
-        @logical_parent.attribute_target || top
+      #if attach? == 'none' && attach_attributes?.nil? || attach_attributes? == 'skip'
+      if @element_attachment_prefs == 'none' && attach_attributes?.nil? || attach_attributes? == 'skip'
+        puts "Getting Attribute Target for '#{@tag}', with l-p '#{@logical_parent&.tag}', self '#{self.class}', top '#{top}', handler '#{handler.class}'"
+        @logical_parent&.attribute_target || top
       else
         self
       end
@@ -419,9 +423,10 @@ module SaxChange
       # unless attach_elements is something other than nil or 'skip'.
       # This says skip the cursor if attach_elements:skip, or if attach_elements is empty and attach:none.
       # It also means if attach:none && attach_elements:none, then use this cursor as l-p, but don't attach any elements to it.
-      # Experimentally, trying out attach:skip should be same as previous attach:cursor. Will need to change 'skip' to something else
-      # for choosing actual attachment style further down the chain (in object-merge stage I think).
-      uniq_ancestors.find{|a| ! (a.attach? == 'none' && a.attach_elements?.nil? || a.attach_elements? == 'skip') } ||  # || a.attach? == 'skip') } ||
+      # Experimentally, trying out attach:skip should be same as previous attach:cursor.
+      uniq_ancestors.find{|a| ! (a.attach? == 'none' && a.attach_elements?.nil? || a.attach_elements? == 'skip') }
+      # This shouldn't work, since @element_attachment_prefs hasn't been set yet!
+      #uniq_ancestors.find{|a| ! (a.element_attachment_prefs == 'none' && a.attach_elements?.nil? || a.attach_elements? == 'skip') } ||  # || a.attach? == 'skip') } ||
       top
     end
 

@@ -10,7 +10,7 @@ module ObjectMergeRefinements
       #   delimiter = (args[1] || options[:delimiter])
       prefs = (args[2] || options[:prefs])
       #   type = (args[3] || options[:type])
-      return if ['cursor','none','skip'].include?(prefs)  #=='none' || prefs=='cursor')   #['none', 'cursor'].include? prefs ... not sure which is faster.
+      return if ['hidden','none', 'skip'].include?(prefs)  #=='none' || prefs=='cursor')   #['none', 'cursor'].include? prefs ... not sure which is faster.
       self._merge_object!(
         obj,
         args[0] || options[:name] || 'unknown_name',

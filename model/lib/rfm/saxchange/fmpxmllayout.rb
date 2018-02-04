@@ -48,7 +48,7 @@ elements:
   # #- ivg(:meta)
   # - top.object
   initial_object: proc { Rfm::Metadata::FieldControl.new(top.object) }
-  attach: skip
+  attach: hidden
   delimiter: name
   # Must use before_close handler to attach, since field_mapping must be applied to value-list key name.
   #before_close: [object, ':element_close_handler']
