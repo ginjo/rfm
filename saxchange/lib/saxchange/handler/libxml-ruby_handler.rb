@@ -8,9 +8,11 @@ module SaxChange
         include XML::SaxParser::Callbacks
             
         def run_parser(io)
+          #puts "LibxmlRubyHandler#run_parser"
           parser = case
             when io.is_a?(IO); XML::SaxParser.io(io)
             when io.is_a?(String); XML::SaxParser.string(io)
+            else XML::SaxParser.io(io)
           end
           parser.callbacks = self
           parser.parse

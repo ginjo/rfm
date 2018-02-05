@@ -40,7 +40,10 @@ module SaxChange
       base.send :prepend, PrependMethods
     end
     
-    def self.new(_backend=nil, _template=nil, _initial_object=nil, **options)
+    #def self.new(_backend=nil, _template=nil, _initial_object=nil, **options)
+    def self.new(*args) # args[0] should be backend-name or nil.
+      options = args.pop if args.last.is_a?(Hash)
+      _backend = args[0]
       backend_handler_class = get_backend(_backend || config(options)[:backend])
       #puts "#{self}.new with _backend:'#{_backend}', _template:'#{_template}', _initial_object:'#{_initial_object}', options:'#{options}'"
       #backend_handler_class.new(_template, _initial_object, **options)
@@ -48,7 +51,8 @@ module SaxChange
       _parser = yield(binding) if block_given?
       handler_object = backend_handler_class.allocate
       handler_object.parser = _parser
-      handler_object.send :initialize, _template, _initial_object, **options
+      #handler_object.send :initialize, _template, _initial_object, **options
+      handler_object.send :initialize, **options
       handler_object
     end
       
@@ -95,12 +99,15 @@ module SaxChange
     # The Handler#initialize is the final say for pushing options to the handler automatically.
     # After #initialize, one must manually change config or attributes, if they really want to.
     # The next step expected after #initialize is run_parser.
-    def initialize(_template=nil, _initial_object=nil, **options)
-      #puts "Handler#initialize with options: #{options}"
+    #def initialize(_template=nil, _initial_object=nil, **options)
+    def initialize(**options)
+      puts "Handler#initialize with options: #{options}"
       @errors = []
-      _template ||= config[:template]
+      #_template ||= config[:template]
+      _template = config[:template]
       @template = get_template(_template, config)
-      _initial_object ||= config[:initial_object] || @template&.dig('initial_object')
+      #_initial_object ||= config[:initial_object] || @template&.dig('initial_object')
+      _initial_object = config[:initial_object] || @template&.dig('initial_object')
       # TODO: Reconsider this tangle, now that template has initial_object proc support.
       @initial_object = case
         when _initial_object.nil?; config[:default_class].new
@@ -171,7 +178,8 @@ module SaxChange
       #puts "Pushing cursor into stack #{args}"
       if args.is_a? Cursor
         stack.push(args)
-        @stack_debug.push(args.dup.tap(){|c| c.handler = c.handler.object_id})  if config[:debug] #; c.parent = c.parent.tag})
+        #@stack_debug.push(args.dup.tap(){|c| c.handler = c.handler.object_id})  if config[:debug] #; c.parent = c.parent.tag})
+        @stack_debug.push(args) if config[:debug]
       end
       cursor
     end

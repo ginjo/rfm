@@ -48,7 +48,7 @@ module SaxChange
 
     # Most if not all cursor settings/attributes should be set at init time.
     def initialize(_tag, _handler, _parent=nil, _initial_attributes=nil)  #, **opts)
-      #puts "CURSOR#initialize options: #{opts}"
+      #puts "CURSOR#initialize hnd: #{_handler}"
       @tag     =  _tag
       @handler = _handler
       @xml_parent = _parent || self
@@ -298,9 +298,9 @@ module SaxChange
       # This changes to general rule that "attach:none disables this cursor's attach_attributes affect".
       # This now says that when attach:none, attributes will by-default 'skip' to attach to parent,
       # unless attach_attributes is something other than nil or 'skip'.
-      #if attach? == 'none' && attach_attributes?.nil? || attach_attributes? == 'skip'
-      if @element_attachment_prefs == 'none' && attach_attributes?.nil? || attach_attributes? == 'skip'
-        puts "Getting Attribute Target for '#{@tag}', with l-p '#{@logical_parent&.tag}', self '#{self.class}', top '#{top}', handler '#{handler.class}'"
+      if attach? == 'none' && attach_attributes?.nil? || attach_attributes? == 'skip'
+      #if @element_attachment_prefs == 'none' && attach_attributes?.nil? || attach_attributes? == 'skip'
+        #puts "Getting Attribute Target for '#{@tag}', with l-p '#{@logical_parent&.tag}', self '#{self.class}', top '#{top}', handler '#{handler.class}'"
         @logical_parent&.attribute_target || top
       else
         self
@@ -424,7 +424,7 @@ module SaxChange
       # This says skip the cursor if attach_elements:skip, or if attach_elements is empty and attach:none.
       # It also means if attach:none && attach_elements:none, then use this cursor as l-p, but don't attach any elements to it.
       # Experimentally, trying out attach:skip should be same as previous attach:cursor.
-      uniq_ancestors.find{|a| ! (a.attach? == 'none' && a.attach_elements?.nil? || a.attach_elements? == 'skip') }
+      uniq_ancestors.find{|a| ! (a.attach? == 'none' && a.attach_elements?.nil? || a.attach_elements? == 'skip') } ||
       # This shouldn't work, since @element_attachment_prefs hasn't been set yet!
       #uniq_ancestors.find{|a| ! (a.element_attachment_prefs == 'none' && a.attach_elements?.nil? || a.attach_elements? == 'skip') } ||  # || a.attach? == 'skip') } ||
       top

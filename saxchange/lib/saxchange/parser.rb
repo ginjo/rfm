@@ -113,11 +113,13 @@ module SaxChange
       (config backend: backend) if backend
     end
 
-    def build_handler(_backend=nil, _template=nil, _initial_object=nil, **options)
+    #def build_handler(_backend=nil, _template=nil, _initial_object=nil, **options)
+    def build_handler(_backend=nil, **options)
       #puts "Parser#build_handler with options: #{options}" 
       # Note that we need to send the parser instance @config to the handler,
       # since the handler only looks back to the config defaults, not to the parser config.
-      Handler.new(_backend, _template, _initial_object, **@config.merge(options)) do
+      #Handler.new(_backend, _template, _initial_object, **@config.merge(options)) do
+      Handler.new(_backend, **@config.merge(options)) do
         # Block result becomes Handler#@parser to be used for template cache.
         self
       end
@@ -125,9 +127,13 @@ module SaxChange
     
     # NOTE: 'call' will (might?) suppress parsing errors and return the handler.
     #       See handler.errors for any errors generated along the way.
-    def call(io='', _template=nil, _initial_object=nil, _backend=nil, **options)
+    #def call(io='', _template=nil, _initial_object=nil, _backend=nil, **options)
+    def call(io, *args)
+      options = args.pop if args.last.is_a?(Hash)
+      _backend = args[0]
       #puts "Parser#call with options: #{options}"
-      handler = build_handler(_backend, _template, _initial_object, **options)
+      #handler = build_handler(_backend, _template, _initial_object, **options)
+      handler = build_handler(_backend, **options)
       handler.run_parser(io)
       handler
     ensure
@@ -142,9 +148,11 @@ module SaxChange
     
     # Parse will return the result object, unless errors are raised.
     # Should this piggy-back on 'call' ?
-    def parse(io='', _template=nil, _initial_object=nil, _backend=nil, **options)
+    #def parse(io='', _template=nil, _initial_object=nil, _backend=nil, **options)
+    def parse(io, **options)
       #puts "Parser#parse with options: #{options}"
-      handler = build_handler(_backend, _template, _initial_object, **options)
+      #handler = build_handler(_backend, _template, _initial_object, **options)
+      handler = build_handler(**options)
       handler.run_parser(io).as{|r| config[:debug] ? handler : r}
     end
 
