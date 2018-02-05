@@ -106,12 +106,12 @@ module SaxChange
       
       attribute_target.assign_attributes(@initial_attributes, @model) if @initial_attributes&.any?
       
-      if ! ['none', 'hidden'].include?(@element_attachment_prefs) &&
-         ! @element_attachment_prefs.is_a?(Proc) &&
-         ! delimiter?
-      then
-        @logical_parent.attach_new_element(@tag, @object, self)
-      end
+      # if ! ['none', 'hidden'].include?(@element_attachment_prefs) &&
+      #    ! @element_attachment_prefs.is_a?(Proc) &&
+      #    ! delimiter?
+      # then
+      #   @logical_parent.attach_new_element(@tag, @object, self)
+      # end
 
       self
     end # process_new_element
@@ -183,8 +183,8 @@ module SaxChange
     # Receive a single attribute (any named attribute or text)
     def receive_attribute(name, value)
       #puts ["\nRECEIVE_ATTR '#{name}'", "value: #{value}", "tag: #{@tag}", "object: #{object.class}", "model: #{model['name']}"]
-      new_att = {name=>value}    #.new.tap{|att| att[name]=value}
-      attribute_target.assign_attributes(new_att, @model) #, @object, @model, @local_model)
+      new_att = {name=>value}
+      attribute_target.assign_attributes(new_att, @model)
     rescue
       SaxChange.log.warn "Error: could not assign attribute '#{name.to_s}' to element '#{self.tag.to_s}': #{$!}"
     end
@@ -216,7 +216,12 @@ module SaxChange
         #     proc_result = instance_exec(binding, &@element_attachment_prefs) 
         #   end
         
-        if (delimiter = delimiter?(@model); delimiter && !['none','hidden'].include?(@element_attachment_prefs.to_s)) || @element_attachment_prefs.is_a?(Proc)
+        # if ! ['none', 'hidden'].include?(@element_attachment_prefs) &&
+        #    ! @element_attachment_prefs.is_a?(Proc) &&
+        #    ! delimiter?
+        
+        #if (delimiter = delimiter?(@model); delimiter && !['none','hidden'].include?(@element_attachment_prefs.to_s)) || @element_attachment_prefs.is_a?(Proc)
+        if ! ['none', 'hidden'].include?(@element_attachment_prefs)
           #puts "RECEIVE_END_ELEMENT attaching new element TAG (#{@tag}) OBJECT (#{@object.class}) #{@object.to_yaml} WITH LOCAL MODEL #{@local_model.to_yaml} TO PARENT (#{@parent.object.class}) #{@parent.object.to_yaml} PARENT MODEL #{@parent.model.to_yaml}"
           @logical_parent.attach_new_element(@tag, @object, self)
         end      
