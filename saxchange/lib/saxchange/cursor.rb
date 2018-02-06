@@ -200,12 +200,12 @@ module SaxChange
         
         prefs = @element_attachment_prefs
         #if (delimiter = delimiter?(@model); delimiter && !['none','hidden'].include?(@element_attachment_prefs.to_s)) || @element_attachment_prefs.is_a?(Proc)
-        if prefs.is_a?(Proc)
-          proc_result = instance_exec(binding, &prefs)
-          prefs = proc_result if proc_result
-        end
         
-        if ! ['none', 'hidden'].include?(prefs)
+        proc_result = instance_exec(binding, &prefs) if prefs.is_a?(Proc)
+        prefs = proc_result if proc_result
+        
+        #if ! (['none', 'hidden'].include?(prefs)) && ! (prefs.nil? && !defined?(:proc_result))
+        if proc_result || !prefs.is_a?(Proc)
           #puts "RECEIVE_END_ELEMENT attaching new element TAG (#{@tag}) OBJECT (#{@object.class}) #{@object.to_yaml} WITH LOCAL MODEL #{@local_model.to_yaml} TO PARENT (#{@parent.object.class}) #{@parent.object.to_yaml} PARENT MODEL #{@parent.model.to_yaml}"
           #@logical_parent.attach_new_element(@tag, @object, self)
           @logical_parent.attach_new_element(@tag, @object, @model, prefs)
