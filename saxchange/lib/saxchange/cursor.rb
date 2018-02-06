@@ -104,80 +104,46 @@ module SaxChange
       #puts ["\nPROCESS_NEW_ELEMENT tag: #{@tag}", "@element_attachment_prefs: #{@element_attachment_prefs}", "@local_model: #{model}"]
       return self if @tag == '__TOP__'
       
-      attribute_target.assign_attributes(@initial_attributes, @model) if @initial_attributes&.any?
-      
-      # if ! ['none', 'hidden'].include?(@element_attachment_prefs) &&
-      #    ! @element_attachment_prefs.is_a?(Proc) &&
-      #    ! delimiter?
-      # then
-      #   @logical_parent.attach_new_element(@tag, @object, self)
-      # end
+      #attribute_target.assign_attributes(@initial_attributes, @model) if @initial_attributes&.any?
+      assign_attributes(@initial_attributes) if @initial_attributes&.any?
 
       self
     end # process_new_element
+    
+    # Assign attributes to target cursor's object.
+    # The attributes could be from this element.
+    def assign_attributes(_attributes)
+      if _attributes&.any?
+
+        _attributes.each do |k,v|
+          attr_model = attribute?(k, @model)
+          #puts "\nASSIGN_ATTRIBUTES each attr key:#{k}, val:#{v}, attr_model:#{attr_model}, @model:#{@model}"
+          prefs = compile_attachment_prefs(attribute_target.model, attr_model, 'attribute')
+          proc_result = instance_exec(binding, &prefs) if prefs.is_a?(Proc)
+          prefs = proc_result if proc_result
+
+          if proc_result || !prefs.is_a?(Proc)
+            #@object._attach_object!(v, label, delimiter?(attr_model), prefs, 'attribute', :default_class=>config[:default_class], :shared_variable_name=>shared_var_name, :create_accessors=>create_accessors)
+            attribute_target.attach_new_attribute(k, v, prefs, attr_model)
+          end
+        end # each
+      end # if
+    end # assign_attributes
 
 
 
     #####  MERGE METHODS  #####
 
-    # Assign attributes to this cursor's object.
-    # The attributes could be from this element or from any sub-element.
-    # TODO: Figure out a way to run attribute-attachment procs in origin cursor,
-    #       rather than here, in target cursor.
-    def assign_attributes(_attributes, attributes_element_model=@model)
-      if _attributes && !_attributes.empty?
-
-        _attributes.each do |k,v|
-          attr_model = attribute?(k, attributes_element_model)
-          #puts "\nASSIGN_ATTRIBUTES each attr key:#{k}, val:#{v}, attr_model:#{attr_model}, @model:#{@model}"
-
-          label = label_or_tag(k, attr_model)
-
-          prefs = compile_attachment_prefs(@model, attr_model, 'attribute')
-
-          shared_var_name = shared_variable_name(prefs)
-          
-          prefs = "shared" if shared_var_name
-
-          create_accessors = compile_create_accessors(@model, attr_model)
-
-          proc_result = instance_exec(binding, &prefs) if prefs.is_a?(Proc)
-          prefs = proc_result if proc_result
-
-          #puts ["\nASSIGN_ATTRIBUTES-attach-object", "label: #{label}", "receiving-object-class: #{@object.class}", "k,v: #{[k,v]}", "attr_model: #{attr_model}", "prefs: #{prefs}", "shared_var_name: #{shared_var_name}", "create_accessors: #{create_accessors}", "delimiter: #{delimiter?(attr_model)}"]
-
-          if proc_result || !prefs.is_a?(Proc)
-            @object._attach_object!(v, label, delimiter?(attr_model), prefs, 'attribute', :default_class=>config[:default_class], :shared_variable_name=>shared_var_name, :create_accessors=>create_accessors)
-          end
-        end
-
-      end # if
-    end # assign_attributes
+    def attach_new_attribute(k, v, prefs, attr_model)
+      #puts "\nASSIGN_ATTRIBUTES each attr key:#{k}, val:#{v}, attr_model:#{attr_model}, @model:#{@model}"
+      label = label_or_tag(k, attr_model)
+      shared_var_name = shared_variable_name(prefs)        
+      prefs = "shared" if shared_var_name
+      create_accessors = compile_create_accessors(@model, attr_model)
+      @object._attach_object!(v, label, delimiter?(attr_model), prefs, 'attribute', :default_class=>config[:default_class], :shared_variable_name=>shared_var_name, :create_accessors=>create_accessors)
+    end # assign_attributes_receive
 
     # This ~should~ be only concerned with how to attach a given element to THIS cursor's object.
-    # TODO: Reconsider the args passed to this method. I think get rid of arg 'new_object'.
-    #     def attach_new_element(name, new_object, new_object_cursor) 
-    #       label = label_or_tag(name, new_object_cursor.model)
-    # 
-    #       prefs = new_object_cursor.element_attachment_prefs
-    # 
-    #       shared_var_name = shared_variable_name(prefs)
-    # 
-    #       prefs = "shared" if shared_var_name
-    # 
-    #       create_accessors = compile_create_accessors(@model, new_object_cursor.model)
-    # 
-    #       proc_result = new_object_cursor.instance_exec(binding, &prefs) if prefs.is_a?(Proc)
-    #       
-    #       prefs = proc_result if proc_result
-    # 
-    #       #puts ["\nATTACH_NEW_ELEMENT", "new_object: #{new_object}", "parent_object: #{@object}", "label: #{name}", "delimiter: #{delimiter?(new_object_cursor.model)}", "prefs: #{prefs}", "shared_var_name: #{shared_var_name}", "create_accessors: #{create_accessors}"]      
-    #       
-    #       if proc_result || !prefs.is_a?(Proc)
-    #         @object._attach_object!(new_object, label, delimiter?(new_object_cursor.model), prefs, 'element', :default_class=>config[:default_class], :shared_variable_name=>shared_var_name, :create_accessors=>create_accessors)
-    #       end
-    #     end # attach_new_element
-
     def attach_new_element(name, new_object, new_object_model, prefs) 
       label = label_or_tag(name, new_object_model)
 
@@ -198,14 +164,14 @@ module SaxChange
     end # attach_new_element
 
 
-
     #####  SAX METHODS  #####
 
     # Receive a single attribute (any named attribute or text)
     def receive_attribute(name, value)
       #puts ["\nRECEIVE_ATTR '#{name}'", "value: #{value}", "tag: #{@tag}", "object: #{object.class}", "model: #{model['name']}"]
       new_att = {name=>value}
-      attribute_target.assign_attributes(new_att, @model)
+      #attribute_target.assign_attributes(new_att, @model)
+      assign_attributes(new_att)
     rescue
       SaxChange.log.warn "Error: could not assign attribute '#{name.to_s}' to element '#{self.tag.to_s}': #{$!}"
     end
@@ -269,11 +235,7 @@ module SaxChange
     
     # TODO: Special setting names (like 'none', 'shared', 'private') should be
     #       symbols, not strings.
-    # TODO: Should probably wait until element_close to attach elements.
-    #       This shouldn't affect attribute and sub-element attachment, and might
-    #       reduce complexity of attachment logic.
-    # TODO: Consider adding optional callbacks for (after-new-element, before/after-attribute, before/after-element-close).
-    
+    # TODO: Consider adding optional callbacks: after-new-element, before/after-attribute, before/after-element-close.
 
     # Methods to extract template delcarations from current @model.
     # These could also be applied to any given model, even an attribute-model.
