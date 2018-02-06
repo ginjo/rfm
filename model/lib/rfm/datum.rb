@@ -10,14 +10,14 @@ module Rfm
         (resultset.options[:field_mapping] || {})[name] || name
       end
 
-      # NOT sure what this method is for. Can't find a reference to it.
-      def main_callback(cursor)
-        resultset = cursor.top.object
-        name = get_mapped_name(@attributes['name'].to_s, resultset)
-        field = resultset.field_meta[name]
-        data = @attributes['data']
-        cursor.logical_parent.object[name.downcase] = field.coerce(data)
-      end
+      #   # NOT sure what this method is for. Can't find a reference to it.
+      #   def main_callback(cursor)
+      #     resultset = cursor.top.object
+      #     name = get_mapped_name(@attributes['name'].to_s, resultset)
+      #     field = resultset.field_meta[name]
+      #     data = @attributes['data']
+      #     cursor.logical_parent.object[name.downcase] = field.coerce(data)
+      #   end
 
       def portal_field_element_close_callback(cursor)
         resultset = cursor.top.object

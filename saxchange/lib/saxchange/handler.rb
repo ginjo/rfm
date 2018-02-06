@@ -101,7 +101,7 @@ module SaxChange
     # The next step expected after #initialize is run_parser.
     #def initialize(_template=nil, _initial_object=nil, **options)
     def initialize(**options)
-      puts "Handler#initialize with options: #{options}"
+      #puts "Handler#initialize with options: #{options}"
       @errors = []
       #_template ||= config[:template]
       _template = config[:template]

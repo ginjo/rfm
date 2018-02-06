@@ -122,7 +122,8 @@ module SaxChange
 
     # Assign attributes to this cursor's object.
     # The attributes could be from this element or from any sub-element.
-    # TODO: I think the 2nd arg should be attributes_element_cursor, with no default.
+    # TODO: Figure out a way to run attribute-attachment procs in origin cursor,
+    #       rather than here, in target cursor.
     def assign_attributes(_attributes, attributes_element_model=@model)
       if _attributes && !_attributes.empty?
 
@@ -155,27 +156,47 @@ module SaxChange
 
     # This ~should~ be only concerned with how to attach a given element to THIS cursor's object.
     # TODO: Reconsider the args passed to this method. I think get rid of arg 'new_object'.
-    def attach_new_element(name, new_object, new_object_cursor) 
-      label = label_or_tag(name, new_object_cursor.model)
+    #     def attach_new_element(name, new_object, new_object_cursor) 
+    #       label = label_or_tag(name, new_object_cursor.model)
+    # 
+    #       prefs = new_object_cursor.element_attachment_prefs
+    # 
+    #       shared_var_name = shared_variable_name(prefs)
+    # 
+    #       prefs = "shared" if shared_var_name
+    # 
+    #       create_accessors = compile_create_accessors(@model, new_object_cursor.model)
+    # 
+    #       proc_result = new_object_cursor.instance_exec(binding, &prefs) if prefs.is_a?(Proc)
+    #       
+    #       prefs = proc_result if proc_result
+    # 
+    #       #puts ["\nATTACH_NEW_ELEMENT", "new_object: #{new_object}", "parent_object: #{@object}", "label: #{name}", "delimiter: #{delimiter?(new_object_cursor.model)}", "prefs: #{prefs}", "shared_var_name: #{shared_var_name}", "create_accessors: #{create_accessors}"]      
+    #       
+    #       if proc_result || !prefs.is_a?(Proc)
+    #         @object._attach_object!(new_object, label, delimiter?(new_object_cursor.model), prefs, 'element', :default_class=>config[:default_class], :shared_variable_name=>shared_var_name, :create_accessors=>create_accessors)
+    #       end
+    #     end # attach_new_element
 
-      prefs = new_object_cursor.element_attachment_prefs
+    def attach_new_element(name, new_object, new_object_model, prefs) 
+      label = label_or_tag(name, new_object_model)
 
+      #prefs = new_object_cursor.element_attachment_prefs
+      #prefs = compile_attachment_prefs(@model, new_object_model, 'element')
+
+      # Should this mutation happen later down the line,
+      # at the last possible point before it's needed?
+      # Maybe this is that point?
       shared_var_name = shared_variable_name(prefs)
-
       prefs = "shared" if shared_var_name
 
-      create_accessors = compile_create_accessors(@model, new_object_cursor.model)
-
-      proc_result = new_object_cursor.instance_exec(binding, &prefs) if prefs.is_a?(Proc)
-      
-      prefs = proc_result if proc_result
+      create_accessors = compile_create_accessors(@model, new_object_model)      
 
       #puts ["\nATTACH_NEW_ELEMENT", "new_object: #{new_object}", "parent_object: #{@object}", "label: #{name}", "delimiter: #{delimiter?(new_object_cursor.model)}", "prefs: #{prefs}", "shared_var_name: #{shared_var_name}", "create_accessors: #{create_accessors}"]      
       
-      if proc_result || !prefs.is_a?(Proc)
-        @object._attach_object!(new_object, label, delimiter?(new_object_cursor.model), prefs, 'element', :default_class=>config[:default_class], :shared_variable_name=>shared_var_name, :create_accessors=>create_accessors)
-      end
+      @object._attach_object!(new_object, label, delimiter?(new_object_model), prefs, 'element', :default_class=>config[:default_class], :shared_variable_name=>shared_var_name, :create_accessors=>create_accessors)
     end # attach_new_element
+
 
 
     #####  SAX METHODS  #####
@@ -211,25 +232,22 @@ module SaxChange
           (clean_members {|v| clean_members(v){|w| clean_members(w)}}) if compactor_settings
         end
         
-        #   # TODO: I don't think this is the right place for the attachment proc.
-        #   if @element_attachment_prefs.is_a?(Proc)
-        #     proc_result = instance_exec(binding, &@element_attachment_prefs) 
-        #   end
-        
-        # if ! ['none', 'hidden'].include?(@element_attachment_prefs) &&
-        #    ! @element_attachment_prefs.is_a?(Proc) &&
-        #    ! delimiter?
-        
+        prefs = @element_attachment_prefs
         #if (delimiter = delimiter?(@model); delimiter && !['none','hidden'].include?(@element_attachment_prefs.to_s)) || @element_attachment_prefs.is_a?(Proc)
-        if ! ['none', 'hidden'].include?(@element_attachment_prefs)
+        if prefs.is_a?(Proc)
+          proc_result = instance_exec(binding, &prefs)
+          prefs = proc_result if proc_result
+        end
+        
+        if ! ['none', 'hidden'].include?(prefs)
           #puts "RECEIVE_END_ELEMENT attaching new element TAG (#{@tag}) OBJECT (#{@object.class}) #{@object.to_yaml} WITH LOCAL MODEL #{@local_model.to_yaml} TO PARENT (#{@parent.object.class}) #{@parent.object.to_yaml} PARENT MODEL #{@parent.model.to_yaml}"
-          @logical_parent.attach_new_element(@tag, @object, self)
+          #@logical_parent.attach_new_element(@tag, @object, self)
+          @logical_parent.attach_new_element(@tag, @object, @model, prefs)
         end      
 
         if _tag == @tag #&& (@model == @local_model)
-          # End-element callbacks.
+          #puts "Cursor#receive_end_element before-close-callback"
           callback = before_close?(@model)
-          #get_callback(callback, binding) if callback
           instance_exec(binding, &callback) if callback.is_a?(Proc)
         end
 
