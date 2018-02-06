@@ -130,7 +130,7 @@ elements:
         compact: true
         #attach: [none, 'Rfm::Metadata::Datum', ':allocate']
         initial_object: proc { Rfm::Metadata::Datum.allocate }
-        attach: none
+        attach: hidden
         #before_close: [object, portal_field_element_close_callback, self]
         before_close: proc { @object.portal_field_element_close_callback(self) }
         # This is needed, because in v4 top-level attachment declarations affect ALL models.
