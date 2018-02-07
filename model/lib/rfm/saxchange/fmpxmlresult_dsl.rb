@@ -86,7 +86,7 @@ module Rfm
       attach 'none'
       
       attribute 'text' do
-        attach 'values'
+        #attach 'values'
         
         # If a record_proc exists, run it, otherwise return the
         # correct attachment prefs for this attribute 'values'.
@@ -95,15 +95,15 @@ module Rfm
         # this attribute anyway. So return nil from record_proc, if you
         # don't want the result object to fill with records.
         # 'env' is binding of cursor method where this is yielded.
-        #
-        #   attach do |env|
-        #     record_proc = handler.config[:record_proc]
-        #     if record_proc.is_a?(Proc)
-        #       instance_exec(env[:v], top.object, env, &record_proc)
-        #     else
-        #       'values'
-        #     end
-        #   end
+        
+        attach do |env|
+          record_proc = handler.config[:record_proc]
+          if record_proc.is_a?(Proc)
+            instance_exec(env[:v], top.object, env, &record_proc)
+          else
+            'values'
+          end
+        end
         
         compact true
       end # attribute
