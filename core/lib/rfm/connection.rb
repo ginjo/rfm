@@ -70,9 +70,8 @@ module Rfm
     # Finds a record. Typically you will pass in a hash of field names and values. For example:
     def find(*args)
       layout = args.shift if args.first.is_a?(String)
-      find_criteria = args.shift if args.first.to_s.to_i > 0 || args.first.is_a?(Hash)
+      find_criteria = args.shift
       options = args.last.is_a?(Hash) ? args.pop : {}
-      puts [layout, find_criteria, options, nil]
       options[:database] ||= config[:database]
       options[:layout] = layout || options[:layout] || config[:layout]
       find_criteria = {'-recid'=>find_criteria} if (find_criteria.to_s.to_i > 0)
@@ -84,32 +83,45 @@ module Rfm
     end
 
     # Access to raw -findquery command.
-    def query(_layout=nil, query_hash, **options)
+    def query(*args)
+      layout = args.shift if args.first.is_a?(String)
+      query_hash = args.shift
+      options = args.last.is_a?(Hash) ? args.pop : {}
       options[:database] ||= config[:database]
-      options[:layout] = _layout || options[:layout] || config[:layout]
+      options[:layout] = layout || options[:layout] || config[:layout]
       (options[:record_proc] = proc) if block_given?
       get_records('-findquery', query_hash, options)
     end
 
     # Updates the contents of the record whose internal +recid+ is specified.
-    def edit(_layout=nil, recid, values, **options)
+    def edit(layout=nil, recid, data, **options)
+      layout = args.shift if args.first.is_a?(String)
+      recid = args.shift
+      data = args.shift
+      options = args.last.is_a?(Hash) ? args.pop : {}
       options[:database] ||= config[:database]
-      options[:layout] = _layout || options[:layout] || config[:layout]
-      get_records('-edit', {'-recid' => recid}.merge(values), options)
+      options[:layout] = layout || options[:layout] || config[:layout]
+      get_records('-edit', {'-recid' => recid}.merge(data), options)
       #get_records('-edit', {'-recid' => recid}.merge(expand_repeats(values)), options) # attempt to set repeating fields.
     end
 
     # Creates a new record in the table associated with this layout.
-    def create(_layout=nil, values, **options)
+    def create(_layout=nil, data, **options)
+      layout = args.shift if args.first.is_a?(String)
+      data = args.shift
+      options = args.last.is_a?(Hash) ? args.pop : {}
       options[:database] ||= config[:database]
-      options[:layout] = _layout || options[:layout] || config[:layout]
-      get_records('-new', values, options)
+      options[:layout] = layout || options[:layout] || config[:layout]
+      get_records('-new', data, options)
     end
 
     # Deletes the record with the specified internal recid.
     def delete(_layout=nil, recid, **options)
+      layout = args.shift if args.first.is_a?(String)
+      recid = args.shift
+      options = args.last.is_a?(Hash) ? args.pop : {}
       options[:database] ||= config[:database]
-      options[:layout] = _layout || options[:layout] || config[:layout]
+      options[:layout] = layout || options[:layout] || config[:layout]
       get_records('-delete', {'-recid' => recid}, options)
       
       # Do we really want to return nil? FMP XML API returns the original record.
@@ -117,9 +129,9 @@ module Rfm
     end
 
     # Retrieves metadata only, with an empty resultset.
-    def view(_layout=nil, **options)
+    def view(layout=nil, **options)
       options[:database] ||= config[:database]
-      options[:layout] = _layout || options[:layout] || config[:layout]
+      options[:layout] = layout || options[:layout] || config[:layout]
       get_records('-view', {}, options)
     end
     
@@ -138,11 +150,12 @@ module Rfm
     end
 
     def layouts(**options)
+      # Experimental, uses Commands::Layouts class.
       # #connect('-layoutnames', {"-db" => database}, {:grammar=>'FMPXMLRESULT'}.merge(options)).body
       # options[:database] ||= database
       # options[:grammar] ||= 'FMPXMLRESULT'
       # get_records('-layoutnames', {}, options)
-      (options[:record_proc] = proc) if block_given?
+      options[:record_proc] = proc if block_given?
       
       require 'rfm/layouts_cmd'
       Rfm::Commands::Layouts.new(self, **options).call
@@ -244,7 +257,7 @@ module Rfm
       end
     end # get_records
 
-    # TODO: Stop deleting options, just let them fall out of the way by expand_options method.
+
     def connect(action, params={}, request_options={})
       config_merge = config.merge(request_options)
       post = params.merge(expand_options(config_merge)).merge({action => ''})
@@ -263,11 +276,13 @@ module Rfm
       end
     end
     
-
+    
+    # DO NOT do any further config-option merging below here.
+    # Either pass all needed options, or get options from config, but don't do both.
     private
 
     def http_fetch(host_name, port, path, post_data, redirect_limit=10, **options)
-      # Do NOT do any further config-option merging here.
+      
       raise Rfm::CommunicationError.new("While trying to reach the Web Publishing Engine, RFM was redirected too many times.") if redirect_limit == 0
 
       if options[:log_actions] == true
@@ -405,12 +420,11 @@ module Rfm
     end
     
     # Clean up passed params & options.
-    # This method does not fill in missing FMS api params or options,
-    # but it may fill in Rfm params and options... Hmmm, it really should not.
+    # Should this be part of 'expand_options'
     def prepare_params(params={}, options={})
       params, options = params.dup, options.dup
-      _database = options[:database] #options.delete(:database)
-      _layout   = options[:layout]   #options.delete(:layout)
+      _database = options[:database]
+      _layout   = options[:layout]
       if params.is_a?(String)
         params = Hash[URI.decode_www_form(params)]
       end
@@ -441,7 +455,7 @@ module Rfm
     end
 
     def select_grammar(post, options={})
-      grammar = config.merge(options)[:grammar] || 'fmresultset'
+      grammar = options[:grammar] || 'fmresultset'
       if grammar.to_s.downcase == 'auto'
         # TODO: build grammar-decider here.
         return "fmresultset"
@@ -451,6 +465,7 @@ module Rfm
       end
     end
 
+    # Convert user-facing keys to FMS-XML-API keys
     def expand_options(options)
       result = {}
       #field_mapping = options.delete(:field_mapping) || {}
@@ -509,12 +524,8 @@ module Rfm
         when :modification_id
           result['-modid'] = value
         else
-          if AllowableOptions.member?(key.to_s)
-            config.merge(key.to_sym=>value)
-          else
-            if config[:raise_on_invalid_option]
-              raise Rfm::ParameterError.new("Invalid option: #{key}")
-            end
+          if config[:raise_invalid_option] && ! AllowableOptions.member?(key.to_s)
+            raise Rfm::ParameterError.new("Invalid option: #{key}")
           end
         end
       end
