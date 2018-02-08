@@ -2,7 +2,9 @@ module SaxChange
   class Template < Hash
   
     # Usage: Template.register(name-and-or-hash-and-or-block)
-    # See intance methods for block-level dsl commands
+    # See instance methods for block-level dsl commands.
+    # Provide a name to the #register method, or declare the
+    # 'name' in the top-level of the template-hash.
     
     class << self
       attr_accessor :cache

@@ -97,9 +97,12 @@ module Rfm
         # 'env' is binding of cursor method where this is yielded.
         
         attach do |env|
+          # Run record-proc if provided, and insert result into Resultset if non-nil.
           record_proc = handler.config[:record_proc]
           if record_proc.is_a?(Proc)
-            instance_exec(env[:v], top.object, env, &record_proc)
+            rslt = instance_exec(env[:v], top.object, env, &record_proc)
+            top.object << rslt if rslt
+            nil
           else
             'values'
           end
