@@ -68,9 +68,13 @@ module Rfm
     end
 
     # Finds a record. Typically you will pass in a hash of field names and values. For example:
-    def find(_layout=nil, find_criteria, **options )
+    def find(*args)
+      layout = args.shift if args.first.is_a?(String)
+      find_criteria = args.shift if args.first.to_s.to_i > 0 || args.first.is_a?(Hash)
+      options = args.last.is_a?(Hash) ? args.pop : {}
+      puts [layout, find_criteria, options, nil]
       options[:database] ||= config[:database]
-      options[:layout] = _layout || options[:layout] || config[:layout]
+      options[:layout] = layout || options[:layout] || config[:layout]
       find_criteria = {'-recid'=>find_criteria} if (find_criteria.to_s.to_i > 0)
       (options[:record_proc] = proc) if block_given?
       # Original (and better!) code for making this 'find' command compound-capable:
