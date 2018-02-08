@@ -21,42 +21,17 @@ module Rfm
     def log
       Rfm.log
     end
-
-    def state(**opts)
-      #@defaults.merge(super(**opts))
-      #@defaults.merge(**opts)
-      config.merge(**opts)
-    end
-
-
-    # Should all of these convenience getters exist?
     
     def parser
       config[:parser]
     end
 
-    def host_name
-      state[:host]
+    def get_scheme(**opts)
+      opts&.dig(:ssl) ? "https" : "http"
     end
 
-    def scheme
-      state[:ssl] ? "https" : "http"
-    end
-
-    def port
-      state[:ssl] && state[:port].nil? ? 443 : state[:port]
-    end
-    
-    def database
-      state[:database]
-    end
-    
-    def layout
-      state[:layout]
-    end
-    
-    def grammar
-      state[:grammar]
+    def get_port(**opts)
+      opts&.dig(:ssl) && opts&.dig(:port).nil? ? 443 : opts&.dig(:port)
     end
     
     # Field mapping is really a layout concern. Where should it go?
@@ -64,8 +39,8 @@ module Rfm
     # def field_mapping
     #   @field_mapping ||= load_field_mapping(state[:field_mapping])
     # end
-    def field_mapping
-      load_field_mapping(state[:field_mapping])
+    def field_mapping(**opts)
+      load_field_mapping(config.merge(opts)[:field_mapping])
     end
     
 
@@ -79,23 +54,23 @@ module Rfm
     # Returns a ResultSet object containing _every record_ in the table associated with this layout.
     def findall(_layout=nil, **options)
       #return unless self.class.const_defined?(:ENABLE_FINDALL) && ENABLE_FINDALL || ENV['ENABLE_FINDALL']
-      options[:database] ||= database
-      options[:layout] = _layout || options[:layout] || layout
+      options[:database] ||= config[:database]
+      options[:layout] = _layout || options[:layout] || config[:layout]
       (options[:record_proc] = proc) if block_given?
       get_records('-findall', {}, options)
     end
 
     # Returns a ResultSet containing a single random record from the table associated with this layout.
     def findany(_layout=nil, **options)
-      options[:database] ||= database
-      options[:layout] = _layout || options[:layout] || layout
+      options[:database] ||= config[:database]
+      options[:layout] = _layout || options[:layout] || config[:layout]
       get_records('-findany', {}, options)
     end
 
     # Finds a record. Typically you will pass in a hash of field names and values. For example:
     def find(_layout=nil, find_criteria, **options )
-      options[:database] ||= database
-      options[:layout] = _layout || options[:layout] || layout
+      options[:database] ||= config[:database]
+      options[:layout] = _layout || options[:layout] || config[:layout]
       find_criteria = {'-recid'=>find_criteria} if (find_criteria.to_s.to_i > 0)
       (options[:record_proc] = proc) if block_given?
       # Original (and better!) code for making this 'find' command compound-capable:
@@ -106,31 +81,31 @@ module Rfm
 
     # Access to raw -findquery command.
     def query(_layout=nil, query_hash, **options)
-      options[:database] ||= database
-      options[:layout] = _layout || options[:layout] || layout
+      options[:database] ||= config[:database]
+      options[:layout] = _layout || options[:layout] || config[:layout]
       (options[:record_proc] = proc) if block_given?
       get_records('-findquery', query_hash, options)
     end
 
     # Updates the contents of the record whose internal +recid+ is specified.
     def edit(_layout=nil, recid, values, **options)
-      options[:database] ||= database
-      options[:layout] = _layout || options[:layout] || layout
+      options[:database] ||= config[:database]
+      options[:layout] = _layout || options[:layout] || config[:layout]
       get_records('-edit', {'-recid' => recid}.merge(values), options)
       #get_records('-edit', {'-recid' => recid}.merge(expand_repeats(values)), options) # attempt to set repeating fields.
     end
 
     # Creates a new record in the table associated with this layout.
     def create(_layout=nil, values, **options)
-      options[:database] ||= database
-      options[:layout] = _layout || options[:layout] || layout
+      options[:database] ||= config[:database]
+      options[:layout] = _layout || options[:layout] || config[:layout]
       get_records('-new', values, options)
     end
 
     # Deletes the record with the specified internal recid.
     def delete(_layout=nil, recid, **options)
-      options[:database] ||= database
-      options[:layout] = _layout || options[:layout] || layout
+      options[:database] ||= config[:database]
+      options[:layout] = _layout || options[:layout] || config[:layout]
       get_records('-delete', {'-recid' => recid}, options)
       
       # Do we really want to return nil? FMP XML API returns the original record.
@@ -139,8 +114,8 @@ module Rfm
 
     # Retrieves metadata only, with an empty resultset.
     def view(_layout=nil, **options)
-      options[:database] ||= database
-      options[:layout] = _layout || options[:layout] || layout
+      options[:database] ||= config[:database]
+      options[:layout] = _layout || options[:layout] || config[:layout]
       get_records('-view', {}, options)
     end
     
@@ -172,15 +147,15 @@ module Rfm
     def layout_meta(_layout=nil, **options)
       #get_records('-view', gen_params(binding, {}), options)
       #connect('-view', gen_params(binding, {}), {:grammar=>'FMPXMLLAYOUT'}.merge(options)).body
-      options[:database] ||= database
-      options[:layout] = _layout || options[:layout] || layout
+      options[:database] ||= config[:database]
+      options[:layout] = _layout || options[:layout] || config[:layout]
       options[:grammar] ||= 'FMPXMLLAYOUT'
       get_records('-view', {}, options)
     end
     
     def scripts(**options)
       #connect('-scriptnames', {"-db" => database}, {:grammar=>'FMPXMLRESULT'}.merge(options)).body
-      options[:database] ||= database
+      options[:database] ||= config[:database]
       options[:grammar] ||= 'FMPXMLRESULT'
       (options[:record_proc] = proc) if block_given?
       # Don't set this here. Try to use rfm-model to set it, if even needed at all.
@@ -194,8 +169,8 @@ module Rfm
     # since it has no FMServer-specific command.
     def count(_layout=nil, find_criteria, **options)
       # foundset_count won't work until xml is parsed (still need to dev the xml parser interface to rfm v4).
-      options[:database] ||= database
-      options[:layout] = _layout || options[:layout] || layout
+      options[:database] ||= config[:database]
+      options[:layout] = _layout || options[:layout] || config[:layout]
       options[:max_records] = 0
       find(find_criteria, **options).foundset_count   # from basic hash:  ['fmresultset']['resultset']['count'].to_i
     end
@@ -207,8 +182,8 @@ module Rfm
       require 'saxchange/object_merge_refinements'
       using ObjectMergeRefinements
       def meta(_layout=nil, **options)
-        options[:database] ||= database
-        options[:layout] = _layout || options[:layout] || layout
+        options[:database] ||= config[:database]
+        options[:layout] = _layout || options[:layout] || config[:layout]
         t1 = Thread.new {get_records('-view', {}, options)}
         t2 = Thread.new {get_records('-view', {}, options.merge(grammar:'FMPXMLLAYOUT'))}
   
@@ -233,7 +208,7 @@ module Rfm
       # This has to be done after prepare_params, or database & layout options
       # get sent to 'connect' every time, which breaks 'databases', 'layouts', and 'scripts' commands.
       
-      full_options = state(runtime_options).merge({connection:self})
+      full_options = config.merge(runtime_options).merge({connection:self})
       # Nothing helps here to prevent password in resultset options-connection-config tree.
       full_options[:connection].config[:password] = nil
       
@@ -267,55 +242,58 @@ module Rfm
 
     # TODO: Stop deleting options, just let them fall out of the way by expand_options method.
     def connect(action, params={}, request_options={})
-      #grammar_option = request_options[:grammar]   #request_options.delete(:grammar)
-      post = params.merge(expand_options(state(request_options))).merge({action => ''})
-      grammar = select_grammar(post, request_options)
-      host = request_options[:host] || host_name   #request_options.delete(:host) || host_name
+      config_merge = config.merge(request_options)
+      post = params.merge(expand_options(config_merge)).merge({action => ''})
+      #grammar = select_grammar(post, request_options)
+      grammar = select_grammar(post, config_merge)
+      host = config_merge[:host]
+      port = get_port(config_merge)
       
       # The block will be yielded with an io_reader and a connection object,
       # after the http connection has begun in its own thread.
       # See http_fetch method.
       if block_given?
-        http_fetch(host, port, "/fmi/xml/#{grammar}.xml", state[:account_name], state[:password], post, &Proc.new)
+        http_fetch(host, port, "/fmi/xml/#{grammar}.xml", post, **config_merge, &Proc.new)
       else
-        http_fetch(host, port, "/fmi/xml/#{grammar}.xml", state[:account_name], state[:password], post)
+        http_fetch(host, port, "/fmi/xml/#{grammar}.xml", post, **config_merge)
       end
     end
     
 
     private
 
-    def http_fetch(host_name, port, path, account_name, password, post_data, limit=10)
-      raise Rfm::CommunicationError.new("While trying to reach the Web Publishing Engine, RFM was redirected too many times.") if limit == 0
+    def http_fetch(host_name, port, path, post_data, redirect_limit=10, **options)
+      # Do NOT do any further config-option merging here.
+      raise Rfm::CommunicationError.new("While trying to reach the Web Publishing Engine, RFM was redirected too many times.") if redirect_limit == 0
 
-      if state[:log_actions] == true
+      if options[:log_actions] == true
         #qs = post_data.collect{|key,val| "#{CGI::escape(key.to_s)}=#{CGI::escape(val.to_s)}"}.join("&")
         qs_unescaped = post_data.collect{|key,val| "#{key.to_s}=#{val.to_s}"}.join("&")
         #warn "#{@scheme}://#{@host_name}:#{@port}#{path}?#{qs}"
-        log.info "#{scheme}://#{host_name}:#{port}#{path}?#{qs_unescaped}"
+        log.info "#{get_scheme(options)}://#{host_name}:#{port}#{path}?#{qs_unescaped}"
       end
 
-      pswd = password.is_a?(Symbol) ? ENV[password.to_s] : password
+      pswd = options[:password].is_a?(Symbol) ? ENV[options[:password].to_s] : options[:password]
       
       request = Net::HTTP::Post.new(path)
-      request.basic_auth(account_name, pswd)
+      request.basic_auth(options[:account_name], pswd)
       request.set_form_data(post_data)
       
       # I tried to reuse this connection as @connection, but I don't think net-http connections
       # are thread safe. One request would appear to clobber the other.
-      if state[:proxy]
-        connection = Net::HTTP::Proxy(*state[:proxy]).new(host_name, port)
+      if options[:proxy]
+        connection = Net::HTTP::Proxy(*options[:proxy]).new(host_name, port)
       else
         connection = Net::HTTP.new(host_name, port)
       end
       
       #ADDED LONG TIMEOUT TIMOTHY TING 05/12/2011
-      connection.open_timeout = connection.read_timeout = state[:timeout]
-      if state[:ssl]
+      connection.open_timeout = connection.read_timeout = options[:timeout]
+      if options[:ssl]
         connection.use_ssl = true
-        if state[:root_cert]
+        if options[:root_cert]
           connection.verify_mode = OpenSSL::SSL::VERIFY_PEER
-          connection.ca_file = File.join(state[:root_cert_path], state[:root_cert_name])
+          connection.ca_file = File.join(options[:root_cert_path], options[:root_cert_name])
         else
           connection.verify_mode = OpenSSL::SSL::VERIFY_NONE
         end
@@ -341,7 +319,7 @@ module Rfm
                   response.read_body do |chunk|
                     if chunk.size > 0
                       bytes = pipe_writer.write(chunk) 
-                      Rfm.log.info("#{self} wrote #{bytes} bytes to IO pipe.") if state[:log_responses]
+                      Rfm.log.info("#{self} wrote #{bytes} bytes to IO pipe.") if options[:log_responses]
                     end
                   end
                   
@@ -352,7 +330,7 @@ module Rfm
                 #   Thread.current[:exception] = exception
                 #   #Thread.main.raise exception
               ensure
-                Rfm.log.info("#{self} ensurring IO-writer is closed.") if state[:log_responses]
+                Rfm.log.info("#{self} ensurring IO-writer is closed.") if options[:log_responses]
                 pipe_writer.close
                 #Thread.main.raise exception if defined?(:exception)
               end
@@ -377,8 +355,8 @@ module Rfm
       end
     end # http_fetch
     
-    def check_for_http_errors(response)
-      if nil && state[:log_responses] == true
+    def check_for_http_errors(response, **options)
+      if nil && options[:log_responses] == true
         response.to_hash.each { |key, value| log.info "#{key}: #{value}" }
         # TODO: Move this to http connection block.
         #log.info response.body
@@ -388,9 +366,9 @@ module Rfm
       when Net::HTTPSuccess
         response
       when Net::HTTPRedirection
-        if state[:warn_on_redirect]
+        if options[:warn_on_redirect]
           log.warn "The web server redirected to " + response['location'] + 
-            ". You should revise your connection hostname or fix your server configuration if possible to improve performance."
+            ". You should revise your connection hostname or adjust your server configuration if possible to improve performance."
         end
         newloc = URI.parse(response['location'])
         http_fetch(newloc.host, newloc.port, newloc.request_uri, account_name, password, post_data, limit - 1)
@@ -407,7 +385,7 @@ module Rfm
     end
     
     #def check_for_errors(code=@meta['error'].to_i, raise_401=state[:raise_401])
-    def check_for_errors(code=nil, raise_401=state[:raise_401])
+    def check_for_errors(code=nil, raise_401=config[:raise_401])
       Rfm.log.warn("#{self} No response code given in check_for_errors.") unless code
       code = (code || 0).to_i
       #puts ["\nRESULTSET#check_for_errors", code, raise_401]
@@ -459,7 +437,7 @@ module Rfm
     end
 
     def select_grammar(post, options={})
-      grammar = state(options)[:grammar] || 'fmresultset'
+      grammar = config.merge(options)[:grammar] || 'fmresultset'
       if grammar.to_s.downcase == 'auto'
         # TODO: build grammar-decider here.
         return "fmresultset"
@@ -527,11 +505,11 @@ module Rfm
         when :modification_id
           result['-modid'] = value
         else
-          if state.keys.member?(key.to_sym)
-            state(key.to_sym=>value)
+          if AllowableOptions.member?(key.to_s)
+            config.merge(key.to_sym=>value)
           else
-            if state[:raise_on_invalid_option]
-              raise Rfm::ParameterError.new("Invalid option: #{key} (are you using a string instead of a symbol?)")
+            if config[:raise_on_invalid_option]
+              raise Rfm::ParameterError.new("Invalid option: #{key}")
             end
           end
         end

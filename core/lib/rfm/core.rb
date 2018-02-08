@@ -37,6 +37,7 @@ module Rfm
     port
     proxy
     raise_on_401
+    raise_on_invalid_option
     record_proc
     root_cert
     root_cert_name
