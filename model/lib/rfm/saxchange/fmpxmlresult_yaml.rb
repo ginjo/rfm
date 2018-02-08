@@ -5,7 +5,6 @@ SaxChange::Template.register(YAML.load(<<-EEOOFF))
 # This also works well for parsing 'layouts' command response.
 # What about scripts?
 ---
-# This is not functionaly required but helps with debugging
 name: fmpxmlresult_yaml
 initial_object: proc { Rfm::Resultset.new(**config) }
 attach_elements: _meta
