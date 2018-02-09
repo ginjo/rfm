@@ -214,7 +214,9 @@ module Rfm
     
     ###  END COMMANDS  ###
 
-
+    # TODO: Meld this method with connect ??
+    # Make call to FMS XML API, given action, query-params, options.
+    # This method expects Rfm (human-friendly) args & options.
     def get_records(action, params = {}, runtime_options = {})
       #options[:template] ||= state[:template] # Dont decide template here!  #|| select_grammar('', options).to_s.downcase.to_sym
       
@@ -231,33 +233,44 @@ module Rfm
       
       # Note the capture_resultset_meta call from rfm v3.
       #capture_resultset_meta(rslt) unless resultset_meta_valid? #(@resultset_meta && @resultset_meta.error != '401')
-
-      # You could also use this without a block, and forgo http-to-sax-parser streaming.
-      #   io = connect(action, params, options).body
-      # The block enables streaming and returns whatever is ultimately returned from the yield,
-      # the finished object tree from the formatter, in this case.
-      # If you call connection_thread.value, you will get the finished connection response object,
-      # but it will wait until thread is done, so it defeats the purpose of streaming to the io object.
       
-      _formatter = full_options[:formatter]
+      # Note a simple xml pretty-print formatter looks like this:
+      # proc {|io| REXML::Document.new(io).write($stdout, 2) }
+      
+      # Get formatter, if exists.
+      formatter = full_options[:formatter]
+      
+      # Add '-' to action, if not already there.
+      action.gsub!(/^([^-]{1,1})/, '-\1')
       
       #puts "Connection#get_records calling 'connect' with action: #{action}, params: #{params}, options: #{connection_options}"
-      
+
+      # The block enables streaming and returns whatever is ultimately returned from the yield,
+      # the finished object tree from the formatter & parser in the case of full rfm install.
+      # If you call connection_thread.value, you will get the finished connection response object,
+      # but it will wait until thread is done, so it defeats the purpose of streaming to the io object.
+      # So don't call connection_thread.value, unless you absolutely need it. And in that case, consider
+      # using the standard (not block) form of this method.
+      #
       if block_given?
+        # Yields streaming io & full set of options to block.
         connect(action, params, connection_options) do |io, http_thread|
           yield(io, full_options.merge({http_thread: http_thread, local_env: binding}))
         end
-      elsif _formatter
+      elsif formatter
+        # Yields streaming io & full set of options to formatter proc.
         connect(action, params, connection_options) do |io, http_thread|
-          
-          _formatter.call(io, full_options.merge({http_thread: http_thread, local_env: binding}))
+          formatter.call(io, full_options.merge({http_thread: http_thread, local_env: binding}))
         end
       else
+        # Non streaming, returns net-http response object with body.
         connect(action, params, connection_options)
       end
     end # get_records
 
-
+    # TODO: Meld this method with get_records ??
+    # Make call to FMS XML API, given action, query-params, options.
+    # This method expects fms-xml-api formatted query params.
     def connect(action, params={}, request_options={})
       config_merge = config.merge(request_options)
       post = params.merge(expand_options(config_merge)).merge({action => ''})
@@ -465,7 +478,10 @@ module Rfm
       end
     end
 
-    # Convert user-facing keys to FMS-XML-API keys
+    # Convert user-facing keys to FMS-XML-API keys.
+    # This takes a hash and transforms it to something fms-xml-api will understand.
+    # keys not recognized by fms-xml-api or as rfm-allowable-options will be dropped,
+    # or will raise exectpion if raise_invalid_option is true.
     def expand_options(options)
       result = {}
       #field_mapping = options.delete(:field_mapping) || {}
