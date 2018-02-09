@@ -20,6 +20,7 @@ module Rfm
   AllowableOptions = %w(
     account_name
     database
+    database_url
     decimal_separator
     field_mapping
     file_name
@@ -34,6 +35,7 @@ module Rfm
     log_responses
     parser
     password
+    path
     port
     proxy
     raise_on_401
@@ -42,6 +44,7 @@ module Rfm
     root_cert
     root_cert_name
     root_cert_path
+    scheme
     ssl
     template
     timeout
@@ -55,6 +58,7 @@ module Rfm
   AllowableOptions.uniq!
   
   Config.defaults = {
+    :database_url => :DATABASE_URL,
     :host => 'localhost',
     :port => nil,
     :proxy=>false,  # array of (p_addr, p_port = nil, p_user = nil, p_pass = nil)

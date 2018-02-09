@@ -1,5 +1,7 @@
 require 'net/https'
+require 'uri'
 require 'cgi'
+require 'securerandom'
 require 'rfm/compound_query'
 #require 'rfm/config'
 #require 'logger'
@@ -14,8 +16,22 @@ module Rfm
     # TODO: Make this autoload.
     require 'rexml/document'
 
-    def initialize(host=nil, **opts) 
-      host && config(host: host)
+    def initialize(url=nil, **opts)
+      uri = database_uri(url)
+      #puts "Connection#initialize url '#{url}'"
+      parse_database_uri(uri) if uri
+    end
+    
+    def parse_database_uri(uri)
+      uri = URI.parse(uri) if uri.is_a?(String)
+      if uri.is_a?(URI::HTTP)
+        pswd = random_upcase
+        ENV[pswd] = uri.password if uri.password
+        #puts "Connection#initialize pswd '#{pswd}', uri.password '#{uri.password}'"
+        @config.merge!(scheme:uri.scheme, host:uri.host, account_name:uri.user, password:pswd.to_sym, path:uri.path){|key,important,default| important}
+      elsif uri.is_a?(URI::Generic)
+        @config.merge!(host:uri.path){|key,important,default| important}
+      end    
     end
     
     def log
@@ -546,6 +562,20 @@ module Rfm
         end
       end
       return result
+    end
+    
+    def random_upcase(len=8)
+      loop{ x = SecureRandom.urlsafe_base64(len).upcase; break x if x[0][/[a-zA-Z]/] }
+    end
+    
+    def database_uri(url=nil)
+      url = url || config[:database_url]
+      url = ENV[url.to_s] if url.is_a?(Symbol)
+      uri = URI.parse(url) if url
+    end
+    
+    def database_from_path(path)
+      path.to_s.match(%r(^\/([^\/]*)\/))[1]
     end
     
     # # Experimental open-uri, was in http_fetch method.
