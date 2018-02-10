@@ -58,24 +58,23 @@ module Rfm
   AllowableOptions.uniq!
   
   Config.defaults = {
+    :account_name => '',
     :database_url => :DATABASE_URL,
     :host => 'localhost',
+    :log_actions => false,
+    :password => '',
+    :path => '/fmi/xml/',
     :port => nil,
-    :proxy=>false,  # array of (p_addr, p_port = nil, p_user = nil, p_pass = nil)
-    :ssl => true,
+    :proxy=>false,  # array of [p_addr, p_port = nil, p_user = nil, p_pass = nil]
+    :raise_invalid_option => true,
+    :raise_on_401 => false,
     :root_cert => true,
     :root_cert_name => '',
     :root_cert_path => '/',
-    :account_name => '',
-    :password => '',
-    :log_actions => false,
-    :warn_on_redirect => true,
-    :raise_on_401 => false,
+    :scheme => 'https',
+    #:ssl => true,
     :timeout => 60,
-    #:ignore_bad_data => false,
-    #:template => nil,
-    #:grammar => 'fmresultset',
-    :raise_invalid_option => true
+    :warn_on_redirect => true,
   }
   
   case 

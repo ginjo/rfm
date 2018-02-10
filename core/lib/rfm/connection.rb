@@ -17,37 +17,15 @@ module Rfm
     require 'rexml/document'
 
     def initialize(url=nil, **opts)
-      uri = database_uri(url)
-      #puts "Connection#initialize url '#{url}'"
-      parse_database_uri(uri) if uri
+      apply_database_uri(url, @config, config)
     end
-    
-    def parse_database_uri(uri)
-      uri = URI.parse(uri) if uri.is_a?(String)
-      if uri.is_a?(URI::HTTP)
-        pswd = random_upcase
-        ENV[pswd] = uri.password if uri.password
-        #puts "Connection#initialize pswd '#{pswd}', uri.password '#{uri.password}'"
-        @config.merge!(scheme:uri.scheme, host:uri.host, account_name:uri.user, password:pswd.to_sym, path:uri.path){|key,important,default| important}
-      elsif uri.is_a?(URI::Generic)
-        @config.merge!(host:uri.path){|key,important,default| important}
-      end    
-    end
-    
+        
     def log
       Rfm.log
     end
     
     def parser
       config[:parser]
-    end
-
-    def get_scheme(**opts)
-      opts&.dig(:ssl) ? "https" : "http"
-    end
-
-    def get_port(**opts)
-      opts&.dig(:ssl) && opts&.dig(:port).nil? ? 443 : opts&.dig(:port)
     end
     
     # Field mapping is really a layout concern. Where should it go?
@@ -289,19 +267,23 @@ module Rfm
     # This method expects fms-xml-api formatted query params.
     def connect(action, params={}, request_options={})
       config_merge = config.merge(request_options)
+      apply_database_uri(config_merge, config_merge)
+      puts "Connection#connect config_merge after apply_database_uri '#{config_merge.to_yaml}'"
       post = params.merge(expand_options(config_merge)).merge({action => ''})
       #grammar = select_grammar(post, request_options)
       grammar = select_grammar(post, config_merge)
+      scheme = get_scheme(config_merge)
       host = config_merge[:host]
       port = get_port(config_merge)
+      path = config_merge[:path]
       
       # The block will be yielded with an io_reader and a connection object,
       # after the http connection has begun in its own thread.
       # See http_fetch method.
       if block_given?
-        http_fetch(host, port, "/fmi/xml/#{grammar}.xml", post, **config_merge, &Proc.new)
+        http_fetch(scheme, host, port, "#{path}/#{grammar}.xml", post, **config_merge, &Proc.new)
       else
-        http_fetch(host, port, "/fmi/xml/#{grammar}.xml", post, **config_merge)
+        http_fetch(scheme, host, port, "#{path}/#{grammar}.xml", post, **config_merge)
       end
     end
     
@@ -310,7 +292,8 @@ module Rfm
     # Either pass all needed options, or get options from config, but don't do both.
     private
 
-    def http_fetch(host_name, port, path, post_data, redirect_limit=10, **options)
+    # TODO: Use this passed-in scheme.
+    def http_fetch(scheme, host_name, port, path, post_data, redirect_limit=10, **options)
       
       raise Rfm::CommunicationError.new("While trying to reach the Web Publishing Engine, RFM was redirected too many times.") if redirect_limit == 0
 
@@ -318,7 +301,7 @@ module Rfm
         #qs = post_data.collect{|key,val| "#{CGI::escape(key.to_s)}=#{CGI::escape(val.to_s)}"}.join("&")
         qs_unescaped = post_data.collect{|key,val| "#{key.to_s}=#{val.to_s}"}.join("&")
         #warn "#{@scheme}://#{@host_name}:#{@port}#{path}?#{qs}"
-        log.info "#{get_scheme(options)}://#{host_name}:#{port}#{path}?#{qs_unescaped}"
+        log.info "#{scheme}://#{host_name}:#{port}#{path}?#{qs_unescaped}"
       end
 
       pswd = options[:password].is_a?(Symbol) ? ENV[options[:password].to_s] : options[:password]
@@ -337,7 +320,8 @@ module Rfm
       
       #ADDED LONG TIMEOUT TIMOTHY TING 05/12/2011
       connection.open_timeout = connection.read_timeout = options[:timeout]
-      if options[:ssl]
+      if options[:ssl] or scheme == 'https'
+        #return "USING SECURE SSL"
         connection.use_ssl = true
         if options[:root_cert]
           connection.verify_mode = OpenSSL::SSL::VERIFY_PEER
@@ -345,6 +329,8 @@ module Rfm
         else
           connection.verify_mode = OpenSSL::SSL::VERIFY_NONE
         end
+      else
+        #return "NOT USING SSL"
       end
 
       # Stream to IO pipe, if block given.
@@ -564,19 +550,48 @@ module Rfm
       return result
     end
     
-    def random_upcase(len=8)
+    def apply_database_uri(uri_or_url=nil, target_hash, **opts)
+      uri = parse_database_url(uri_or_url, opts)
+      uri = URI.parse(uri) if uri.is_a?(String)
+      if uri.is_a?(URI::HTTP)
+        pswd = random_upcase_string
+        ENV[pswd] = uri.password if uri.password
+        #puts "Connection#initialize pswd '#{pswd}', uri.password '#{uri.password}'"
+        target_hash.merge!(scheme:uri.scheme, host:uri.host, account_name:uri.user, password:pswd.to_sym, path:uri.path, database:uri.query){|key,important,default| important}
+      elsif uri.is_a?(URI::Generic)
+        target_hash.merge!(host:uri.path){|key,important,default| important}
+      end    
+    end
+    
+    def parse_database_url(url=nil, **opts)
+      url = url || opts[:database_url]
+      url = ENV[url.to_s] if url.is_a?(Symbol)
+      ( uri = url.is_a?(URI) ? url : URI.parse(url) ) if url
+    end    
+    
+    def get_scheme(**opts)
+      opts = config unless opts.any?
+      ssl = case
+        when !opts&.dig(:ssl).nil?; opts&.dig(:ssl)
+        when opts&.dig(:scheme) == 'https'; true
+      end
+      ssl ? "https" : "http"
+    end
+
+    def get_port(**opts)
+      opts = config unless opts.any?
+      opts&.dig(:port) || (get_scheme(opts) == 'https' ? 443 : 80)
+    end
+    
+    # Get random upcase string for secure symbol or constant names.
+    def random_upcase_string(len=8)
       loop{ x = SecureRandom.urlsafe_base64(len).upcase; break x if x[0][/[a-zA-Z]/] }
     end
     
-    def database_uri(url=nil)
-      url = url || config[:database_url]
-      url = ENV[url.to_s] if url.is_a?(Symbol)
-      uri = URI.parse(url) if url
-    end
     
-    def database_from_path(path)
-      path.to_s.match(%r(^\/([^\/]*)\/))[1]
-    end
+    # def database_from_path(path)
+    #   path.to_s.match(%r(^\/([^\/]*)\/))[1]
+    # end
     
     # # Experimental open-uri, was in http_fetch method.
     # # This works well but writes entire http response body to temp file.
