@@ -88,20 +88,12 @@ module SaxChange
 
   class Parser
     using Refinements
-    using ObjectMergeRefinements
+    #using ObjectMergeRefinements
     using ObjectAttachRefinements
   
     extend Forwardable
     prepend Config
     
-    # TODO: Make this block of options passable at loadtime/runtime from connection object to parser object,
-    #       because we need ability to pass in the default_class from a client connection instance.
-    ::Object::ATTACH_OBJECT_DEFAULT_OPTIONS = {
-      :shared_variable_name => Config.defaults[:shared_variable_name],
-      :default_class => Config.defaults[:default_class],
-      :text_label => Config.defaults[:text_label],
-      :create_accessors => [] #:all, :private, :shared, :hash
-    }
     
     # Convenience method.
     def self.parse(io, **options)

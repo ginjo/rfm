@@ -33,7 +33,7 @@ module ObjectAttachRefinements
       dat = keyed_data(k)
       if [:shared, 'shared', ''].include?(opts[:style].to_s)
         shared_var_name = opts[:shared_variable_name] || 'attributes'
-        eval("@#{shared_var_name} ||= {}").attach_tuple(k,v, **opts.merge(style: 'hash'))
+        eval("@#{shared_var_name} ||= opts[:default_class].new || {}").attach_tuple(k,v, **opts.merge(style: 'hash'))
       else
         instance_variable_set(:"@#{k}", dat ? dat.collide(v, opts) : v)
       end
@@ -51,7 +51,8 @@ module ObjectAttachRefinements
           [self, other].flatten(1)
         when delim && any_key?(delim) && other.any_key?(delim)
           #puts "Object:#{self.class}#collide both are keyed objects"
-          {keyed_data(delim) => self, other.keyed_data(delim) => other}
+          #{keyed_data(delim) => self, other.keyed_data(delim) => other}
+          (opts[:default_class].new || {}).merge(keyed_data(delim) => self, other.keyed_data(delim) => other)
         when delim && is_a?(Hash) && other.any_key?(delim)
           #puts "Object:#{self.class}#collide self is hash, other is keyed"
           merge(other.keyed_data(delim) => other)

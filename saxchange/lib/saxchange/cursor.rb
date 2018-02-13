@@ -15,7 +15,7 @@ module SaxChange
   # NOTE: Methods that change this cursor or its objects should follow the operate-on-this-cursor-only rule.
   class Cursor
     using Refinements
-    using ObjectMergeRefinements
+    #using ObjectMergeRefinements
     using ObjectAttachRefinements
     extend Forwardable
 
