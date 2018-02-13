@@ -42,6 +42,10 @@ module Rfm
         #puts ["\nDATUM", name, record.class, resultset.class, field, data]
         #puts ["\nDATUM", self.to_yaml]
         record[name] = field.coerce(data)
+      rescue
+        puts "Datum#field_element_close_callback failed with #{$!}"
+        puts "Datum self:"
+        y self
       end
 
     end # Field

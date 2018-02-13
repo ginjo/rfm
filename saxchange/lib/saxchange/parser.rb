@@ -89,6 +89,7 @@ module SaxChange
   class Parser
     using Refinements
     using ObjectMergeRefinements
+    using ObjectAttachRefinements
   
     extend Forwardable
     prepend Config

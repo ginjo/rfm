@@ -16,6 +16,7 @@ module SaxChange
   class Cursor
     using Refinements
     using ObjectMergeRefinements
+    using ObjectAttachRefinements
     extend Forwardable
 
     # model - currently active model (rename to current_model)
@@ -140,7 +141,8 @@ module SaxChange
       shared_var_name = shared_variable_name(prefs)        
       prefs = "shared" if shared_var_name
       create_accessors = compile_create_accessors(@model, attr_model)
-      @object._attach_object!(v, label, delimiter?(attr_model), prefs, 'attribute', :default_class=>config[:default_class], :shared_variable_name=>shared_var_name, :create_accessors=>create_accessors)
+      #@object._attach_object!(v, label, delimiter?(attr_model), prefs, 'attribute', :default_class=>config[:default_class], :shared_variable_name=>shared_var_name, :create_accessors=>create_accessors)
+      @object.attach_tuples({label => v}, delimiter: delimiter?(attr_model), style: prefs, default_class: config[:default_class], shared_variable_name: shared_var_name, create_accessors: create_accessors)
     end # assign_attributes_receive
 
     # This ~should~ be only concerned with how to attach a given element to THIS cursor's object.
@@ -160,7 +162,8 @@ module SaxChange
 
       #puts ["\nATTACH_NEW_ELEMENT", "new_object: #{new_object}", "parent_object: #{@object}", "label: #{name}", "delimiter: #{delimiter?(new_object_cursor.model)}", "prefs: #{prefs}", "shared_var_name: #{shared_var_name}", "create_accessors: #{create_accessors}"]      
       
-      @object._attach_object!(new_object, label, delimiter?(new_object_model), prefs, 'element', :default_class=>config[:default_class], :shared_variable_name=>shared_var_name, :create_accessors=>create_accessors)
+      #@object._attach_object!(new_object, label, delimiter?(new_object_model), prefs, 'element', :default_class=>config[:default_class], :shared_variable_name=>shared_var_name, :create_accessors=>create_accessors)
+      @object.attach_tuples({label => new_object}, delimiter: delimiter?(new_object_model), style: prefs, default_class: config[:default_class], shared_variable_name: shared_var_name, create_accessors: create_accessors)
     end # attach_new_element
 
 

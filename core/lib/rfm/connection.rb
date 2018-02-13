@@ -190,8 +190,10 @@ module Rfm
     # TODO: This should not be in rfm-core, should be in rfm-model,
     # since it depends on parsing to specific objects.
     if Gem::Specification.find{|g| g.name == 'rfm-model'}
-      require 'saxchange/object_merge_refinements'
-      using ObjectMergeRefinements
+      #require 'saxchange/object_merge_refinements'
+      #using ObjectMergeRefinements
+      require 'saxchange/object_attach_refinements'
+      using ObjectAttachRefinements
       def meta(_layout=nil, **options)
         options[:database] ||= config[:database]
         options[:layout] = _layout || options[:layout] || config[:layout]
@@ -268,7 +270,7 @@ module Rfm
     def connect(action, params={}, request_options={})
       config_merge = config.merge(request_options)
       apply_database_uri(config_merge, config_merge)
-      puts "Connection#connect config_merge after apply_database_uri '#{config_merge.to_yaml}'"
+      #puts "Connection#connect config_merge after apply_database_uri '#{config_merge.to_yaml}'"
       post = params.merge(expand_options(config_merge)).merge({action => ''})
       #grammar = select_grammar(post, request_options)
       grammar = select_grammar(post, config_merge)

@@ -99,7 +99,8 @@ elements:
     # It skips attaching this element, but still allows 
     # sub-elements & attributes to attach to it.
     attach: hidden
-    # This does the same thing but requires attach_attributes:shared and attach_elements:shared
+    # These 3 settings together do the same thing as 'attach:hidden'...
+    # note the requirement of attach_attributes:shared and attach_elements:shared
     #attach: none
     #attach_attributes: shared
     #attach_elements: shared
