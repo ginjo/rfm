@@ -203,7 +203,7 @@ module Rfm
         t1v = t1.value
         t2v = t2.value
         t2v.merge! t1v.meta
-        t2v.keys.each{|k| t2v._create_accessor(k)}
+        t2v.keys.each{|k| t2v.create_accessor(k)}
         t2v
       end
     end
