@@ -1,8 +1,10 @@
 module ObjectAttachRefinements
-
+  
+  # Generic methods to aid in attachment of ruby objects to other ruby objects.
+  # This is intended to facilitate the sax parser in attaching parsed objects
+  # to other parsed objects. This module replaces ObjectMergeRefinements.
 
   refine Object do
-    
     # Provide array or hash of tuples (2-element-array-or-hash):
     #  [[:a, 1], [:b, 2], {c:3}, {d:4}]
     #  {a:2, b:2, c:3}
@@ -28,6 +30,9 @@ module ObjectAttachRefinements
       end
     end
     
+    # Attach tuple to this object.
+    # If style == shared (or empty), attach to shared ivar,
+    # otherwise attach to private ivar.
     def attach_tuple(k,v, **opts)
       k = k.downcase
       #puts "\nObject:#{self.class}#attach_tuple k,v,opts '#{k}, #{v}, #{opts}'"
@@ -40,6 +45,9 @@ module ObjectAttachRefinements
       end
     end
     
+    # Handle collision between this object and other,
+    # deciding whether to put both objects in a hash,
+    # or in an array.
     def collide(other, opts)
       #puts "\nObject:#{self.class}#collide self,other,opts '#{self}, #{other}, #{opts}'"
       delim = opts[:delimiter]
@@ -63,15 +71,18 @@ module ObjectAttachRefinements
       end
     end # collide
     
+    # Check for existance of specific ivar.
     def any_key?(key)
       #puts "Object#any_key? arg '#{key.to_s}'"
       instance_variables.include?(:"@#{key}")
     end
     
+    # Get data from specific ivar.
     def keyed_data(key)
       instance_variable_get(:"@#{key}")
     end
     
+    # Create accessor method for ivar.
     def create_accessor(name)
       name = name.downcase
       # meta = (class << self; self; end)
@@ -82,6 +93,8 @@ module ObjectAttachRefinements
   end # Object
   
   refine Hash do
+  
+    # Attach tuple to this object as hash key=>value.
     def attach_tuple(k,v, **opts)
       k = k.downcase
       #puts "\nHash:#{self.class}#attach_tuple with k,v,opts '#{k}, #{v}, #{opts}'"
@@ -96,14 +109,19 @@ module ObjectAttachRefinements
       end
     end
     
+    # Check for existance of specific hash element,
+    # or super (object ivar)
     def any_key?(key)
       has_key?(key) || super
     end
     
+    # Get data from specific hash element,
+    # or super (object ivar)
     def keyed_data(key)
       self[key] || super
     end
     
+    # Create accessor method for specific hash element.
     def create_accessor(name)
       name = name.downcase
       #puts "HASH._create_accessor '#{name}' for Hash '#{self.class}'"
@@ -115,6 +133,7 @@ module ObjectAttachRefinements
   end # Hash
   
   refine Array do
+    # Attach tuple to this array.
     def attach_tuple(k,v, **opts)
       #puts "\nArray:#{self.class}#attach_tuple k,v,opts '#{k}, #{v}, #{opts}'"
       if [:private, :shared, 'private', 'shared'].include?(opts[:style])
@@ -126,3 +145,4 @@ module ObjectAttachRefinements
   end # Array
 
 end # ObjectAttachRefinements
+

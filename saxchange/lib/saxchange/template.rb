@@ -5,7 +5,42 @@ module SaxChange
     # See instance methods for block-level dsl commands.
     # Provide a name to the #register method, or declare the
     # 'name' in the top-level of the template-hash.
-    
+    #
+    # This DSL helps build a template model hash-tree of parsing instructions for the sax parser.
+    # The object you construct with this DSL will look similar to the desired
+    # output of the sax parsing run.
+    # It is not necessary to use this DSL. A plain ruby hash, a yaml document, or
+    # even an xml document can be used to build the template model.
+    #
+    # Example with DSL:
+    # SaxChange::Template.register('my_template_name') do
+    #   element 'data' do
+    #     initial_object Hash
+    #     as_name 'top_level_data'
+    #     attribute 'type' do
+    #       as_name 'data_type'
+    #       attach do |env|
+    #         do-stuff-here-to-manually-attach
+    #       end
+    #     end
+    #   element 'meta' do
+    #     ...
+    #   end
+    # end
+    #
+    #
+    # Example with YAML:
+    # SaxChange::Template.register('my_template_name', YAML.load(<<-EEOOFF))
+    # ---
+    # elements:
+    # - name: data
+    #   initial_object: proc {Hash.new}
+    #   as_name: top_level_data
+    #   ...
+    # - name: meta
+    #   ...
+    #
+    #
     class << self
       attr_accessor :cache
       
@@ -24,7 +59,6 @@ module SaxChange
     end # class << self
     
     @cache = []
-      
     
     # Create a new template or sub-template.
     # Takes name, hash, block. All optional.
@@ -46,12 +80,17 @@ module SaxChange
     
     # Manual registration of this template.
     # This is not necessary if using 'Template.register'.
+    # Use this method if you have a template model hash-tree
+    # that you want to register (and then refer to by name when parsing).
+    # TODO: Allow one arg 'name' to be passed with this method.
     def register
       self.class.register(self)
     end
     
     # Recursively traverse template keys/values & all element/attribute children,
-    # evaling each qualifying string value.
+    # eval'ing each qualifying string value into a proc.
+    # TODO: I think 'skip' might not be used ('none' really means 'skip', while 'hidden'
+    # means just don't attach).
     def render_settings
       each do |k,v|
         case
@@ -83,6 +122,11 @@ module SaxChange
     end
 
     # Change plain-hash template into Template.
+    # This is used in recursive 'render_settings' to
+    # to convert entire hash-tree to template-tree.
+    # The conversion is only really necessary for building
+    # the model from string-based settings. A properly contructed plain-hash
+    # template model is a perfectly valid parsing template.
     def templateize_array_hashes(array)
       array.collect! do |h|
         if h.is_a?(self.class)
@@ -98,16 +142,19 @@ module SaxChange
     
     ###  Template DSL methods
     
+    # Declare an element.
     def element(*args, &block)
       #puts "#{self}.#{__callee__} #{args}"
       (self['elements'] ||= []) << new_level(*args, &block)
     end
     
+    # Declare an attribute.
     def attribute(*args, &block)
       #puts "#{self}.#{__callee__} #{args}"
       (self['attributes'] ||= []) << new_level(*args, &block)
     end
     
+    # Template-wide default attachment setting for attributes.
     def attach_attributes_default(*args)
       #puts "#{self}.#{__callee__} #{args}"
       #self['attach_attributes_default'] = args[0]
@@ -118,6 +165,7 @@ module SaxChange
       end
     end
     
+    # Template-wide default attachment setting for elements.
     def attach_elements_default(*args)
       #puts "#{self}.#{__callee__} #{args}"
       #self['attach_elements_default'] = args[0]
@@ -128,16 +176,23 @@ module SaxChange
       end
     end    
     
+    # Template-wide default 'compact' setting.
     def compact_default(*args)
       #puts "#{self}.#{__callee__} #{args}"
       self['compact_default'] = args[0]
     end
     
+    # Template-wide default 'create_accessors' setting.
     def create_accessors_default(*args)
       #puts "#{self}.#{__callee__} #{args}"
       self['create_accessors_default'] = args[0]
     end
     
+    # Attachment setting for an element or an attribute.
+    # Pass a block to manually manipulate the object.
+    # A nil block-result will skip automatic attachment,
+    # while any other block-result will be interpreted as
+    # an attachment setting.
     def attach(*args)
       #puts "#{self}.#{__callee__} #{args}"
       #self['attach'] = []
@@ -150,6 +205,8 @@ module SaxChange
       end
     end
     
+    # Element-wide attachment setting for all sub-elements
+    # being attached to this object.
     def attach_elements(*args)
       #puts "#{self}.#{__callee__} #{args}"
       #self['attach_elements'] = args[0]
@@ -160,6 +217,8 @@ module SaxChange
       end
     end
     
+    # Element-wide attachment setting for all attributes
+    # being attached to this object.    
     def attach_attributes(*args)
       #puts "#{self}.#{__callee__} #{args}"
       #self['attach_attributes'] = args[0]
@@ -170,31 +229,42 @@ module SaxChange
       end
     end
     
+    # Name of hash key or ivar whose data to use
+    # as a uniq identifier for an otherwise non-uniq
+    # element tag.
     def delimiter(*args)
       #puts "#{self}.#{__callee__} #{args}"
       self['delimiter'] = args[0]
     end
     
+    # Create accessor method for this element or attribute.
     def accessor(*args)
       #puts "#{self}.#{__callee__} #{args}"
       self['accessor'] = args[0]
     end
     
+    # Create accessors for all elements or attributes
+    # attached to this object.
     def create_accessors(*args)
       #puts "#{self}.#{__callee__} #{args}"
       self['create_accessors'] = args[0]
     end
     
+    # Change the name of an element or attribute.
     def as_name(*args)
       #puts "#{self}.#{__callee__} #{args}"
       self['as_name'] = args[0]
     end
     
+    # Attempt to compact recursive trees of
+    # single-element nodes.
     def compact(*args)
       #puts "#{self}.#{__callee__} #{args}"
       self['compact'] = args[0]
     end
     
+    # The object class, or proc, or actual object
+    # to be defined for this element.
     def initial_object(*args)
       #puts "#{self}.#{__callee__} #{args}"
       #self['initial_object'] = args[0]
@@ -205,6 +275,7 @@ module SaxChange
       end
     end
     
+    # Callback proc/block to be run during 'on-element-close-tag'
     def before_close(*args)
       #puts "#{self}.#{__callee__} #{args}"
       #self['before_close'] = args[0]
@@ -215,10 +286,6 @@ module SaxChange
       end
     end
 
-    
   end # Template
 end # SaxChange
-
-
-
 

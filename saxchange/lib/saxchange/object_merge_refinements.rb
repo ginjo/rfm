@@ -1,5 +1,7 @@
 module ObjectMergeRefinements
 
+  ###  This module has been deprecated in favor of ObjectAttachRefinements.  ###
+
   refine Object do
   
     # Master method to attach any object to this object.
