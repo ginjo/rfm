@@ -1,8 +1,9 @@
 require 'logger'
 
-# TODO: This can't go here.
+# TODO: This can't go here. Why not?
 # TODO: Create a top-level method for checking if a gem is registered in the current gemset.
-if Gem::Specification.find{|g| g.name == 'saxchange'}
+#if Gem::Specification.find{|g| g.name == 'saxchange'}
+if Gem::Specification.find_all_by_name('saxchange').any?
   autoload :SaxChange, 'saxchange'
 end
 

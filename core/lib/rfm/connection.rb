@@ -3,10 +3,7 @@ require 'uri'
 require 'cgi'
 require 'securerandom'
 require 'rfm/compound_query'
-#require 'rfm/config'
-#require 'logger'
 
-#SaxChange
 
 module Rfm
   class Connection
@@ -189,7 +186,7 @@ module Rfm
     # Retrieves metadata only, with an empty resultset.
     # TODO: This should not be in rfm-core, should be in rfm-model,
     # since it depends on parsing to specific objects.
-    if Gem::Specification.find{|g| g.name == 'rfm-model'}
+    if Gem::Specification.find_all_by_name('rfm-model').any?
       #require 'saxchange/object_merge_refinements'
       #using ObjectMergeRefinements
       require 'saxchange/object_attach_refinements'
