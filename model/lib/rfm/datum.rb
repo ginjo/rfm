@@ -22,13 +22,13 @@ module Rfm
       def portal_field_element_close_callback(cursor)
         resultset = cursor.top.object
         table, name = @attributes['name'].to_s.split('::')
-        #puts ['DATUM_portal_field_element_close_callback_01', table, name].join(', ')
         name = get_mapped_name(name, resultset)
-        field = resultset.portal_meta[table.downcase][name.downcase]
+        #puts ["\n", 'DATUM_portal_field_element_close_callback_01', table, name].join(', ')
+        field = resultset.portal_meta&.dig(table.downcase)&.dig(name.downcase)
         data = @attributes['data']
-        #puts ['DATUM_portal_field_element_close_callback_02', "cursor.parent.object.class: #{cursor.parent.object.class}", "resultset.class: #{resultset.class}", "table: #{table}", "name: #{name}", "field: #{field}", "data: #{data}"]
+        #puts ['DATUM_portal_field_element_close_callback_02', "cursor.logical_parent.object.class: #{cursor.logical_parent.object.class}", "resultset.class: #{resultset.class}", "table: #{table}", "name: #{name}", "field: #{field}", "data: #{data}"]
         #(puts resultset.portal_meta.to_yaml) unless field
-        cursor.logical_parent.object[name.downcase] = field.coerce(data)
+        cursor.logical_parent.object[name.downcase] = field&.coerce(data)
       end
 
       # Should return value only.
@@ -43,9 +43,9 @@ module Rfm
         #puts ["\nDATUM", self.to_yaml]
         record[name] = field.coerce(data)
       rescue
-        puts "Datum#field_element_close_callback failed with #{$!}"
-        puts "Datum self:"
-        y self
+        Rfm.logger.warn("Datum#field_element_close_callback failed with #{$!}\nDatum self:\n #{self.to_yaml}")
+        #puts "Datum self:"
+        #y self
       end
 
     end # Field

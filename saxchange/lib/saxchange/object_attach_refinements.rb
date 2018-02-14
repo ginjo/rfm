@@ -22,13 +22,14 @@ module ObjectAttachRefinements
         when t.is_a?(Array)
           attach_tuples(t, opts)
         else
-          SaxChange.logger.debug "Object#attach_tuples: The value #{t} is not a tuple"
+          SaxChange.logger.debug "Object#attach_tuples: The value '#{t}' is not a tuple"
           self << t if self.is_a?(Array)
         end
       end
     end
     
     def attach_tuple(k,v, **opts)
+      k = k.downcase
       #puts "\nObject:#{self.class}#attach_tuple k,v,opts '#{k}, #{v}, #{opts}'"
       dat = keyed_data(k)
       if [:shared, 'shared', ''].include?(opts[:style].to_s)
@@ -52,10 +53,10 @@ module ObjectAttachRefinements
         when delim && any_key?(delim) && other.any_key?(delim)
           #puts "Object:#{self.class}#collide both are keyed objects"
           #{keyed_data(delim) => self, other.keyed_data(delim) => other}
-          (opts[:default_class].new || {}).merge(keyed_data(delim) => self, other.keyed_data(delim) => other)
+          (opts[:default_class].new || {}).merge(keyed_data(delim).to_s.downcase => self, other.keyed_data(delim).to_s.downcase => other)
         when delim && is_a?(Hash) && other.any_key?(delim)
           #puts "Object:#{self.class}#collide self is hash, other is keyed"
-          merge(other.keyed_data(delim) => other)
+          merge(other.keyed_data(delim).to_s.downcase => other)
         else
           #puts "Object:#{self.class}#collide else basic array"
           [self, other].flatten(1)
@@ -64,30 +65,32 @@ module ObjectAttachRefinements
     
     def any_key?(key)
       #puts "Object#any_key? arg '#{key.to_s}'"
-      instance_variables.include?(:"@#{key.to_s}")
+      instance_variables.include?(:"@#{key}")
     end
     
     def keyed_data(key)
-      instance_variable_get(:"@#{key.to_s}")
+      instance_variable_get(:"@#{key}")
     end
     
     def create_accessor(name)
+      name = name.downcase
       # meta = (class << self; self; end)
       # meta.send(:attr_reader, name.to_sym)
-      singleton_class.send(:attr_reader, name.to_sym)
+      singleton_class.send(:attr_reader, name)
     end
     
   end # Object
   
   refine Hash do
     def attach_tuple(k,v, **opts)
+      k = k.downcase
       #puts "\nHash:#{self.class}#attach_tuple with k,v,opts '#{k}, #{v}, #{opts}'"
       # Block given to 'merge' determines how to handle collisions,
       # with |key, old-dat, new-dat| .
       if [:private, :shared, 'private', 'shared'].include?(opts[:style])
         super
       else
-        merge!(k=>v) do |x,y,z|  
+        merge!(k => v) do |x,y,z|  
           self[x] = y.collide(z, opts)
         end
       end
@@ -102,6 +105,7 @@ module ObjectAttachRefinements
     end
     
     def create_accessor(name)
+      name = name.downcase
       #puts "HASH._create_accessor '#{name}' for Hash '#{self.class}'"
       #meta = (class << self; self; end)
       singleton_class.send(:define_method, name) do
