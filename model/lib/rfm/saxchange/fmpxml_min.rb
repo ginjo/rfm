@@ -1,3 +1,5 @@
+SaxChange::Template.register_yaml(<<-EEOOFF)
+
 #!/usr/bin/env ruby
 # Database names from fmpxmlresult #
 #
@@ -31,7 +33,7 @@
 #
 # The top level represents the initial object, a basic hash in this case.
 ---
-name: fmpxml_minimal
+name: fmpxml_min
 attach_elements: none
 attach_attributes: none
 elements:
@@ -46,3 +48,4 @@ elements:
 #   attach: private
 #   compact: true
 
+EEOOFF

@@ -1,4 +1,4 @@
-SaxChange::Template.register(YAML.load(<<-EEOOFF))
+SaxChange::Template.register_yaml(<<-EEOOFF)
 
 #!/usr/bin/env ruby
 # This is a template for parsing 'databases' from FMPXMLRESULT fms response.

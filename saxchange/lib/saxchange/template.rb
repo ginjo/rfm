@@ -1,3 +1,5 @@
+require 'yaml'
+
 module SaxChange
   class Template < Hash
   
@@ -47,7 +49,23 @@ module SaxChange
       # Register a new template.
       # Takes name, hash, block. All optional
       def register(*args, &block)
+        #puts "\nTemplate#register '#{args[0] if args[0].is_a?(String)}'"
+        #puts args.to_yaml
         Template.cache.unshift(new(*args, &block)).first.render_settings
+      end
+      
+      def register_yaml(*args)
+        hash = args.last.is_a?(Hash) ? args.pop : {}
+        yaml = args.pop
+        template = YAML.load(yaml).merge(hash)
+        register(*args, template)
+      end
+
+      def register_xml(*args)
+        hash = args.last.is_a?(Hash) ? args.pop : {}
+        xml = args.pop
+        template = Parser.parse(xml, backend:'rexml', template:{'compact_default'=>true}).merge(hash)
+        register(*args, template)
       end
     
       # Get template from cache, given name == :name
@@ -82,9 +100,9 @@ module SaxChange
     # This is not necessary if using 'Template.register'.
     # Use this method if you have a template model hash-tree
     # that you want to register (and then refer to by name when parsing).
-    # TODO: Allow one arg 'name' to be passed with this method.
-    def register
-      self.class.register(self)
+    # √ TODO: Allow one arg 'name' to be passed with this method.
+    def register(*args)
+      self.class.register(*args, self)
     end
     
     # Recursively traverse template keys/values & all element/attribute children,

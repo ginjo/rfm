@@ -1,6 +1,8 @@
+SaxChange::Template.register_yaml(<<-EEOOFF)
+
 # Another (better?) minimal FMPXMLRESULT parser.
 ---
-name: fmpxmlresult_alt
+name: fmpxml_alt
 elements:
 - name: fmpxmlresult
   elements:
@@ -17,3 +19,5 @@ elements:
       - name: col
         as_name: columns
         compact: true
+        
+EEOOFF

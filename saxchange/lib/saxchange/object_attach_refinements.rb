@@ -12,7 +12,7 @@ module ObjectAttachRefinements
     # Duplicate keys are ok... collisions will be handled.
     #
     def attach_tuples(tuples, **opts)
-      # TODO: style-none should be filtered out in cursor, so it never calls attach_tuples.
+      #puts "\nATTACH_TUPLES '#{tuples.to_a[0]}', opts '#{opts}'"
       return if [:none, 'none', :hidden, 'hidden'].include?(opts[:style])
       tuples.each do |t|
         case
@@ -35,6 +35,7 @@ module ObjectAttachRefinements
     # otherwise attach to private ivar.
     def attach_tuple(k,v, **opts)
       k = k.downcase
+      v = v.compact_values if opts[:compact] == true
       #puts "\nObject:#{self.class}#attach_tuple k,v,opts '#{k}, #{v}, #{opts}'"
       dat = keyed_data(k)
       if [:shared, 'shared', ''].include?(opts[:style].to_s)
@@ -42,6 +43,7 @@ module ObjectAttachRefinements
         eval("@#{shared_var_name} ||= opts[:default_class].new || {}").attach_tuple(k,v, **opts.merge(style: 'hash'))
       else
         instance_variable_set(:"@#{k}", dat ? dat.collide(v, opts) : v)
+        create_accessor(k) if opts[:create_accessors] && opts[:create_accessors]&.any?
       end
     end
     
@@ -90,6 +92,10 @@ module ObjectAttachRefinements
       singleton_class.send(:attr_reader, name)
     end
     
+    def compact_values
+      self
+    end
+    
   end # Object
   
   refine Hash do
@@ -97,6 +103,7 @@ module ObjectAttachRefinements
     # Attach tuple to this object as hash key=>value.
     def attach_tuple(k,v, **opts)
       k = k.downcase
+      v = v.compact_values if opts[:compact] == true
       #puts "\nHash:#{self.class}#attach_tuple with k,v,opts '#{k}, #{v}, #{opts}'"
       # Block given to 'merge' determines how to handle collisions,
       # with |key, old-dat, new-dat| .
@@ -106,6 +113,7 @@ module ObjectAttachRefinements
         merge!(k => v) do |x,y,z|  
           self[x] = y.collide(z, opts)
         end
+        create_accessor(k) if opts[:create_accessors] && opts[:create_accessors]&.any?
       end
     end
     
@@ -130,17 +138,26 @@ module ObjectAttachRefinements
         self[name]
       end
     end
+    
+    def compact_values
+      size == 1 ? values[0] : self
+    end        
   end # Hash
   
   refine Array do
     # Attach tuple to this array.
     def attach_tuple(k,v, **opts)
+      v = v.compact_values if opts[:compact] == true
       #puts "\nArray:#{self.class}#attach_tuple k,v,opts '#{k}, #{v}, #{opts}'"
       if [:private, :shared, 'private', 'shared'].include?(opts[:style])
         super
       else
         self << v
       end
+    end
+    
+    def compact_values
+      size == 1 ? first : self
     end
   end # Array
 

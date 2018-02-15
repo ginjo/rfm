@@ -1,4 +1,5 @@
-SaxChange::Template.register(YAML.load(<<-EEOOFF))
+#SaxChange::Template.register(YAML.load(<<-EEOOFF))
+SaxChange::Template.register_yaml('fmresultset', <<-EEOOFF)
 
 
 #!/usr/bin/env ruby
@@ -12,7 +13,7 @@ initial_object: proc { Rfm::Resultset.new(**config) }
 attach_elements: _meta
 attach_attributes: _meta
 create_accessors: all
-name: fmresultset
+#name: fmresultset
 elements:
 # Note: doctype callback is different for different backends.
 - name: doctype

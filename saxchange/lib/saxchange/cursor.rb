@@ -66,8 +66,9 @@ module SaxChange
       @model = case
       when @tag == '__TOP__'
         @logical_parent_model = @handler.template
-      when attach? == 'none'
-        @logical_parent.element?(@tag) || config[:default_class].new
+      # FIX: This makes no sense here. Did you mean 'attach?(@logical_parent_model)' ?
+      # when attach? == 'none'
+      #   @logical_parent.element?(@tag) || config[:default_class].new
       else
         @logical_parent.element?(@tag) || config[:default_class].new
       end
@@ -142,7 +143,9 @@ module SaxChange
       prefs = "shared" if shared_var_name
       create_accessors = compile_create_accessors(@model, attr_model)
       #@object._attach_object!(v, label, delimiter?(attr_model), prefs, 'attribute', :default_class=>config[:default_class], :shared_variable_name=>shared_var_name, :create_accessors=>create_accessors)
-      @object.attach_tuples({label => v}, delimiter: delimiter?(attr_model), style: prefs, default_class: config[:default_class], shared_variable_name: shared_var_name, create_accessors: create_accessors)
+      unless %w(none hidden).include?(prefs.to_s)
+        @object.attach_tuples({label => v}, delimiter: delimiter?(attr_model), style: prefs, default_class: config[:default_class], shared_variable_name: shared_var_name, create_accessors: create_accessors, compact:(compact? || compact_default?))
+      end
     end # assign_attributes_receive
 
     # This ~should~ be only concerned with how to attach a given element to THIS cursor's object.
@@ -163,7 +166,9 @@ module SaxChange
       #puts ["\nATTACH_NEW_ELEMENT", "new_object: #{new_object}", "parent_object: #{@object}", "label: #{name}", "delimiter: #{delimiter?(new_object_cursor.model)}", "prefs: #{prefs}", "shared_var_name: #{shared_var_name}", "create_accessors: #{create_accessors}"]      
       
       #@object._attach_object!(new_object, label, delimiter?(new_object_model), prefs, 'element', :default_class=>config[:default_class], :shared_variable_name=>shared_var_name, :create_accessors=>create_accessors)
-      @object.attach_tuples({label => new_object}, delimiter: delimiter?(new_object_model), style: prefs, default_class: config[:default_class], shared_variable_name: shared_var_name, create_accessors: create_accessors)
+      unless %w(none hidden).include?(prefs.to_s)
+        @object.attach_tuples({label => new_object}, delimiter: delimiter?(new_object_model), style: prefs, default_class: config[:default_class], shared_variable_name: shared_var_name, create_accessors: create_accessors, compact:(compact? || compact_default?))
+      end
     end # attach_new_element
 
 
@@ -189,17 +194,17 @@ module SaxChange
     end # receive_start_element
 
     def receive_end_element(_tag)
-      #puts ["\nRECEIVE_END_ELEMENT '#{_tag}'", "tag: #{@tag}", "object: #{@object.class}", "model: #{@model}"]
+      #puts ["\nRECEIVE_END_ELEMENT '#{_tag}'", "tag: #{@tag}", "object: #{@object.class}", "model: #{@model}", "lp-model: #{@logical_parent_model}"]
       #puts ["\nEND_ELEMENT_OBJECT", object.to_yaml]
       begin
 
-        if _tag == @tag && (@model == @logical_parent_model)
-          # Data cleanup
-          compactor_settings = compact? || compact_default?
-          #(compactor_settings = compact?(top.model)) unless compactor_settings # prefer local settings, or use top settings.
-          #puts "Cursor#receive_end_element compactor_settings '#{compactor_settings}'"
-          (clean_members {|v| clean_members(v){|w| clean_members(w)}}) if compactor_settings
-        end
+        # if _tag == @tag && (@model == @logical_parent_model)
+        #   # Data cleanup
+        #   compactor_settings = compact? || compact_default?
+        #   #(compactor_settings = compact?(top.model)) unless compactor_settings # prefer local settings, or use top settings.
+        #   #puts "Cursor#receive_end_element compactor_settings '#{compactor_settings}'"
+        #   (clean_members {|v| clean_members(v){|w| clean_members(w)}}) if compactor_settings
+        # end
         
         prefs = @element_attachment_prefs
         #if (delimiter = delimiter?(@model); delimiter && !['none','hidden'].include?(@element_attachment_prefs.to_s)) || @element_attachment_prefs.is_a?(Proc)
@@ -212,7 +217,15 @@ module SaxChange
           #puts "RECEIVE_END_ELEMENT attaching new element TAG (#{@tag}) OBJECT (#{@object.class}) #{@object.to_yaml} WITH LOCAL MODEL #{@local_model.to_yaml} TO PARENT (#{@parent.object.class}) #{@parent.object.to_yaml} PARENT MODEL #{@parent.model.to_yaml}"
           #@logical_parent.attach_new_element(@tag, @object, self)
           @logical_parent.attach_new_element(@tag, @object, @model, prefs)
-        end      
+        end
+        
+#         if _tag == @tag #&& (@model == @logical_parent_model)
+#           # Data cleanup
+#           compactor_settings = compact? || compact_default?
+#           #(compactor_settings = compact?(top.model)) unless compactor_settings # prefer local settings, or use top settings.
+#           puts "Cursor#receive_end_element '#{@tag}' compactor_settings '#{compactor_settings}'"
+#           (clean_members {|v| clean_members(v){|w| clean_members(w)}}) if compactor_settings
+#         end
 
         if _tag == @tag #&& (@model == @local_model)
           #puts "Cursor#receive_end_element before-close-callback"
@@ -256,7 +269,7 @@ module SaxChange
     ###
     def attach_elements_default?; top&.model&.dig('attach_elements_default'); end
     def attach_attributes_default?; top&.model&.dig('attach_attributes_default'); end
-    def compact_default?; top&.model&.dig('compact'); end
+    def compact_default?; top&.model&.dig('compact_default'); end
     def create_accessors_default?; [top&.model&.dig('create_accessors_default')].flatten.compact.as{|i| i.any? && i}; end
     ###
     ### For This (or specified) Cursor Only
