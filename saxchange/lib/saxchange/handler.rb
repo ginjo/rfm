@@ -276,9 +276,9 @@ module SaxChange
     end
     
     # For debugging parsing & cursor errors.
-    def print_stack_debug
+    def print_stack_debug(indent=2)
       #stack_debug.each{|c| puts (" " * c.level) +  "Cursor '#{c.tag}', model '#{c.model['name']}', logical_parent '#{c.logical_parent.tag}', logical_parent_model '#{c.logical_parent_model&.dig('name')}', attach '#{c&.model.dig('attach')}', object '#{c.object.class}'"}; nil
-      stack_debug.each{|c| puts (" " * c.level) +  "Cursor '#{c.tag}', logical_parent '#{c.logical_parent&.tag}', xml_parent '#{c.xml_parent&.tag}', elmnt-attach-prefs '#{c.element_attachment_prefs}', attr-target '#{c.attribute_target&.tag}'"}; nil  # , attr-target '#{c.attribute_target&.tag}'
+      stack_debug.each{|c| puts (" " * c.level*indent) +  "Cursor '#{c.tag}', logical_parent '#{c.logical_parent&.tag}', xml_parent '#{c.xml_parent&.tag}', elmnt-attach-prefs '#{c.element_attachment_prefs}', attr-target '#{c.attribute_target&.tag}'"}; nil  # , attr-target '#{c.attribute_target&.tag}'
     end
     
   end # Handler

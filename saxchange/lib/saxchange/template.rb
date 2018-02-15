@@ -64,7 +64,11 @@ module SaxChange
       def register_xml(*args)
         hash = args.last.is_a?(Hash) ? args.pop : {}
         xml = args.pop
-        template = Parser.parse(xml, backend:'rexml', template:{'compact_default'=>true}).merge(hash)
+        template = Parser.parse(xml, backend:'rexml', template:'template_template').merge(hash)
+        # For debugging.
+        # template = Parser.parse(xml, backend:'rexml', template:'template_template', debug:true).tap do |handler|
+        #   handler.print_stack_debug
+        # end.result.merge(hash)
         register(*args, template)
       end
     
@@ -72,7 +76,7 @@ module SaxChange
       def [](name)
         # constant_name = constants.find(){|c| const_get(c)&.template&.dig('name') == name}
         # constant_name && const_get(constant_name)&.template
-        cache.find{|t| t&.dig('name') == name}
+        cache.find{|t| t&.dig('name') == name.to_s}
       end
     end # class << self
     
@@ -82,7 +86,7 @@ module SaxChange
     # Takes name, hash, block. All optional.
     def initialize(*args)
       hash = args.pop if args.last.is_a?(Hash)
-      self['name'] = args[0] if (args[0].is_a?(String) || args[0].is_a?(Symbol))
+      self['name'] = args[0].to_s if (args[0].is_a?(String) || args[0].is_a?(Symbol))
       merge!(hash) if hash
       # Note that while the block will be evaluated in this instances context,
       # it will not have access to local variables from this specific method.
@@ -121,6 +125,7 @@ module SaxChange
         when %w(elements attributes).include?(k)
           v.is_a?(Array) && templateize_array_hashes(v)
           v.each{|t| t.is_a?(self.class) && t.render_settings}
+        # TODO: Need a section here for 'global'
         end
       end
       self
@@ -159,6 +164,12 @@ module SaxChange
     
     
     ###  Template DSL methods
+    
+    # Declare global section.
+    def global(*args, &block)
+      #puts "#{self}.#{__callee__} #{args}"
+      self['global'] = new_level(*args, &block)
+    end
     
     # Declare an element.
     def element(*args, &block)

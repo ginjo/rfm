@@ -10,15 +10,15 @@ SaxChange::Template.register_xml(<<EEOOFF)
   <attach-elements>private</attach-elements>
   <element>
     <name>fmresultset</name>
-    <initial_object>Rfm::FmResultset</initial_object>
+    <initial_object>Rfm::Resultset</initial_object>
   </element>
   <element>
     <name>datasource</name>
-    <initial_object>Rfm::Datasource</initial_object>
+    <initial_object>Hash</initial_object>
   </element>
   <element>
     <name>metadata</name>
-    <initial_object>Rfm::Meta</initial_object>
+    <initial_object>Rfm::Metadata</initial_object>
     <element>
       <name>field_definition</name>
       <as-name>field_meta</as-name>
@@ -49,7 +49,7 @@ SaxChange::Template.register_xml(<<EEOOFF)
     </element>
     <element>
       <name>relatedset</name>
-      <initial_object>Rfm::RelatedSet</initial_object>
+      <initial_object>Hash</initial_object>
       <attach>private</attach>
       <as-name>portals</as-name>
       <delimiter>table</delimiter>

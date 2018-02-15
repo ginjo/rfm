@@ -36,6 +36,7 @@ module ObjectAttachRefinements
     def attach_tuple(k,v, **opts)
       k = k.downcase
       v = v.compact_values if opts[:compact] == true
+      v = [v].flatten(1) if opts[:style].to_s[/array/i]
       #puts "\nObject:#{self.class}#attach_tuple k,v,opts '#{k}, #{v}, #{opts}'"
       dat = keyed_data(k)
       if [:shared, 'shared', ''].include?(opts[:style].to_s)
@@ -104,6 +105,7 @@ module ObjectAttachRefinements
     def attach_tuple(k,v, **opts)
       k = k.downcase
       v = v.compact_values if opts[:compact] == true
+      v = [v].flatten(1) if opts[:style].to_s[/array/i]
       #puts "\nHash:#{self.class}#attach_tuple with k,v,opts '#{k}, #{v}, #{opts}'"
       # Block given to 'merge' determines how to handle collisions,
       # with |key, old-dat, new-dat| .

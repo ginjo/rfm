@@ -13,6 +13,9 @@ module SaxChange
   # a framework of tools that accompany each element's build process.
   #
   # NOTE: Methods that change this cursor or its objects should follow the operate-on-this-cursor-only rule.
+  # NOTE: Sub elements that are undefined will pick up parent models if their names match.
+  # So with recursive elements with identical names, you should define a 'global' section or define a template
+  # for each possible recursive level.
   class Cursor
     using Refinements
     #using ObjectMergeRefinements
@@ -63,7 +66,7 @@ module SaxChange
       @logical_parent = logical_parent_search(@tag, @xml_parent)
       @logical_parent_model = @logical_parent&.model
       
-      @model = case
+      @model = (handler.template['global'] ||= {}).merge (case
       when @tag == '__TOP__'
         @logical_parent_model = @handler.template
       # FIX: This makes no sense here. Did you mean 'attach?(@logical_parent_model)' ?
@@ -71,7 +74,7 @@ module SaxChange
       #   @logical_parent.element?(@tag) || config[:default_class].new
       else
         @logical_parent.element?(@tag) || config[:default_class].new
-      end
+      end)
       
       @element_attachment_prefs = compile_attachment_prefs(@logical_parent_model, @model, 'element')
       # NOTE: '=' takes precedence over 'if', so you don't need parens around assignment expression.

@@ -10,11 +10,11 @@ require 'rfm-core'
 #require 'saxchange/config'
 require 'saxchange'
 
-# Loads all sax parsing templates (ruby).
-multiple_dirs = Dir[File.join(File.dirname(__FILE__), "saxchange/*.rb")]
-multiple_dirs.each do |f|
-  require f
-end
+# # Loads all sax parsing templates (ruby).
+# multiple_dirs = Dir[File.join(File.dirname(__FILE__), "saxchange/*.rb")]
+# multiple_dirs.each do |f|
+#   require f
+# end
 
 # Set SaxChange defaults.
 SaxChange::Config.defaults.merge!(
@@ -67,3 +67,9 @@ module Rfm
   
 end # Rfm
 
+# Loads all sax parsing templates (ruby).
+multiple_dirs = Dir[File.join(File.dirname(__FILE__), "saxchange/*.rb")]
+multiple_dirs.each do |f|
+  require f
+end
+  

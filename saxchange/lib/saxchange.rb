@@ -63,6 +63,7 @@ require 'saxchange/cursor'
 require 'saxchange/handler'
 
 require 'saxchange/template'
+require 'saxchange/template_template'
 
 # # Require multiple files in a dir.
 # multiple_dirs = Dir[File.join(File.dirname(__FILE__), "saxchange/handler/*")]
