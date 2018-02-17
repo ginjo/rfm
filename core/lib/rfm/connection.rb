@@ -5,16 +5,29 @@ require 'securerandom'
 require 'rfm/compound_query'
 
 
-module Rfm
+module Rfm  
   class Connection
     using Refinements
     prepend Config
     
     # TODO: Make this autoload.
     require 'rexml/document'
+    
+    UriConfigMap = {
+      :scheme => :scheme,
+      :user => :account_name,
+      :password => :password,
+      :host => :host,
+      :port => :port,
+      :path => :path,
+      :query => :database,
+    }
+    
+    # Note: a simple xml pretty-print formatter looks like this:
+    # proc {|io| REXML::Document.new(io).write($stdout, 2) }
 
     def initialize(url=nil, **opts)
-      apply_database_uri(url, @config, config)
+      #apply_database_uri(url, @config, config)
     end
         
     def log
@@ -43,18 +56,15 @@ module Rfm
     #    with specific reference to '_database' and '_layout', but not limited to those params.
     #
     # Returns a ResultSet object containing _every record_ in the table associated with this layout.
-    def findall(_layout=nil, **options)
-      #return unless self.class.const_defined?(:ENABLE_FINDALL) && ENABLE_FINDALL || ENV['ENABLE_FINDALL']
-      options[:database] ||= config[:database]
-      options[:layout] = _layout || options[:layout] || config[:layout]
+    def findall(layout=nil, **options)
+      options[:layout] = layout if layout
       (options[:record_proc] = proc) if block_given?
       get_records('-findall', {}, options)
     end
 
     # Returns a ResultSet containing a single random record from the table associated with this layout.
-    def findany(_layout=nil, **options)
-      options[:database] ||= config[:database]
-      options[:layout] = _layout || options[:layout] || config[:layout]
+    def findany(layout=nil, **options)
+      options[:layout] = layout if layout
       get_records('-findany', {}, options)
     end
 
@@ -63,8 +73,7 @@ module Rfm
       layout = args.shift if args.first.is_a?(String)
       find_criteria = args.shift
       options = args.last.is_a?(Hash) ? args.pop : {}
-      options[:database] ||= config[:database]
-      options[:layout] = layout || options[:layout] || config[:layout]
+      options[:layout] = layout if layout
       find_criteria = {'-recid'=>find_criteria} if (find_criteria.to_s.to_i > 0)
       (options[:record_proc] = proc) if block_given?
       # Original (and better!) code for making this 'find' command compound-capable:
@@ -78,8 +87,7 @@ module Rfm
       layout = args.shift if args.first.is_a?(String)
       query_hash = args.shift
       options = args.last.is_a?(Hash) ? args.pop : {}
-      options[:database] ||= config[:database]
-      options[:layout] = layout || options[:layout] || config[:layout]
+      options[:layout] = layout if layout
       (options[:record_proc] = proc) if block_given?
       get_records('-findquery', query_hash, options)
     end
@@ -90,39 +98,35 @@ module Rfm
       recid = args.shift
       data = args.shift
       options = args.last.is_a?(Hash) ? args.pop : {}
-      options[:database] ||= config[:database]
-      options[:layout] = layout || options[:layout] || config[:layout]
+      options[:layout] = layout if layout
       get_records('-edit', {'-recid' => recid}.merge(data), options)
       #get_records('-edit', {'-recid' => recid}.merge(expand_repeats(values)), options) # attempt to set repeating fields.
     end
 
     # Creates a new record in the table associated with this layout.
-    def create(_layout=nil, data, **options)
+    def create(layout=nil, data, **options)
       layout = args.shift if args.first.is_a?(String)
       data = args.shift
       options = args.last.is_a?(Hash) ? args.pop : {}
-      options[:database] ||= config[:database]
-      options[:layout] = layout || options[:layout] || config[:layout]
+      options[:layout] = layout if layout
       get_records('-new', data, options)
     end
 
     # Deletes the record with the specified internal recid.
-    def delete(_layout=nil, recid, **options)
+    def delete(layout=nil, recid, **options)
       layout = args.shift if args.first.is_a?(String)
       recid = args.shift
       options = args.last.is_a?(Hash) ? args.pop : {}
-      options[:database] ||= config[:database]
-      options[:layout] = layout || options[:layout] || config[:layout]
+      options[:layout] = layout if layout
       get_records('-delete', {'-recid' => recid}, options)
       
       # Do we really want to return nil? FMP XML API returns the original record.
-      #return nil
+      return nil
     end
 
     # Retrieves metadata only, with an empty resultset.
     def view(layout=nil, **options)
-      options[:database] ||= config[:database]
-      options[:layout] = layout || options[:layout] || config[:layout]
+      options[:layout] = layout if layout
       get_records('-view', {}, options)
     end
     
@@ -133,6 +137,7 @@ module Rfm
       # We only need a basic array of strings, so the simplest way...
       #connect('-dbnames', {}, {:grammar=>'FMPXMLRESULT'}.merge(options)).body
       # But we want controll over grammer & parsing, so use get_records...
+      options[:hide] = [:database, :layout]
       options[:grammar] ||= 'FMPXMLRESULT'
       (options[:record_proc] = proc) if block_given?
       # Don't set this here. Try to use rfm-model to set it, if even needed at all.
@@ -146,24 +151,24 @@ module Rfm
       # options[:database] ||= database
       # options[:grammar] ||= 'FMPXMLRESULT'
       # get_records('-layoutnames', {}, options)
+      options[:hide] = [:layout]
       options[:record_proc] = proc if block_given?
       
       require 'rfm/layouts_cmd'
       Rfm::Commands::Layouts.new(self, **options).call
     end
     
-    def layout_meta(_layout=nil, **options)
+    def layout_meta(layout=nil, **options)
       #get_records('-view', gen_params(binding, {}), options)
       #connect('-view', gen_params(binding, {}), {:grammar=>'FMPXMLLAYOUT'}.merge(options)).body
-      options[:database] ||= config[:database]
-      options[:layout] = _layout || options[:layout] || config[:layout]
+      options[:layout] = layout if layout
       options[:grammar] ||= 'FMPXMLLAYOUT'
       get_records('-view', {}, options)
     end
     
     def scripts(**options)
       #connect('-scriptnames', {"-db" => database}, {:grammar=>'FMPXMLRESULT'}.merge(options)).body
-      options[:database] ||= config[:database]
+      options[:hide] = [:layout]
       options[:grammar] ||= 'FMPXMLRESULT'
       (options[:record_proc] = proc) if block_given?
       # Don't set this here. Try to use rfm-model to set it, if even needed at all.
@@ -175,10 +180,9 @@ module Rfm
     # Get the foundset_count only given criteria & options.
     # TODO: This should probably be abstracted up to the Model layer of Rfm,
     # since it has no FMServer-specific command.
-    def count(_layout=nil, find_criteria, **options)
+    def count(layout=nil, find_criteria, **options)
       # foundset_count won't work until xml is parsed (still need to dev the xml parser interface to rfm v4).
-      options[:database] ||= config[:database]
-      options[:layout] = _layout || options[:layout] || config[:layout]
+      options[:layout] = layout if layout
       options[:max_records] = 0
       find(find_criteria, **options).foundset_count   # from basic hash:  ['fmresultset']['resultset']['count'].to_i
     end
@@ -191,9 +195,8 @@ module Rfm
       #using ObjectMergeRefinements
       require 'saxchange/object_attach_refinements'
       using ObjectAttachRefinements
-      def meta(_layout=nil, **options)
-        options[:database] ||= config[:database]
-        options[:layout] = _layout || options[:layout] || config[:layout]
+      def meta(layout=nil, **options)
+        options[:layout] = layout if layout
         t1 = Thread.new {get_records('-view', {}, options)}
         t2 = Thread.new {get_records('-view', {}, options.merge(grammar:'FMPXMLLAYOUT'))}
   
@@ -204,40 +207,41 @@ module Rfm
         t2v
       end
     end
-    
-    ###  END COMMANDS  ###
-
-    # TODO: Meld this method with connect ??
-    # Make call to FMS XML API, given action, query-params, options.
-    # This method expects Rfm (human-friendly) args & options.
-    def get_records(action, params = {}, runtime_options = {})
+ 
+    def get_records(action, params = {}, options = {})
       #options[:template] ||= state[:template] # Dont decide template here!  #|| select_grammar('', options).to_s.downcase.to_sym
       
-      runtime_options[:grammar] ||= 'fmresultset'  #select_grammar(post, request_options)      
+      config_merge = config.merge(options)
       
-      params, connection_options = prepare_params(params, runtime_options)
       
-      # This has to be done after prepare_params, or database & layout options
-      # get sent to 'connect' every time, which breaks 'databases', 'layouts', and 'scripts' commands.
+      config_merge[:grammar] ||= 'fmresultset'
       
-      full_options = config.merge(runtime_options).merge({connection:self})
-      # Nothing helps here to prevent password in resultset options-connection-config tree.
-      full_options[:connection].config[:password] = nil
+      apply_database_url(config_merge)
+      hide_options = config_merge[:hide]
+      config_merge.delete_if{|k,v| hide_options.include?(k)} if hide_options
       
-      # Note the capture_resultset_meta call from rfm v3.
-      #capture_resultset_meta(rslt) unless resultset_meta_valid? #(@resultset_meta && @resultset_meta.error != '401')
-      
-      # Note a simple xml pretty-print formatter looks like this:
-      # proc {|io| REXML::Document.new(io).write($stdout, 2) }
+      params, request_options = prepare_params(params, config_merge)
+      puts "PARAMS #{params.to_yaml}"
+      puts "REQUEST_OPTIONS #{request_options.to_yaml}"
       
       # Get formatter, if exists.
-      formatter = full_options[:formatter]
+      formatter = request_options[:formatter]
       
       # Add '-' to action, if not already there.
       action.gsub!(/^([^-]{1,1})/, '-\1')
       
-      #puts "Connection#get_records calling 'connect' with action: #{action}, params: #{params}, options: #{connection_options}"
-
+      post = params.merge(expand_options(request_options)).merge({action => ''})
+      puts "POST #{post.to_yaml}"
+      
+      request_options[:connection] = self
+      
+      grammar = select_grammar(post, request_options)
+      scheme = get_scheme(request_options)
+      host = request_options[:host]
+      port = get_port(request_options)
+      path = request_options[:path]
+      
+      
       # The block enables streaming and returns whatever is ultimately returned from the yield,
       # the finished object tree from the formatter & parser in the case of full rfm install.
       # If you call connection_thread.value, you will get the finished connection response object,
@@ -245,50 +249,29 @@ module Rfm
       # So don't call connection_thread.value, unless you absolutely need it. And in that case, consider
       # using the standard (not block) form of this method.
       #
-      if block_given?
-        # Yields streaming io & full set of options to block.
-        connect(action, params, connection_options) do |io, http_thread|
-          yield(io, full_options.merge({http_thread: http_thread, local_env: binding}))
-        end
-      elsif formatter
-        # Yields streaming io & full set of options to formatter proc.
-        connect(action, params, connection_options) do |io, http_thread|
-          formatter.call(io, full_options.merge({http_thread: http_thread, local_env: binding}))
-        end
-      else
-        # Non streaming, returns net-http response object with body.
-        connect(action, params, connection_options)
-      end
-    end # get_records
-
-    # TODO: Meld this method with get_records ??
-    # Make call to FMS XML API, given action, query-params, options.
-    # This method expects fms-xml-api formatted query params.
-    def connect(action, params={}, request_options={})
-      config_merge = config.merge(request_options)
-      apply_database_uri(config_merge, config_merge)
-      #puts "Connection#connect config_merge after apply_database_uri '#{config_merge.to_yaml}'"
-      post = params.merge(expand_options(config_merge)).merge({action => ''})
-      #grammar = select_grammar(post, request_options)
-      grammar = select_grammar(post, config_merge)
-      scheme = get_scheme(config_merge)
-      host = config_merge[:host]
-      port = get_port(config_merge)
-      path = config_merge[:path]
-      
       # The block will be yielded with an io_reader and a connection object,
       # after the http connection has begun in its own thread.
       # See http_fetch method.
+      #
       if block_given?
-        http_fetch(scheme, host, port, "#{path}/#{grammar}.xml", post, **config_merge, &Proc.new)
+        http_fetch(scheme, host, port, "#{path}/#{grammar}.xml", post, **request_options) do |io, http_thread|
+          yield(io, request_options.merge({http_thread: http_thread, local_env: binding}))
+        end 
+      elsif formatter
+        http_fetch(scheme, host, port, "#{path}/#{grammar}.xml", post, **request_options) do |io, http_thread|
+          formatter.call(io, request_options.merge({http_thread: http_thread, local_env: binding}))
+        end
       else
-        http_fetch(scheme, host, port, "#{path}/#{grammar}.xml", post, **config_merge)
+        http_fetch(scheme, host, port, "#{path}/#{grammar}.xml", post, **request_options)
       end
-    end
-    
-    
+
+    end # get_records
+ 
+
+
     # DO NOT do any further config-option merging below here.
-    # Either pass all needed options, or get options from config, but don't do both.
+    # Either pass all needed options, or get options from config,
+    # but don't do both for any one key.
     private
 
     # TODO: Use this passed-in scheme.
@@ -303,7 +286,7 @@ module Rfm
         log.info "#{scheme}://#{host_name}:#{port}#{path}?#{qs_unescaped}"
       end
 
-      pswd = options[:password].is_a?(Symbol) ? ENV[options[:password].to_s] : options[:password]
+      pswd = expand_password(options[:password])
       
       request = Net::HTTP::Post.new(path)
       request.basic_auth(options[:account_name], pswd)
@@ -434,7 +417,7 @@ module Rfm
     end
     
     # Clean up passed params & options.
-    # Should this be part of 'expand_options'
+    # TODO: Should this be part of 'expand_options'?
     def prepare_params(params={}, options={})
       params, options = params.dup, options.dup
       _database = options[:database]
@@ -479,9 +462,9 @@ module Rfm
       end
     end
 
-    # Convert user-facing keys to FMS-XML-API keys.
+    # Convert user-facing keys to fms-xml-api keys.
     # This takes a hash and transforms it to something fms-xml-api will understand.
-    # keys not recognized by fms-xml-api or as rfm-allowable-options will be dropped,
+    # Keys not recognized by fms-xml-api or as rfm-allowable-options will be dropped,
     # or will raise exectpion if raise_invalid_option is true.
     def expand_options(options)
       result = {}
@@ -549,24 +532,35 @@ module Rfm
       return result
     end
     
-    def apply_database_uri(uri_or_url=nil, target_hash, **opts)
-      uri = parse_database_url(uri_or_url, opts)
-      uri = URI.parse(uri) if uri.is_a?(String)
+    def expand_database_url(url)
+      uri = case
+        when url.is_a?(URI); url
+        when url.is_a?(Symbol); URI.parse(ENV[url.to_s])
+        when url.is_a?(String); URI.parse(url)
+      end
+      
       if uri.is_a?(URI::HTTP)
-        pswd = random_upcase_string
-        ENV[pswd] = uri.password if uri.password
-        #puts "Connection#initialize pswd '#{pswd}', uri.password '#{uri.password}'"
-        target_hash.merge!(scheme:uri.scheme, host:uri.host, account_name:uri.user, password:pswd.to_sym, path:uri.path, database:uri.query){|key,important,default| important}
+        uri.to_hash.inject({}) do |h,key_val|
+          k,v = *key_val
+          #puts "Hash#inject '#{k}', '#{v}', '#{h}'"
+          new_key = UriConfigMap[k]
+          new_key && !v.to_s.empty? ? h.merge(new_key => v) : h
+        end
       elsif uri.is_a?(URI::Generic)
-        target_hash.merge!(host:uri.path){|key,important,default| important}
-      end    
+        {:host => uri.host}
+      else
+        {}
+      end
     end
     
-    def parse_database_url(url=nil, **opts)
-      url = url || opts[:database_url]
-      url = ENV[url.to_s] if url.is_a?(Symbol)
-      ( uri = url.is_a?(URI) ? url : URI.parse(url) ) if url
-    end    
+    def apply_database_url(source_hash, target_hash=source_hash)
+      url = source_hash[:database_url]
+      target_hash.merge!(expand_database_url(url)){|k,old,new| target_hash[k] = (new.to_s.empty? ? old : new)} if url
+    end
+    
+    def expand_password(pswd)
+      pswd.is_a?(Symbol) ? ENV[pswd.to_s] : pswd
+    end
     
     def get_scheme(**opts)
       opts = config unless opts.any?

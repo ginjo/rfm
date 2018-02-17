@@ -28,6 +28,7 @@ module Rfm
     file_path
     formatter
     grammar
+    hide
     host
     ignore_bad_data
     layout
@@ -60,7 +61,7 @@ module Rfm
   
   Config.defaults = {
     :account_name => '',
-    :database_url => :DATABASE_URL,
+    :database_url => nil,
     :host => 'localhost',
     :log_actions => false,
     :password => '',
