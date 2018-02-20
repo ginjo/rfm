@@ -211,18 +211,21 @@ module Rfm
     def get_records(action, params = {}, options = {})
       #options[:template] ||= state[:template] # Dont decide template here!  #|| select_grammar('', options).to_s.downcase.to_sym
       
-      config_merge = config.merge(options)
+      uri_rendered_config = apply_database_url(config)
       
+      uri_rendered_options = apply_database_url(options.dup)
+      
+      config_merge = uri_rendered_config.merge(uri_rendered_options)
       
       config_merge[:grammar] ||= 'fmresultset'
       
-      apply_database_url(config_merge)
+      
       hide_options = config_merge[:hide]
       config_merge.delete_if{|k,v| hide_options.include?(k)} if hide_options
       
       params, request_options = prepare_params(params, config_merge)
-      puts "PARAMS #{params.to_yaml}"
-      puts "REQUEST_OPTIONS #{request_options.to_yaml}"
+      #puts "PARAMS #{params.to_yaml}"
+      #puts "REQUEST_OPTIONS #{request_options.to_yaml}"
       
       # Get formatter, if exists.
       formatter = request_options[:formatter]
@@ -231,7 +234,7 @@ module Rfm
       action.gsub!(/^([^-]{1,1})/, '-\1')
       
       post = params.merge(expand_options(request_options)).merge({action => ''})
-      puts "POST #{post.to_yaml}"
+      #puts "POST #{post.to_yaml}"
       
       request_options[:connection] = self
       
@@ -555,7 +558,8 @@ module Rfm
     
     def apply_database_url(source_hash, target_hash=source_hash)
       url = source_hash[:database_url]
-      target_hash.merge!(expand_database_url(url)){|k,old,new| target_hash[k] = (new.to_s.empty? ? old : new)} if url
+      target_hash.merge!(expand_database_url(url)){|k, from_target, from_source| target_hash[k] = (from_source.to_s.empty? ? from_target : from_source)} if url
+      target_hash
     end
     
     def expand_password(pswd)
