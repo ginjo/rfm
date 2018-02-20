@@ -137,7 +137,7 @@ module Rfm
       # We only need a basic array of strings, so the simplest way...
       #connect('-dbnames', {}, {:grammar=>'FMPXMLRESULT'}.merge(options)).body
       # But we want controll over grammer & parsing, so use get_records...
-      options[:hide] = [:database, :layout]
+      options[:ignore] = [:database, :layout]
       options[:grammar] ||= 'FMPXMLRESULT'
       (options[:record_proc] = proc) if block_given?
       # Don't set this here. Try to use rfm-model to set it, if even needed at all.
@@ -151,7 +151,7 @@ module Rfm
       # options[:database] ||= database
       # options[:grammar] ||= 'FMPXMLRESULT'
       # get_records('-layoutnames', {}, options)
-      options[:hide] = [:layout]
+      options[:ignore] = [:layout]
       options[:record_proc] = proc if block_given?
       
       require 'rfm/layouts_cmd'
@@ -168,7 +168,7 @@ module Rfm
     
     def scripts(**options)
       #connect('-scriptnames', {"-db" => database}, {:grammar=>'FMPXMLRESULT'}.merge(options)).body
-      options[:hide] = [:layout]
+      options[:ignore] = [:layout]
       options[:grammar] ||= 'FMPXMLRESULT'
       (options[:record_proc] = proc) if block_given?
       # Don't set this here. Try to use rfm-model to set it, if even needed at all.
@@ -220,8 +220,8 @@ module Rfm
       config_merge[:grammar] ||= 'fmresultset'
       
       
-      hide_options = config_merge[:hide]
-      config_merge.delete_if{|k,v| hide_options.include?(k)} if hide_options
+      ignore_options = config_merge[:ignore]
+      config_merge.delete_if{|k,v| ignore_options.include?(k)} if ignore_options
       
       params, request_options = prepare_params(params, config_merge)
       #puts "PARAMS #{params.to_yaml}"

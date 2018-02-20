@@ -28,8 +28,8 @@ module Rfm
     file_path
     formatter
     grammar
-    hide
     host
+    ignore
     ignore_bad_data
     layout
     logger
