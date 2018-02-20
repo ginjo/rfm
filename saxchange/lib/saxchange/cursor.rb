@@ -66,7 +66,11 @@ module SaxChange
       @logical_parent = logical_parent_search(@tag, @xml_parent)
       @logical_parent_model = @logical_parent&.model
       
-      @model = (handler.template['global'] ||= {}).merge (case
+      # This now handles the new 'global' section that will be layered underneath every model.
+      # TODO: I think this will conver all options.
+      # TODO: Review this and decide if we can get rid of top-level default options.
+      # TODO: Need to convert templates to use new global section.
+      @model = (handler.template['global'] ||= {}).merge(case
       when @tag == '__TOP__'
         @logical_parent_model = @handler.template
       # FIX: This makes no sense here. Did you mean 'attach?(@logical_parent_model)' ?
@@ -74,7 +78,12 @@ module SaxChange
       #   @logical_parent.element?(@tag) || config[:default_class].new
       else
         @logical_parent.element?(@tag) || config[:default_class].new
-      end)
+      end) do |key, old_val, new_val|
+        case
+          when ['attributes','elements'].include?(key) && old_val.is_a?(Array) && new_val.is_a?(Array); old_val.concat(new_val)
+          else new_val
+        end
+      end
       
       @element_attachment_prefs = compile_attachment_prefs(@logical_parent_model, @model, 'element')
       # NOTE: '=' takes precedence over 'if', so you don't need parens around assignment expression.

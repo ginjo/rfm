@@ -1,8 +1,8 @@
-# Experimental xml-based sax-parsing template
-# TODO: Need to somehow convert label 'element' to 'elements'. Do we need a template-template with an element definition that is picked up at all levels of the tree?
-# TODO: Do we need a top-level template section called 'global', where everything there is looked at as a current-model alongside any chosen current cursor model?
-# TODO: The above should be easy: Just merge @model and @logical_parent_model into the global-model, whenever those two are being set.
-#SaxChange::Template.register(SaxChange::Parser.parse(<<EEOOFF, backend:'rexml', template:{'compact_default'=>true}))
+# Experimental xml-based sax-parsing template.
+# This template is not up-to-date with rfm parsing expectations, however it is still a legitimate template as far as saxchange is concerned.
+# TODO: √ Need to somehow convert label 'element' to 'elements'. Do we need a template-template with an element definition that is picked up at all levels of the tree?
+# TODO: √ Do we need a top-level template section called 'global', where everything there is looked at as a current-model alongside any chosen current cursor model?
+# TODO: √ The above should be easy: Just merge @model and @logical_parent_model into the global-model, whenever those two are being set.
 SaxChange::Template.register_xml(<<EEOOFF)
 
 <?xml version="1.0" encoding="UTF-8"?>

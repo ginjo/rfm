@@ -13,7 +13,7 @@ module Rfm
       @name      = 'layouts'
       @main_call = proc {|connection, **options| connection.get_records('-layoutnames', {}, options) }
       @options = {
-        database:  ->(connection){connection.config[:database]},
+        #database:  ->(connection){connection.config[:database]},
         grammar:   'FMPXMLRESULT',
         # Don't set this here. Try to use rfm-model to set it, if even needed at all.
         #template:  'databases.yml'

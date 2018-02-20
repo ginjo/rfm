@@ -1,3 +1,4 @@
+# This saxchange template will parse xml-based saxchange templates.
 SaxChange::Template.register(:template_template) do
   global do
     compact true
