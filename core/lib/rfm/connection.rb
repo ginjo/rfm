@@ -527,7 +527,7 @@ module Rfm
         when :modification_id
           result['-modid'] = value
         else
-          if config[:raise_invalid_option] && ! AllowableOptions.member?(key.to_s)
+          if config[:raise_invalid_option] && ! Config.allowable_options.member?(key.to_s)
             raise Rfm::ParameterError.new("Invalid option: #{key}")
           end
         end

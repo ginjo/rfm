@@ -18,7 +18,7 @@ module Rfm
   eval(File.read(File.join(File.dirname(__FILE__), '../ginjo_tools/refinements.rb')))
   eval(File.read(File.join(File.dirname(__FILE__), '../ginjo_tools/config.rb')))
   
-  AllowableOptions = %w(
+  Config.allowable_options.concat %w(
     account_name
     database
     database_url
@@ -53,11 +53,7 @@ module Rfm
     warn_on_redirect
   )
   
-  AllowableOptions.push(*SaxChange::AllowableOptions) if Kernel.const_defined?(:SaxChange)
-  
-  AllowableOptions.delete_if(){|x| x[/^\s*\#/]}
-  AllowableOptions.compact!
-  AllowableOptions.uniq!
+  Config.allowable_options.concat(SaxChange::Config.allowable_options) if Kernel.const_defined?(:SaxChange)
   
   Config.defaults = {
     :account_name => '',
@@ -83,7 +79,7 @@ module Rfm
     when Kernel.const_defined?(:SaxChange)
     
       # Add some options to SaxChange for parsing Rfm data.
-      SaxChange::AllowableOptions.push *%w(
+      SaxChange::Config.allowable_options.concat %w(
         grammar
         field_mapping
         decimal_separator

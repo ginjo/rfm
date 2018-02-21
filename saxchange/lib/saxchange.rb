@@ -18,8 +18,7 @@ module SaxChange
   singleton_class.def_delegators Config, :defaults, :'defaults='
   singleton_class.def_delegators :'SaxChange::Parser', :parse
   
-  # TODO: Should allowable-options be a Config setting, instead of an app setting?
-  AllowableOptions = %w(
+  Config.allowable_options.concat %w(
     backend
     default_class
     debug
@@ -31,7 +30,7 @@ module SaxChange
     text_label
     tag_translation
     template
-  ).delete_if(){|x| x[/^\s*\#/]}.compact.uniq
+  )  #.delete_if(){|x| x[/^\s*\#/]}.compact.uniq
     
   # These defaults can be set here or in any ancestor/enclosing module or class,
   # as long as the defaults or their constants can be seen from this POV.
